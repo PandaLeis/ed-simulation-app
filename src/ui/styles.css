@@ -22,11 +22,18 @@ button {
 }
 
 .appShell {
+  background: #f4f6f8;
+  color: #18202a;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 100vh;
   padding: 20px;
+}
+
+.appShell[data-theme="dark"] {
+  background: #0f141b;
+  color: #e6edf4;
 }
 
 .topBar {
@@ -60,6 +67,7 @@ h2 {
 
 .clockPanel,
 .providerStatus,
+.clockStatus,
 .controlStrip button,
 .metric,
 .patientCard,
@@ -90,10 +98,23 @@ h2 {
 }
 
 .controlStrip {
+  --control-height: 54px;
+  --status-height: 32px;
+  display: grid;
+  gap: 10px;
+}
+
+.controlPrimaryRow {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.statusMessageRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .controlStrip button,
@@ -105,8 +126,8 @@ h2 {
   cursor: pointer;
   display: inline-flex;
   gap: 8px;
+  height: var(--control-height);
   justify-content: center;
-  min-height: 42px;
   padding: 0 14px;
 }
 
@@ -128,6 +149,12 @@ h2 {
   color: #ffffff;
 }
 
+.controlStrip .coachDemoButton.active {
+  background: #7a5a13;
+  border-color: #7a5a13;
+  color: #ffffff;
+}
+
 .providerStatus {
   align-items: center;
   background: #ffffff;
@@ -135,8 +162,171 @@ h2 {
   color: #455466;
   display: flex;
   gap: 8px;
-  min-height: 42px;
+  height: var(--control-height);
   padding: 0 14px;
+}
+
+.statusMessageRow .providerStatus,
+.statusMessageRow .clockStatus {
+  font-size: 0.82rem;
+  height: var(--status-height);
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.statusMessageRow .providerStatus svg,
+.statusMessageRow .clockStatus svg {
+  flex: 0 0 auto;
+  height: 15px;
+  width: 15px;
+}
+
+.statusMessageRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.providerRoster {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.providerRosterCard {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.providerRosterHeader {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.providerRosterDetails {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.providerRosterCard small {
+  color: #5e6b78;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.providerRosterBadge {
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.providerRosterBadge.idle {
+  background: #dceee4;
+  color: #276c45;
+}
+
+.providerRosterBadge.busy {
+  background: #fff1c9;
+  color: #896213;
+}
+
+.clockStatus {
+  align-items: center;
+  background: #f9fbfc;
+  border-radius: 8px;
+  color: #455466;
+  display: flex;
+  gap: 8px;
+  height: var(--control-height);
+  padding: 0 14px;
+}
+
+.speedControl,
+.themeToggle,
+.metricVisibilityControl {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  box-sizing: border-box;
+  color: #455466;
+  display: grid;
+  gap: 2px 10px;
+  height: var(--control-height);
+  padding: 6px 12px;
+}
+
+.speedControl {
+  grid-template-columns: auto minmax(110px, 150px) auto;
+  min-width: 214px;
+}
+
+.themeToggle,
+.metricVisibilityControl {
+  grid-template-columns: auto auto;
+  min-width: 142px;
+}
+
+.speedControl > span,
+.themeToggle > span,
+.metricVisibilityControl > span {
+  color: #647383;
+  font-size: 0.72rem;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+}
+
+.speedControl input {
+  accent-color: #1f6f8b;
+  grid-column: 1 / 3;
+  width: 100%;
+}
+
+.speedControl strong {
+  color: #18202a;
+  font-size: 0.82rem;
+  min-width: 22px;
+  text-align: right;
+}
+
+.themeToggle input,
+.metricVisibilityControl input {
+  accent-color: #1f6f8b;
+  height: 18px;
+  margin: 0;
+  width: 18px;
+}
+
+.themeToggle strong {
+  color: #18202a;
+  font-size: 0.82rem;
+}
+
+.metricVisibilityControl label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.metricVisibilityControl label span {
+  color: #18202a;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .toggleControl {
@@ -157,10 +347,316 @@ h2 {
   width: 18px;
 }
 
+.setupTabs {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: grid;
+  overflow: hidden;
+}
+
+.setupTabList {
+  background: #f5f8fa;
+  border-bottom: 1px solid #d7dde4;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px;
+}
+
+.setupTabList button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #526173;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.84rem;
+  font-weight: 900;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.setupTabList button:hover,
+.setupTabList button.active {
+  background: #ffffff;
+  border-color: #b8d4de;
+  color: #1f6f8b;
+}
+
+.liveOperationsPanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.scenarioPanel {
+  background: #ffffff;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.scenarioPanelHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.scenarioPanelHeader small {
+  color: #647383;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.scenarioActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scenarioActions button {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  color: #1e2a36;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.scenarioActions button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.scenarioControls {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+}
+
+.scenarioTopControls {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 1fr) 118px minmax(150px, 0.8fr) minmax(230px, 1.1fr) minmax(105px, 1fr);
+}
+
+.scenarioBottomControls {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(105px, 1fr));
+}
+
+.scenarioControls label:not(.toggleControl),
+.scenarioBottomControls label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.scenarioControls label > span,
+.presetControl > span,
+.shiftLengthControl > span,
+.providerCountControl > span,
+.triageModeControl > span,
+.roomCapacityControl > span,
+.scenarioToggle span {
+  color: #647383;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.scenarioControls input[type="number"],
+.scenarioControls select {
+  background: #f9fbfc;
+  border: 1px solid #ccd5de;
+  border-radius: 8px;
+  color: #18202a;
+  font: inherit;
+  font-weight: 800;
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.presetControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.shiftLengthControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.providerCountControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.roomCapacityControl {
+  justify-self: start;
+  max-width: 118px;
+  width: 118px;
+}
+
+.roomCapacityControl input[type="number"] {
+  text-align: center;
+}
+
+.triageModeControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.presetButtonGroup,
+.providerButtonGroup,
+.shiftButtonGroup,
+.triageModeButtonGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.presetButtonGroup {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shiftButtonGroup {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.providerButtonGroup {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.triageModeButtonGroup {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.presetButtonGroup button,
+.providerButtonGroup button,
+.shiftButtonGroup button,
+.triageModeButtonGroup button {
+  background: #f9fbfc;
+  border: 1px solid #ccd5de;
+  border-radius: 8px;
+  color: #1e2a36;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  height: 40px;
+  overflow: hidden;
+  padding: 0 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presetButtonGroup button:hover,
+.presetButtonGroup button.active,
+.providerButtonGroup button:hover,
+.providerButtonGroup button.active,
+.shiftButtonGroup button:hover,
+.shiftButtonGroup button.active,
+.triageModeButtonGroup button:hover,
+.triageModeButtonGroup button.active {
+  background: #eaf4f7;
+  border-color: #78b9ce;
+  color: #1f6f8b;
+}
+
+.triageModeControl small {
+  color: #647383;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.presetControl small {
+  color: #647383;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.scenarioToggle {
+  align-content: start;
+  align-items: start;
+  align-self: stretch;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  gap: 5px;
+  justify-content: stretch;
+  min-height: 0;
+  padding: 0;
+  position: relative;
+}
+
+.lwbsToggleControl {
+  min-width: 105px;
+}
+
+.scenarioToggle::after {
+  background: #f9fbfc;
+  border: 1px solid #ccd5de;
+  border-radius: 8px;
+  content: "";
+  grid-column: 1;
+  grid-row: 2;
+  height: 40px;
+  width: 100%;
+}
+
+.scenarioToggle input {
+  accent-color: #1f6f8b;
+  align-self: center;
+  grid-column: 1;
+  grid-row: 2;
+  height: 18px;
+  justify-self: start;
+  margin: 0 0 0 12px;
+  position: relative;
+  width: 18px;
+  z-index: 1;
+}
+
+.scenarioToggle small {
+  align-self: center;
+  color: #1e2a36;
+  font-size: 0.82rem;
+  font-weight: 800;
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  line-height: 1.2;
+  margin-left: 40px;
+  position: relative;
+  z-index: 1;
+}
+
+.scenarioToggle span {
+  color: #647383;
+  font-size: 0.74rem;
+  grid-column: 1;
+  grid-row: 1;
+  line-height: normal;
+}
+
 .metricsGrid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(5, minmax(132px, 1fr));
+  grid-template-columns: repeat(6, minmax(118px, 1fr));
 }
 
 .metric {
@@ -168,6 +664,16 @@ h2 {
   border-radius: 8px;
   min-height: 74px;
   padding: 12px;
+}
+
+.metric.cardiacMetric {
+  background: #fff7f8;
+  border-color: #f0c7cf;
+}
+
+.metric.sepsisMetric {
+  background: #f5fbf6;
+  border-color: #bedec6;
 }
 
 .metricLabel {
@@ -185,17 +691,31 @@ h2 {
   margin-top: 8px;
 }
 
+.metric.cardiacMetric .metricLabel::before {
+  content: "❤️";
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.metric.sepsisMetric .metricLabel::before {
+  background: #dceee4;
+  border-radius: 999px;
+  color: #276c45;
+  content: "S";
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 3px 6px;
+}
+
 .coreMetricTabs {
   background: #ffffff;
-  border: 1px solid #d7dde4;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
   overflow: hidden;
 }
 
 .tabList {
+  border-bottom: 1px solid #e3e8ed;
   display: flex;
   gap: 4px;
   overflow-x: auto;
@@ -223,10 +743,9 @@ h2 {
 }
 
 .tabPanel {
-  border-left: 1px solid #e3e8ed;
   display: grid;
   gap: 6px;
-  min-height: 120px;
+  min-height: 112px;
   padding: 10px 14px;
 }
 
@@ -244,32 +763,76 @@ h2 {
 
 .tabMeasures {
   display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin: 8px 0 0;
 }
 
 .tabMeasures div {
-  border-top: 1px solid #eef2f5;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
   min-width: 0;
-  padding-top: 6px;
+  min-height: 54px;
+  padding: 8px 10px;
 }
 
 .tabMeasures dt {
   color: #647383;
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .tabMeasures dd {
   color: #18202a;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 900;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mainViewShell {
+  display: grid;
+  gap: 12px;
+}
+
+.mainViewTabs {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px;
+}
+
+.mainViewTabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #526173;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.84rem;
+  font-weight: 900;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.mainViewTabs button:hover,
+.mainViewTabs button.active {
+  background: #eaf3f6;
+  border-color: #b8d4de;
+  color: #1f6f8b;
 }
 
 .workspace {
@@ -279,10 +842,138 @@ h2 {
   min-height: 0;
 }
 
-.board {
+.facilityView {
+  display: grid;
+  gap: 12px;
+}
+
+.facilitySummary {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  grid-template-columns: repeat(6, minmax(118px, 1fr));
+}
+
+.roomMapPanel {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.roomMapHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.roomMapHeader h2 {
+  margin-bottom: 3px;
+}
+
+.roomMapHeader small {
+  color: #647383;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.roomLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.roomLegend span {
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 4px 8px;
+}
+
+.roomLegend .available {
+  background: #dceee4;
+  color: #276c45;
+}
+
+.roomLegend .occupied {
+  background: #e2eff3;
+  color: #1f6f8b;
+}
+
+.roomLegend .blocked {
+  background: #ffe0dc;
+  color: #9d2c1f;
+}
+
+.roomGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.roomTile {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-left-width: 4px;
+  border-radius: 8px;
+  color: #1d2a37;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  min-height: 118px;
+  padding: 12px;
+  text-align: left;
+}
+
+.roomTile:disabled {
+  cursor: default;
+}
+
+.roomTile:hover:not(:disabled) {
+  border-color: #78b9ce;
+  box-shadow: 0 0 0 3px rgb(31 111 139 / 0.1);
+}
+
+.roomTile.available {
+  border-left-color: #3e8b5d;
+}
+
+.roomTile.occupied {
+  border-left-color: #1f6f8b;
+}
+
+.roomTile.blocked {
+  border-left-color: #c7603b;
+}
+
+.roomTile span {
+  color: #647383;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.roomTile strong {
+  color: #18202a;
+  font-size: 1rem;
+}
+
+.roomTile small {
+  color: #647383;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.board {
+  display: grid;
+  grid-auto-columns: minmax(150px, 1fr);
+  grid-auto-flow: column;
+  gap: 10px;
   overflow-x: auto;
   padding-bottom: 8px;
 }
@@ -297,17 +988,23 @@ h2 {
 }
 
 .columnHeader {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 8px;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
+.columnHeader h2 {
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .columnHeader span {
   background: #ffffff;
   border-radius: 999px;
   color: #516071;
+  flex-shrink: 0;
   font-size: 0.78rem;
   font-weight: 800;
   min-width: 24px;
@@ -340,6 +1037,13 @@ h2 {
   box-shadow: inset 0 0 0 1px #1f6f8b;
 }
 
+.patientCard.coachRecommendedPatient {
+  border-color: #c19a2e;
+  box-shadow:
+    inset 0 0 0 1px #c19a2e,
+    0 0 0 3px rgb(193 154 46 / 0.16);
+}
+
 .cardTopline,
 .patientMeta {
   align-items: center;
@@ -353,12 +1057,39 @@ h2 {
   font-size: 0.78rem;
 }
 
+.cardBadges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.cardiacBadge,
+.seenBadge,
 .riskBadge {
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 800;
   padding: 3px 7px;
   text-transform: uppercase;
+}
+
+.cardiacBadge {
+  background: #ffe7ea;
+  color: #9d2c1f;
+  line-height: 1;
+  text-transform: none;
+}
+
+.seenBadge.seen {
+  background: #dceee4;
+  color: #276c45;
+}
+
+.seenBadge.notSeen {
+  background: #eef2f5;
+  color: #647383;
 }
 
 .riskBadge.low {
@@ -377,26 +1108,133 @@ h2 {
   color: #9d2c1f;
 }
 
+.riskBadge.closed {
+  background: #eef2f5;
+  color: #647383;
+}
+
+.patientStatusPanel {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.patientStatusHeader {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.patientStatusHeader span {
+  color: #647383;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.protocolLine {
+  align-items: center;
+  border-top: 1px solid #eef2f5;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  padding-top: 7px;
+}
+
+.protocolLine small {
+  color: #647383;
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.protocolBadge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 3px 7px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.protocolBadge.none {
+  background: #eef2f5;
+  color: #647383;
+}
+
+.protocolBadge.identified {
+  background: #e8edf8;
+  color: #365f9e;
+}
+
+.protocolBadge.pending {
+  background: #fff1c9;
+  color: #896213;
+}
+
+.protocolBadge.ready {
+  background: #dceee4;
+  color: #276c45;
+}
+
+.protocolBadge.complete {
+  background: #e2eff3;
+  color: #1f6f8b;
+}
+
 .sidePanel {
   align-self: start;
   background: #ffffff;
   border-radius: 8px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   max-height: calc(100vh - 196px);
-  overflow: auto;
+  overflow: hidden;
 }
 
-.panelSection {
+.rightRailTabs {
+  background: #f5f8fa;
   border-bottom: 1px solid #e3e8ed;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  padding: 8px;
+}
+
+.rightRailTabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #526173;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 8px;
+}
+
+.rightRailTabs button:hover,
+.rightRailTabs button.active {
+  background: #ffffff;
+  border-color: #b8d4de;
+  color: #1f6f8b;
+}
+
+.rightRailPanel {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
   padding: 14px;
 }
 
-.panelSection:last-child {
-  border-bottom: 0;
-}
-
-.panelSection h2 {
+.rightRailPanel h2 {
   margin-bottom: 12px;
 }
 
@@ -406,9 +1244,10 @@ h2 {
 }
 
 .detailGrid {
+  align-items: start;
   display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr 1fr;
+  gap: 9px 12px;
+  grid-template-columns: repeat(6, minmax(118px, 1fr));
   margin: 0;
 }
 
@@ -417,23 +1256,42 @@ h2 {
 }
 
 .detailGrid .detailWide {
-  grid-column: 1 / -1;
+  grid-column: span 2;
+}
+
+.detailGrid .detailCompact {
+  grid-column: span 2;
+}
+
+.detailGrid .detailImpact,
+.detailGrid .detailOrders {
+  grid-column: span 3;
+}
+
+.detailGrid .detailExpectedOrders {
+  grid-column: 1;
+}
+
+.detailGrid .detailDisposition {
+  grid-column: 2;
 }
 
 .detailGrid dt {
   color: #667586;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   text-transform: uppercase;
 }
 
 .detailGrid dd {
+  font-size: 0.86rem;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.orderList {
+.orderList,
+.namedOrderList {
   display: grid;
   gap: 6px;
   list-style: none;
@@ -441,20 +1299,28 @@ h2 {
   padding: 0;
 }
 
-.orderList li {
+.orderList li,
+.namedOrderList li {
   border-top: 1px solid #eef2f5;
   display: grid;
   gap: 2px;
   padding-top: 6px;
 }
 
-.orderList span {
+.orderList span,
+.namedOrderList span {
   font-weight: 800;
 }
 
-.orderList small {
+.orderList small,
+.namedOrderList small {
   color: #647383;
   font-size: 0.78rem;
+}
+
+.patientStatusPanel .namedOrderList,
+.patientStatusPanel .orderList {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .actionList {
@@ -463,14 +1329,474 @@ h2 {
   gap: 8px;
 }
 
+.actionStatus {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.actionStatus strong {
+  color: #18202a;
+  font-size: 0.88rem;
+}
+
+.actionStatus small {
+  color: #647383;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
 .actionList button {
+  height: 60px;
   justify-content: space-between;
   width: 100%;
+}
+
+.actionList button.coachRecommendedAction {
+  border-color: #c19a2e;
+  box-shadow:
+    inset 0 0 0 1px #c19a2e,
+    0 0 0 3px rgb(193 154 46 / 0.16);
 }
 
 .actionList small {
   color: inherit;
   font-weight: 800;
+}
+
+.benchmarkPanel,
+.coachPanel,
+.debriefPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.benchmarkPanel > strong,
+.coachPanel > strong,
+.debriefPanel > strong {
+  color: #18202a;
+  font-size: 0.92rem;
+}
+
+.coachPanel p {
+  color: #455466;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.coachSummary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.coachSummary div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.coachSummary dt {
+  color: #667586;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.coachSummary dd {
+  color: #18202a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.coachActions {
+  display: grid;
+  gap: 8px;
+}
+
+.coachActions button {
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 8px;
+  color: #1e2a36;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.whatIfComparison {
+  display: grid;
+  gap: 8px;
+}
+
+.whatIfComparison h3 {
+  color: #455466;
+  font-size: 0.76rem;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.whatIfComparison p {
+  color: #455466;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.whatIfGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.whatIfCard {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-left: 3px solid #7f8a96;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 9px 10px;
+}
+
+.whatIfCard.optimal_flow {
+  border-left-color: #3e8b5d;
+}
+
+.whatIfCard.front_end_focus {
+  border-left-color: #1f6f8b;
+}
+
+.whatIfCard.middle_flow_focus {
+  border-left-color: #c19a2e;
+}
+
+.whatIfCard.disposition_focus {
+  border-left-color: #c7603b;
+}
+
+.whatIfCard > strong {
+  color: #18202a;
+  font-size: 0.84rem;
+}
+
+.whatIfCard > small {
+  color: #647383;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.whatIfCard dl {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.whatIfCard dl div {
+  background: #ffffff;
+  border: 1px solid #e3e8ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+}
+
+.whatIfCard dt {
+  color: #667586;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.whatIfCard dd {
+  color: #18202a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.benchmarkGrid {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.benchmarkGrid div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-left-width: 3px;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 8px 10px;
+}
+
+.benchmarkGrid div.better {
+  border-left-color: #3e8b5d;
+}
+
+.benchmarkGrid div.worse {
+  border-left-color: #c7603b;
+}
+
+.benchmarkGrid div.same {
+  border-left-color: #7f8a96;
+}
+
+.benchmarkGrid dt {
+  color: #667586;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.benchmarkGrid dd {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr auto;
+  margin: 0;
+}
+
+.benchmarkGrid span {
+  color: #455466;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.benchmarkGrid strong {
+  color: #18202a;
+  font-size: 0.78rem;
+  justify-self: end;
+}
+
+.debriefSummary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.debriefSummary div {
+  border-top: 1px solid #eef2f5;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.debriefSummary dt {
+  color: #667586;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.debriefSummary dd {
+  font-size: 0.84rem;
+  font-weight: 900;
+  margin: 2px 0 0;
+}
+
+.debriefBlock {
+  display: grid;
+  gap: 7px;
+}
+
+.debriefBlock h3 {
+  color: #455466;
+  font-size: 0.76rem;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.feedbackList {
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feedbackList li {
+  border-left: 3px solid #b8c2cc;
+  display: grid;
+  gap: 3px;
+  padding-left: 8px;
+}
+
+.feedbackList li.positive {
+  border-left-color: #3e8b5d;
+}
+
+.feedbackList li.good {
+  border-left-color: #3e8b5d;
+}
+
+.feedbackList li.opportunity {
+  border-left-color: #c7603b;
+}
+
+.feedbackList li.urgent {
+  border-left-color: #c7603b;
+}
+
+.feedbackList li.watch {
+  border-left-color: #c19a2e;
+}
+
+.feedbackList span {
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.feedbackList small {
+  color: #647383;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.feedbackList em {
+  color: #1f6f8b;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.activityPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.activityToolbar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.activityToolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.activityToolbar span {
+  color: #647383;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.activityToolbar button {
+  background: #ffffff;
+  border: 1px solid #b8d4de;
+  border-radius: 8px;
+  color: #1f6f8b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.activityToolbar button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.activityExportStatus {
+  color: #276c45;
+  font-size: 0.76rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.activitySummary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.activitySummary div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.activitySummary dt {
+  color: #667586;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.activitySummary dd {
+  color: #18202a;
+  font-size: 0.9rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.activityList {
+  display: grid;
+  gap: 9px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activityList li {
+  border-left: 3px solid #b8c2cc;
+  display: grid;
+  gap: 5px;
+  padding-left: 9px;
+}
+
+.activityList li.decision {
+  border-left-color: #1f6f8b;
+}
+
+.activityList li.benchmark {
+  border-left-color: #c19a2e;
+}
+
+.activityList li.event {
+  border-left-color: #7f8a96;
+}
+
+.activityList time {
+  color: #667586;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.activityList div {
+  display: grid;
+  gap: 3px;
+}
+
+.activityList strong {
+  color: #18202a;
+  font-size: 0.82rem;
+}
+
+.activityList span,
+.activityList small {
+  color: #647383;
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .eventList {
@@ -493,13 +1819,245 @@ h2 {
   font-weight: 800;
 }
 
+.appShell[data-theme="dark"] .clockPanel,
+.appShell[data-theme="dark"] .providerStatus,
+.appShell[data-theme="dark"] .clockStatus,
+.appShell[data-theme="dark"] .speedControl,
+.appShell[data-theme="dark"] .themeToggle,
+.appShell[data-theme="dark"] .metricVisibilityControl,
+.appShell[data-theme="dark"] .toggleControl,
+.appShell[data-theme="dark"] .setupTabs,
+.appShell[data-theme="dark"] .mainViewTabs,
+.appShell[data-theme="dark"] .providerRosterCard,
+.appShell[data-theme="dark"] .scenarioPanel,
+.appShell[data-theme="dark"] .metric,
+.appShell[data-theme="dark"] .roomMapPanel,
+.appShell[data-theme="dark"] .patientStatusPanel,
+.appShell[data-theme="dark"] .sidePanel,
+.appShell[data-theme="dark"] .controlStrip button,
+.appShell[data-theme="dark"] .presetButtonGroup button,
+.appShell[data-theme="dark"] .providerButtonGroup button,
+.appShell[data-theme="dark"] .shiftButtonGroup button,
+.appShell[data-theme="dark"] .triageModeButtonGroup button,
+.appShell[data-theme="dark"] .coachActions button,
+.appShell[data-theme="dark"] .actionList button,
+.appShell[data-theme="dark"] .activityToolbar button,
+.appShell[data-theme="dark"] .roomTile,
+.appShell[data-theme="dark"] .patientCard {
+  background: #161d27;
+  border-color: #2c3948;
+  box-shadow: none;
+  color: #e6edf4;
+}
+
+.appShell[data-theme="dark"] .setupTabList,
+.appShell[data-theme="dark"] .tabList,
+.appShell[data-theme="dark"] .rightRailTabs {
+  background: #111821;
+  border-color: #2c3948;
+}
+
+.appShell[data-theme="dark"] .tabPanel,
+.appShell[data-theme="dark"] .tabMeasures div,
+.appShell[data-theme="dark"] .actionStatus,
+.appShell[data-theme="dark"] .whatIfCard,
+.appShell[data-theme="dark"] .whatIfCard dl div,
+.appShell[data-theme="dark"] .benchmarkGrid div,
+.appShell[data-theme="dark"] .activitySummary div,
+.appShell[data-theme="dark"] .coachSummary div,
+.appShell[data-theme="dark"] .scenarioToggle::after,
+.appShell[data-theme="dark"] .scenarioControls input[type="number"],
+.appShell[data-theme="dark"] .scenarioControls select {
+  background: #111821;
+  border-color: #334253;
+  color: #e6edf4;
+}
+
+.appShell[data-theme="dark"] .boardColumn {
+  background: #1b2430;
+  border-color: #334253;
+}
+
+.appShell[data-theme="dark"] .patientCard.selected {
+  border-color: #5eb3d1;
+  box-shadow: inset 0 0 0 1px #5eb3d1;
+}
+
+.appShell[data-theme="dark"] .patientCard.coachRecommendedPatient,
+.appShell[data-theme="dark"] .actionList button.coachRecommendedAction {
+  border-color: #d3aa3d;
+  box-shadow:
+    inset 0 0 0 1px #d3aa3d,
+    0 0 0 3px rgb(211 170 61 / 0.18);
+}
+
+.appShell[data-theme="dark"] .controlStrip button:hover:not(:disabled),
+.appShell[data-theme="dark"] .actionList button:hover:not(:disabled),
+.appShell[data-theme="dark"] .coachActions button:hover,
+.appShell[data-theme="dark"] .patientCard:hover,
+.appShell[data-theme="dark"] .presetButtonGroup button.active,
+.appShell[data-theme="dark"] .presetButtonGroup button:hover,
+.appShell[data-theme="dark"] .providerButtonGroup button.active,
+.appShell[data-theme="dark"] .providerButtonGroup button:hover,
+.appShell[data-theme="dark"] .shiftButtonGroup button.active,
+.appShell[data-theme="dark"] .shiftButtonGroup button:hover,
+.appShell[data-theme="dark"] .triageModeButtonGroup button.active,
+.appShell[data-theme="dark"] .triageModeButtonGroup button:hover,
+.appShell[data-theme="dark"] .setupTabList button.active,
+.appShell[data-theme="dark"] .setupTabList button:hover,
+.appShell[data-theme="dark"] .tabList button.active,
+.appShell[data-theme="dark"] .tabList button:hover,
+.appShell[data-theme="dark"] .rightRailTabs button.active,
+.appShell[data-theme="dark"] .rightRailTabs button:hover {
+  background: #1f2d3a;
+  border-color: #5eb3d1;
+  color: #9bd3e6;
+}
+
+.appShell[data-theme="dark"] .mainViewTabs button.active,
+.appShell[data-theme="dark"] .mainViewTabs button:hover {
+  background: #1f2d3a;
+  border-color: #5eb3d1;
+  color: #9bd3e6;
+}
+
+.appShell[data-theme="dark"] .primaryButton {
+  background: #2d7f9e;
+  border-color: #2d7f9e;
+  color: #ffffff;
+}
+
+.appShell[data-theme="dark"] .controlStrip .coachDemoButton.active {
+  background: #9b7320;
+  border-color: #d3aa3d;
+  color: #fff7dc;
+}
+
+.appShell[data-theme="dark"] .eyebrow,
+.appShell[data-theme="dark"] .clockPanel small,
+.appShell[data-theme="dark"] .speedControl > span,
+.appShell[data-theme="dark"] .themeToggle > span,
+.appShell[data-theme="dark"] .metricVisibilityControl > span,
+.appShell[data-theme="dark"] .scenarioPanelHeader small,
+.appShell[data-theme="dark"] .scenarioControls label > span,
+.appShell[data-theme="dark"] .presetControl > span,
+.appShell[data-theme="dark"] .providerCountControl > span,
+.appShell[data-theme="dark"] .shiftLengthControl > span,
+.appShell[data-theme="dark"] .triageModeControl > span,
+.appShell[data-theme="dark"] .roomCapacityControl > span,
+.appShell[data-theme="dark"] .triageModeControl small,
+.appShell[data-theme="dark"] .scenarioToggle span,
+.appShell[data-theme="dark"] .metricLabel,
+.appShell[data-theme="dark"] .tabPanel span,
+.appShell[data-theme="dark"] .tabPanel small,
+.appShell[data-theme="dark"] .tabMeasures dt,
+.appShell[data-theme="dark"] .roomMapHeader small,
+.appShell[data-theme="dark"] .roomTile span,
+.appShell[data-theme="dark"] .roomTile small,
+.appShell[data-theme="dark"] .cardMeta,
+.appShell[data-theme="dark"] .protocolLine small,
+.appShell[data-theme="dark"] .patientStatusHeader span,
+.appShell[data-theme="dark"] .emptyState,
+.appShell[data-theme="dark"] .detailGrid dt,
+.appShell[data-theme="dark"] .benchmarkGrid dt,
+.appShell[data-theme="dark"] .benchmarkGrid span,
+.appShell[data-theme="dark"] .whatIfComparison h3,
+.appShell[data-theme="dark"] .whatIfComparison p,
+.appShell[data-theme="dark"] .whatIfCard > small,
+.appShell[data-theme="dark"] .whatIfCard dt,
+.appShell[data-theme="dark"] .activitySummary dt,
+.appShell[data-theme="dark"] .activityToolbar span,
+.appShell[data-theme="dark"] .activityExportStatus,
+.appShell[data-theme="dark"] .activityList time,
+.appShell[data-theme="dark"] .activityList span,
+.appShell[data-theme="dark"] .activityList small,
+.appShell[data-theme="dark"] .coachPanel p,
+.appShell[data-theme="dark"] .coachSummary dt,
+.appShell[data-theme="dark"] .orderList small,
+.appShell[data-theme="dark"] .namedOrderList small,
+.appShell[data-theme="dark"] .debriefSummary dt,
+.appShell[data-theme="dark"] .feedbackList small,
+.appShell[data-theme="dark"] .actionStatus small,
+.appShell[data-theme="dark"] .eventList time {
+  color: #9aa8b7;
+}
+
+.appShell[data-theme="dark"] .speedControl strong,
+.appShell[data-theme="dark"] .themeToggle strong,
+.appShell[data-theme="dark"] .metricVisibilityControl label span,
+.appShell[data-theme="dark"] .tabPanel strong,
+.appShell[data-theme="dark"] .tabMeasures dd,
+.appShell[data-theme="dark"] .roomTile strong,
+.appShell[data-theme="dark"] .cardTopline,
+.appShell[data-theme="dark"] .scenarioToggle small,
+.appShell[data-theme="dark"] .actionStatus strong,
+.appShell[data-theme="dark"] .benchmarkPanel > strong,
+.appShell[data-theme="dark"] .benchmarkGrid strong,
+.appShell[data-theme="dark"] .whatIfCard > strong,
+.appShell[data-theme="dark"] .whatIfCard dd,
+.appShell[data-theme="dark"] .activitySummary dd,
+.appShell[data-theme="dark"] .activityList strong,
+.appShell[data-theme="dark"] .coachPanel > strong,
+.appShell[data-theme="dark"] .coachSummary dd,
+.appShell[data-theme="dark"] .debriefPanel > strong,
+.appShell[data-theme="dark"] .feedbackList span {
+  color: #f2f6fa;
+}
+
+.appShell[data-theme="dark"] .columnHeader span,
+.appShell[data-theme="dark"] .protocolBadge.none,
+.appShell[data-theme="dark"] .riskBadge.closed {
+  background: #253140;
+  color: #b7c4d1;
+}
+
+.appShell[data-theme="dark"] .protocolLine,
+.appShell[data-theme="dark"] .benchmarkGrid div,
+.appShell[data-theme="dark"] .whatIfCard,
+.appShell[data-theme="dark"] .whatIfCard dl div,
+.appShell[data-theme="dark"] .activitySummary div,
+.appShell[data-theme="dark"] .coachSummary div,
+.appShell[data-theme="dark"] .orderList li,
+.appShell[data-theme="dark"] .namedOrderList li,
+.appShell[data-theme="dark"] .debriefSummary div {
+  border-color: #2c3948;
+}
+
 @media (max-width: 1180px) {
+  .statusMessageRow {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarioTopControls {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+  }
+
+  .scenarioBottomControls {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
   .metricsGrid {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  .facilitySummary {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
 
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .detailGrid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
+
+  .detailGrid .detailCompact,
+  .detailGrid .detailExpectedOrders,
+  .detailGrid .detailImpact,
+  .detailGrid .detailOrders,
+  .detailGrid .detailWide {
+    grid-column: span 3;
   }
 
   .sidePanel {
@@ -521,20 +2079,50 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .coreMetricTabs {
+  .facilitySummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roomMapHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .roomLegend {
+    justify-content: flex-start;
+  }
+
+  .scenarioPanelHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .scenarioTopControls,
+  .scenarioBottomControls {
     grid-template-columns: 1fr;
+  }
+
+  .scenarioToggle {
+    margin-top: 0;
   }
 
   .tabMeasures {
     grid-template-columns: 1fr;
   }
 
-  .tabPanel {
-    border-left: 0;
-    border-top: 1px solid #e3e8ed;
+  .detailGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detailGrid .detailCompact,
+  .detailGrid .detailExpectedOrders,
+  .detailGrid .detailImpact,
+  .detailGrid .detailOrders,
+  .detailGrid .detailWide {
+    grid-column: 1 / -1;
   }
 
   .board {
-    grid-template-columns: repeat(7, 158px);
+    grid-auto-columns: 158px;
   }
 }

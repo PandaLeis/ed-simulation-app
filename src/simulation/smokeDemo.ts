@@ -11,13 +11,17 @@ import type { RuntimePatient, Scenario, SimulationRun } from "./types";
 
 function chooseActionablePatient(run: SimulationRun): RuntimePatient | undefined {
   return (
-    run.patients.find((patient) => patient.state === "triage") ??
     run.patients.find((patient) => patient.state === "ready_for_disposition") ??
     run.patients.find((patient) => patient.state === "results_ready") ??
     run.patients.find((patient) => patient.state === "provider_seen") ??
     run.patients.find((patient) => patient.state === "roomed") ??
-    run.patients.find((patient) => patient.state === "waiting")
+    run.patients.find((patient) => patient.state === "waiting") ??
+    (run.triageProvider.status === "idle" ? run.patients.find((patient) => patient.state === "triage") : undefined)
   );
+}
+
+function chooseTriagePatient(run: SimulationRun): RuntimePatient | undefined {
+  return run.triageProvider.status === "idle" ? run.patients.find((patient) => patient.state === "triage") : undefined;
 }
 
 function chooseAction(run: SimulationRun, patient: RuntimePatient) {
@@ -41,6 +45,14 @@ function runDemoScenario(scenario: Scenario, minutes: number): { deckLength: num
       const action = chooseAction(run, actionablePatient);
       if (action) {
         run = applyProviderAction(run, action.type, actionablePatient.id);
+      }
+    }
+
+    const triagePatient = chooseTriagePatient(run);
+    if (triagePatient) {
+      const action = chooseAction(run, triagePatient);
+      if (action?.type === "start_protocol_orders" || action?.type === "complete_triage") {
+        run = applyProviderAction(run, action.type, triagePatient.id);
       }
     }
 

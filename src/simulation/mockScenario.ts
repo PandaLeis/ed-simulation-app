@@ -1,4 +1,6 @@
 import type { Scenario } from "./types";
+import { defaultTriageDurationProfile } from "./triageDuration";
+import { defaultTimingProfile } from "./timingProfile";
 
 export const defaultScenario: Scenario = {
   id: "scenario-default-evening-flow",
@@ -9,11 +11,12 @@ export const defaultScenario: Scenario = {
   roomCapacity: 8,
   providerCount: 1,
   triageProviderEnabled: true,
+  triageProviderMode: "automated",
   arrivalProfile: [
-    { hourOffset: 0, expectedArrivals: 5 },
-    { hourOffset: 1, expectedArrivals: 7 },
-    { hourOffset: 2, expectedArrivals: 6 },
-    { hourOffset: 3, expectedArrivals: 4 },
+    { hourOffset: 0, expectedArrivals: 12 },
+    { hourOffset: 1, expectedArrivals: 12 },
+    { hourOffset: 2, expectedArrivals: 12 },
+    { hourOffset: 3, expectedArrivals: 12 },
   ],
   esiDistribution: {
     values: [
@@ -25,14 +28,32 @@ export const defaultScenario: Scenario = {
   },
   complaintDistribution: {
     values: [
-      { value: "chest_pain", weight: 14 },
+      { value: "suspected_acs", weight: 5 },
+      { value: "chest_pain", weight: 18 },
       { value: "abdominal_pain", weight: 16 },
       { value: "shortness_of_breath", weight: 12 },
-      { value: "injury", weight: 18 },
+      { value: "injury", weight: 15 },
       { value: "weakness_dizziness", weight: 12 },
       { value: "fever_infection", weight: 12 },
       { value: "behavioral_health", weight: 6 },
-      { value: "minor_complaint", weight: 10 },
+      { value: "stroke_neuro", weight: 3 },
+      { value: "sepsis_concern", weight: 3 },
+      { value: "major_trauma", weight: 2 },
+      { value: "pediatric", weight: 5 },
+      { value: "ob_pregnancy", weight: 3 },
+      { value: "syncope", weight: 5 },
+      { value: "altered_mental_status", weight: 3 },
+      { value: "overdose_intoxication", weight: 3 },
+      { value: "renal_urinary", weight: 6 },
+      { value: "gi_bleed", weight: 3 },
+      { value: "allergic_reaction", weight: 3 },
+      { value: "burn", weight: 2 },
+      { value: "eye_ent", weight: 4 },
+      { value: "back_pain", weight: 5 },
+      { value: "hypertensive_symptoms", weight: 3 },
+      { value: "diabetic_emergency", weight: 3 },
+      { value: "social_placement", weight: 3 },
+      { value: "minor_complaint", weight: 8 },
     ],
   },
   workupDistribution: {
@@ -44,9 +65,20 @@ export const defaultScenario: Scenario = {
       { value: "complex", weight: 15 },
     ],
   },
+  triageDurationProfile: defaultTriageDurationProfile,
+  triageDurationMultiplier: 1,
+  timingProfile: defaultTimingProfile,
   boardingProfile: {
     enabled: true,
     admitBoardingDelayMin: 35,
     admitBoardingDelayMax: 90,
+  },
+  lwbsProfile: {
+    enabled: false,
+    minimumWaitBeforeLWBS: 90,
+    lowPatienceMultiplier: 1.6,
+    mediumPatienceMultiplier: 1,
+    highPatienceMultiplier: 0.45,
+    highAcuityBlockedEsiLevels: [1, 2],
   },
 };

@@ -1,4 +1,7 @@
 import { createSeededRandom } from "./seededRandom";
+import { samplePertDuration, timingRangeFromTypical } from "./timingProfile";
+import { chooseCardiacPathway } from "./cardiacWorkflow";
+import type { SeededRandom } from "./seededRandom";
 import type { ComplaintCategory, ESILevel, Scenario, ScenarioPatient, WorkupType } from "./types";
 
 const ageBands = ["18-34", "35-49", "50-64", "65-79", "80+"] as const;
@@ -20,6 +23,13 @@ const workupTiming: Record<WorkupType, { labs: number; imaging: number }> = {
 };
 
 const complaintWorkupDistribution: Record<ComplaintCategory, Scenario["workupDistribution"]> = {
+  suspected_acs: {
+    values: [
+      { value: "cardiac", weight: 85 },
+      { value: "complex", weight: 10 },
+      { value: "labs_imaging", weight: 5 },
+    ],
+  },
   chest_pain: {
     values: [
       { value: "cardiac", weight: 60 },
@@ -83,6 +93,151 @@ const complaintWorkupDistribution: Record<ComplaintCategory, Scenario["workupDis
       { value: "cardiac", weight: 2 },
     ],
   },
+  stroke_neuro: {
+    values: [
+      { value: "complex", weight: 55 },
+      { value: "labs_imaging", weight: 30 },
+      { value: "basic_labs", weight: 10 },
+      { value: "cardiac", weight: 5 },
+    ],
+  },
+  sepsis_concern: {
+    values: [
+      { value: "complex", weight: 55 },
+      { value: "labs_imaging", weight: 30 },
+      { value: "basic_labs", weight: 13 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  major_trauma: {
+    values: [
+      { value: "complex", weight: 50 },
+      { value: "labs_imaging", weight: 42 },
+      { value: "basic_labs", weight: 6 },
+      { value: "none", weight: 2 },
+    ],
+  },
+  pediatric: {
+    values: [
+      { value: "none", weight: 30 },
+      { value: "basic_labs", weight: 30 },
+      { value: "labs_imaging", weight: 25 },
+      { value: "complex", weight: 13 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  ob_pregnancy: {
+    values: [
+      { value: "labs_imaging", weight: 35 },
+      { value: "basic_labs", weight: 30 },
+      { value: "complex", weight: 25 },
+      { value: "none", weight: 8 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  syncope: {
+    values: [
+      { value: "cardiac", weight: 35 },
+      { value: "basic_labs", weight: 30 },
+      { value: "labs_imaging", weight: 20 },
+      { value: "complex", weight: 12 },
+      { value: "none", weight: 3 },
+    ],
+  },
+  altered_mental_status: {
+    values: [
+      { value: "complex", weight: 45 },
+      { value: "labs_imaging", weight: 30 },
+      { value: "basic_labs", weight: 20 },
+      { value: "cardiac", weight: 5 },
+    ],
+  },
+  overdose_intoxication: {
+    values: [
+      { value: "basic_labs", weight: 45 },
+      { value: "complex", weight: 25 },
+      { value: "none", weight: 20 },
+      { value: "labs_imaging", weight: 8 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  renal_urinary: {
+    values: [
+      { value: "basic_labs", weight: 45 },
+      { value: "labs_imaging", weight: 35 },
+      { value: "none", weight: 12 },
+      { value: "complex", weight: 8 },
+    ],
+  },
+  gi_bleed: {
+    values: [
+      { value: "complex", weight: 45 },
+      { value: "basic_labs", weight: 35 },
+      { value: "labs_imaging", weight: 15 },
+      { value: "cardiac", weight: 5 },
+    ],
+  },
+  allergic_reaction: {
+    values: [
+      { value: "none", weight: 45 },
+      { value: "basic_labs", weight: 25 },
+      { value: "complex", weight: 20 },
+      { value: "labs_imaging", weight: 8 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  burn: {
+    values: [
+      { value: "none", weight: 35 },
+      { value: "labs_imaging", weight: 30 },
+      { value: "basic_labs", weight: 20 },
+      { value: "complex", weight: 15 },
+    ],
+  },
+  eye_ent: {
+    values: [
+      { value: "none", weight: 55 },
+      { value: "labs_imaging", weight: 20 },
+      { value: "basic_labs", weight: 18 },
+      { value: "complex", weight: 5 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  back_pain: {
+    values: [
+      { value: "none", weight: 35 },
+      { value: "labs_imaging", weight: 30 },
+      { value: "basic_labs", weight: 25 },
+      { value: "complex", weight: 8 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
+  hypertensive_symptoms: {
+    values: [
+      { value: "basic_labs", weight: 35 },
+      { value: "cardiac", weight: 30 },
+      { value: "labs_imaging", weight: 20 },
+      { value: "complex", weight: 13 },
+      { value: "none", weight: 2 },
+    ],
+  },
+  diabetic_emergency: {
+    values: [
+      { value: "complex", weight: 45 },
+      { value: "basic_labs", weight: 35 },
+      { value: "labs_imaging", weight: 15 },
+      { value: "cardiac", weight: 5 },
+    ],
+  },
+  social_placement: {
+    values: [
+      { value: "none", weight: 45 },
+      { value: "basic_labs", weight: 30 },
+      { value: "complex", weight: 15 },
+      { value: "labs_imaging", weight: 8 },
+      { value: "cardiac", weight: 2 },
+    ],
+  },
   minor_complaint: {
     values: [
       { value: "none", weight: 65 },
@@ -95,15 +250,66 @@ const complaintWorkupDistribution: Record<ComplaintCategory, Scenario["workupDis
 };
 
 function complaintRiskModifier(complaint: ComplaintCategory): number {
-  if (complaint === "chest_pain" || complaint === "shortness_of_breath") {
+  if (
+    complaint === "suspected_acs" ||
+    complaint === "stroke_neuro" ||
+    complaint === "sepsis_concern" ||
+    complaint === "major_trauma" ||
+    complaint === "altered_mental_status" ||
+    complaint === "diabetic_emergency"
+  ) {
+    return 0.25;
+  }
+
+  if (
+    complaint === "chest_pain" ||
+    complaint === "shortness_of_breath" ||
+    complaint === "syncope" ||
+    complaint === "gi_bleed" ||
+    complaint === "hypertensive_symptoms"
+  ) {
     return 0.1;
   }
 
-  if (complaint === "minor_complaint") {
+  if (complaint === "minor_complaint" || complaint === "eye_ent" || complaint === "back_pain") {
     return -0.05;
   }
 
   return 0;
+}
+
+function acuityForComplaint(baseEsi: ESILevel, complaint: ComplaintCategory, random: SeededRandom): ESILevel {
+  if (complaint === "suspected_acs") {
+    return random.weighted({
+      values: [
+        { value: 1, weight: 10 },
+        { value: 2, weight: 75 },
+        { value: 3, weight: 15 },
+      ],
+    });
+  }
+
+  if (complaint === "stroke_neuro" || complaint === "sepsis_concern" || complaint === "major_trauma") {
+    return random.weighted({
+      values: [
+        { value: 1, weight: 12 },
+        { value: 2, weight: 58 },
+        { value: 3, weight: 30 },
+      ],
+    });
+  }
+
+  if (complaint === "altered_mental_status" || complaint === "diabetic_emergency" || complaint === "gi_bleed") {
+    return random.weighted({
+      values: [
+        { value: 2, weight: 55 },
+        { value: 3, weight: 35 },
+        { value: 4, weight: 10 },
+      ],
+    });
+  }
+
+  return baseEsi;
 }
 
 function workupDistributionForComplaint(complaint: ComplaintCategory): Scenario["workupDistribution"] {
@@ -118,10 +324,14 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
     const baseMinute = hour.hourOffset * 60;
 
     for (let arrivalIndex = 0; arrivalIndex < hour.expectedArrivals; arrivalIndex += 1) {
-      const esi = random.weighted(scenario.esiDistribution);
+      const baseEsi = random.weighted(scenario.esiDistribution);
       const complaintCategory = random.weighted(scenario.complaintDistribution);
+      const esi = acuityForComplaint(baseEsi, complaintCategory, random);
       const workupType = random.weighted(workupDistributionForComplaint(complaintCategory));
+      const cardiacPathway = chooseCardiacPathway(complaintCategory, workupType, random);
       const timing = workupTiming[workupType];
+      const labScale = scenario.timingProfile.labTurnaround.typical / 45;
+      const imagingScale = scenario.timingProfile.imagingTurnaround.typical / 55;
       const admitProbability = Math.min(
         0.95,
         Math.max(0.01, admissionByEsi[esi] + complaintRiskModifier(complaintCategory)),
@@ -140,12 +350,14 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
         admitProbability,
         dischargeProbability: Math.max(0, 1 - admitProbability - 0.05),
         observationProbability: 0.05,
-        expectedLabMinutes: timing.labs === 0 ? 0 : timing.labs + random.integer(-8, 12),
-        expectedImagingMinutes: timing.imaging === 0 ? 0 : timing.imaging + random.integer(-10, 15),
-        expectedBoardingMinutes: random.integer(
-          scenario.boardingProfile.admitBoardingDelayMin,
-          scenario.boardingProfile.admitBoardingDelayMax,
-        ),
+        expectedLabMinutes:
+          timing.labs === 0 ? 0 : samplePertDuration(random, timingRangeFromTypical(timing.labs * labScale, 0.7, 1.8)),
+        expectedImagingMinutes:
+          timing.imaging === 0
+            ? 0
+            : samplePertDuration(random, timingRangeFromTypical(timing.imaging * imagingScale, 0.65, 1.9)),
+        expectedBoardingMinutes: samplePertDuration(random, scenario.timingProfile.boardingDuration),
+        cardiacPathway,
         lwbsBaseRisk: Math.max(0.02, 0.18 - esi * 0.025),
         patienceProfile: random.weighted({
           values: [
