@@ -10,6 +10,9 @@ export const defaultScenario: Scenario = {
   randomSeed: "ed-flow-mvp-001",
   roomCapacity: 8,
   providerCount: 1,
+  nurseCount: 2,
+  techCount: 1,
+  fastTrackEnabled: true,
   triageProviderEnabled: true,
   triageProviderMode: "automated",
   arrivalProfile: [
@@ -81,4 +84,5 @@ export const defaultScenario: Scenario = {
     highPatienceMultiplier: 0.45,
     highAcuityBlockedEsiLevels: [1, 2],
   },
+  minimumStemiAlertPatients: 1,
 };

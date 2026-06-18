@@ -114,7 +114,7 @@ h2 {
 .statusMessageRow {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .controlStrip button,
@@ -214,7 +214,7 @@ h2 {
 .providerRosterDetails {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(74px, 0.7fr);
 }
 
 .providerRosterCard small {
@@ -223,6 +223,34 @@ h2 {
   line-height: 1.25;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.providerRosterDetails small {
+  display: grid;
+  gap: 2px;
+}
+
+.providerRosterDetails small:last-child {
+  justify-self: end;
+  text-align: right;
+}
+
+.providerRosterDetails small > span,
+.providerRosterDetails small > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.providerRosterDetails small > span {
+  white-space: nowrap;
+}
+
+.providerRosterDetails small > strong {
+  color: #455466;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .providerRosterBadge {
@@ -445,13 +473,15 @@ h2 {
   align-items: start;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 1fr) 118px minmax(150px, 0.8fr) minmax(230px, 1.1fr) minmax(105px, 1fr);
+  grid-template-columns: 1.25fr 1.15fr 0.62fr 0.78fr 0.5fr 0.5fr 0.95fr 0.62fr 0.62fr;
+  width: 100%;
 }
 
 .scenarioBottomControls {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(7, minmax(105px, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  width: 100%;
 }
 
 .scenarioControls label:not(.toggleControl),
@@ -465,6 +495,7 @@ h2 {
 .presetControl > span,
 .shiftLengthControl > span,
 .providerCountControl > span,
+.supportCountControl > span,
 .triageModeControl > span,
 .roomCapacityControl > span,
 .scenarioToggle span {
@@ -505,10 +536,18 @@ h2 {
   min-width: 0;
 }
 
+.supportCountControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.supportCountControl input[type="number"] {
+  text-align: center;
+}
+
 .roomCapacityControl {
-  justify-self: start;
-  max-width: 118px;
-  width: 118px;
+  min-width: 0;
 }
 
 .roomCapacityControl input[type="number"] {
@@ -523,6 +562,7 @@ h2 {
 
 .presetButtonGroup,
 .providerButtonGroup,
+.supportButtonGroup,
 .shiftButtonGroup,
 .triageModeButtonGroup {
   display: grid;
@@ -538,7 +578,11 @@ h2 {
 }
 
 .providerButtonGroup {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.supportButtonGroup {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .triageModeButtonGroup {
@@ -547,6 +591,7 @@ h2 {
 
 .presetButtonGroup button,
 .providerButtonGroup button,
+.supportButtonGroup button,
 .shiftButtonGroup button,
 .triageModeButtonGroup button {
   background: #f9fbfc;
@@ -558,15 +603,21 @@ h2 {
   font-weight: 900;
   height: 40px;
   overflow: hidden;
-  padding: 0 10px;
+  padding: 0 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.shiftButtonGroup button {
+  padding: 0 6px;
 }
 
 .presetButtonGroup button:hover,
 .presetButtonGroup button.active,
 .providerButtonGroup button:hover,
 .providerButtonGroup button.active,
+.supportButtonGroup button:hover,
+.supportButtonGroup button.active,
 .shiftButtonGroup button:hover,
 .shiftButtonGroup button.active,
 .triageModeButtonGroup button:hover,
@@ -603,8 +654,9 @@ h2 {
   position: relative;
 }
 
+.fastTrackToggleControl,
 .lwbsToggleControl {
-  min-width: 105px;
+  min-width: 0;
 }
 
 .scenarioToggle::after {
@@ -656,6 +708,11 @@ h2 {
 .metricsGrid {
   display: grid;
   gap: 10px;
+}
+
+.metricSectionRow {
+  display: grid;
+  gap: 10px;
   grid-template-columns: repeat(6, minmax(118px, 1fr));
 }
 
@@ -689,23 +746,6 @@ h2 {
   display: block;
   font-size: 1.35rem;
   margin-top: 8px;
-}
-
-.metric.cardiacMetric .metricLabel::before {
-  content: "❤️";
-  font-size: 0.82rem;
-  line-height: 1;
-}
-
-.metric.sepsisMetric .metricLabel::before {
-  background: #dceee4;
-  border-radius: 999px;
-  color: #276c45;
-  content: "S";
-  font-size: 0.68rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 3px 6px;
 }
 
 .coreMetricTabs {
@@ -745,7 +785,7 @@ h2 {
 .tabPanel {
   display: grid;
   gap: 6px;
-  min-height: 112px;
+  min-height: 0;
   padding: 10px 14px;
 }
 
@@ -764,8 +804,8 @@ h2 {
 .tabMeasures {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin: 8px 0 0;
+  grid-template-columns: repeat(var(--tab-measure-columns, 7), minmax(0, 1fr));
+  margin: 0;
 }
 
 .tabMeasures div {
@@ -780,13 +820,27 @@ h2 {
 }
 
 .tabMeasures dt {
+  align-items: center;
   color: #647383;
+  display: flex;
   font-size: 0.7rem;
   font-weight: 800;
+  gap: 6px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.tabMeasures dt svg {
+  flex: 0 0 auto;
+}
+
+.tabMeasures dt span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tabMeasures dd {
@@ -800,15 +854,17 @@ h2 {
 }
 
 .mainViewShell {
-  display: grid;
-  gap: 12px;
-}
-
-.mainViewTabs {
   background: #ffffff;
   border: 1px solid #d7dde4;
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  display: grid;
+  overflow: hidden;
+}
+
+.mainViewTabs {
+  background: #f5f8fa;
+  border-bottom: 1px solid #d7dde4;
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -830,16 +886,36 @@ h2 {
 
 .mainViewTabs button:hover,
 .mainViewTabs button.active {
-  background: #eaf3f6;
+  background: #ffffff;
   border-color: #b8d4de;
   color: #1f6f8b;
 }
 
+.mainViewPanel {
+  padding: 14px;
+}
+
 .workspace {
+  align-items: start;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 1fr) 340px;
   min-height: 0;
+}
+
+.benchmarkViewPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.coachComparisonViewPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.graphsViewPanel {
+  display: grid;
+  gap: 14px;
 }
 
 .facilityView {
@@ -904,6 +980,11 @@ h2 {
   color: #1f6f8b;
 }
 
+.roomLegend .cleaning {
+  background: #fff4d8;
+  color: #8a5a00;
+}
+
 .roomLegend .blocked {
   background: #ffe0dc;
   color: #9d2c1f;
@@ -918,7 +999,7 @@ h2 {
 .roomTile {
   background: #f9fbfc;
   border: 1px solid #dfe6ed;
-  border-left-width: 4px;
+  border-left-width: 8px;
   border-radius: 8px;
   color: #1d2a37;
   cursor: pointer;
@@ -944,6 +1025,10 @@ h2 {
 
 .roomTile.occupied {
   border-left-color: #1f6f8b;
+}
+
+.roomTile.cleaning {
+  border-left-color: #d59c1a;
 }
 
 .roomTile.blocked {
@@ -1066,6 +1151,9 @@ h2 {
 }
 
 .cardiacBadge,
+.stemiBadge,
+.deteriorationBadge,
+.reassessmentBadge,
 .seenBadge,
 .riskBadge {
   border-radius: 999px;
@@ -1080,6 +1168,24 @@ h2 {
   color: #9d2c1f;
   line-height: 1;
   text-transform: none;
+}
+
+.stemiBadge {
+  background: #b42318;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+
+.deteriorationBadge {
+  background: #7f1d1d;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+
+.reassessmentBadge {
+  background: #fff1c9;
+  color: #896213;
+  letter-spacing: 0;
 }
 
 .seenBadge.seen {
@@ -1194,8 +1300,12 @@ h2 {
   border-radius: 8px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  max-height: calc(100vh - 196px);
+  height: calc(100vh - 196px);
+  max-height: 820px;
+  min-height: 440px;
   overflow: hidden;
+  position: sticky;
+  top: 12px;
 }
 
 .rightRailTabs {
@@ -1227,6 +1337,7 @@ h2 {
 }
 
 .rightRailPanel {
+  align-content: start;
   display: grid;
   gap: 12px;
   min-height: 0;
@@ -1235,7 +1346,7 @@ h2 {
 }
 
 .rightRailPanel h2 {
-  margin-bottom: 12px;
+  margin: 0;
 }
 
 .emptyState {
@@ -1371,7 +1482,7 @@ h2 {
 .coachPanel,
 .debriefPanel {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .benchmarkPanel > strong,
@@ -1435,8 +1546,12 @@ h2 {
 }
 
 .whatIfComparison {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .whatIfComparison h3 {
@@ -1453,9 +1568,73 @@ h2 {
   margin: 0;
 }
 
+.benchmarkTargetControl {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: var(--benchmark-comparison-columns);
+}
+
+.benchmarkTargetControl label {
+  color: #667586;
+  font-size: 0.68rem;
+  font-weight: 800;
+  grid-column: 1 / 3;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.benchmarkTargetControl select {
+  grid-column: 3;
+}
+
+.benchmarkTargetControl select {
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  color: #283241;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 7px 10px;
+}
+
+.coachComparisonControls {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+}
+
+.coachComparisonControls label {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  color: #283241;
+  display: flex;
+  font-size: 0.74rem;
+  font-weight: 800;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.coachComparisonControls input {
+  accent-color: #1f6f8b;
+  height: 18px;
+  margin: 0;
+  width: 18px;
+}
+
 .whatIfGrid {
   display: grid;
   gap: 8px;
+}
+
+.coachComparisonViewPanel .whatIfGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .whatIfCard {
@@ -1484,6 +1663,22 @@ h2 {
   border-left-color: #c7603b;
 }
 
+.whatIfCard.resource_aware {
+  border-left-color: #6c63b7;
+}
+
+.whatIfCard.safety_first {
+  border-left-color: #b42318;
+}
+
+.whatIfCard.fast_track {
+  border-left-color: #16805f;
+}
+
+.whatIfCard.balanced_operations {
+  border-left-color: #2f6bd1;
+}
+
 .whatIfCard > strong {
   color: #18202a;
   font-size: 0.84rem;
@@ -1500,6 +1695,36 @@ h2 {
   gap: 6px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
+}
+
+.coachComparisonViewPanel .whatIfCard dl {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.coachComparisonViewPanel .whatIfCard {
+  gap: 6px;
+  padding: 8px;
+}
+
+.coachComparisonViewPanel .whatIfCard > small {
+  font-size: 0.7rem;
+}
+
+.coachComparisonViewPanel .whatIfCard dl {
+  gap: 5px;
+}
+
+.coachComparisonViewPanel .whatIfCard dl div {
+  padding: 5px;
+}
+
+.coachComparisonViewPanel .whatIfCard dt {
+  font-size: 0.56rem;
+  line-height: 1.15;
+}
+
+.coachComparisonViewPanel .whatIfCard dd {
+  font-size: 0.76rem;
 }
 
 .whatIfCard dl div {
@@ -1531,14 +1756,43 @@ h2 {
   margin: 0;
 }
 
-.benchmarkGrid div {
+.benchmarkMetricComparison {
+  --benchmark-comparison-columns: minmax(120px, 1fr) minmax(105px, 1fr) minmax(130px, 1fr) minmax(84px, auto);
   background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.benchmarkComparisonHeader {
+  color: #667586;
+  display: grid;
+  font-size: 0.62rem;
+  font-weight: 900;
+  gap: 8px;
+  grid-template-columns: var(--benchmark-comparison-columns);
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.benchmarkGrid div {
+  background: #ffffff;
   border: 1px solid #dfe6ed;
   border-left-width: 3px;
   border-radius: 8px;
   display: grid;
-  gap: 5px;
+  gap: 8px;
+  grid-template-columns: var(--benchmark-comparison-columns);
   padding: 8px 10px;
+}
+
+.benchmarkPanel > .debriefBlock {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  padding: 12px;
 }
 
 .benchmarkGrid div.better {
@@ -1561,9 +1815,7 @@ h2 {
 }
 
 .benchmarkGrid dd {
-  display: grid;
-  gap: 4px;
-  grid-template-columns: 1fr 1fr auto;
+  display: contents;
   margin: 0;
 }
 
@@ -1579,10 +1831,196 @@ h2 {
   justify-self: end;
 }
 
+.graphsPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.graphsHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.graphsHeader h2 {
+  margin: 0;
+}
+
+.graphsHeader p {
+  color: #455466;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.graphGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chartCard {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.chartCard:first-child {
+  grid-column: 1 / -1;
+}
+
+.chartHeader {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.chartHeader h3 {
+  color: #18202a;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.chartHeader p {
+  color: #647383;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin: 3px 0 0;
+}
+
+.chartHeader > span {
+  color: #667586;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lineChart {
+  background: #ffffff;
+  border: 1px solid #e3e8ed;
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.chartAxis {
+  stroke: #9aa8b7;
+  stroke-width: 1;
+}
+
+.chartGridLine {
+  stroke: #e5ebf0;
+  stroke-width: 1;
+}
+
+.chartTick {
+  fill: #667586;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.chartLine {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.chartPoint {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.chartLegend {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0;
+}
+
+.chartLegend div {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e3e8ed;
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 7px 8px;
+}
+
+.chartLegend dt {
+  align-items: center;
+  color: #455466;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chartLegend dt span {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 9px;
+  width: 9px;
+}
+
+.chartLegend dd {
+  color: #18202a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+}
+
 .debriefSummary {
   display: grid;
   gap: 8px;
   grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.debriefIntro {
+  color: #647383;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.debriefLegend {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.debriefLegend div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+}
+
+.debriefLegend dt {
+  color: #667586;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.debriefLegend dd {
+  color: #455466;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
   margin: 0;
 }
 
@@ -1610,6 +2048,13 @@ h2 {
   gap: 7px;
 }
 
+.debriefBlock p {
+  color: #647383;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .debriefBlock h3 {
   color: #455466;
   font-size: 0.76rem;
@@ -1623,6 +2068,53 @@ h2 {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.guardrailIntro {
+  color: #647383;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.guardrailLegend {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.guardrailLegend div,
+.guardrailExplanation div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+}
+
+.guardrailLegend dt,
+.guardrailExplanation dt {
+  color: #667586;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guardrailLegend dd,
+.guardrailExplanation dd {
+  color: #455466;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.guardrailExplanation {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
 }
 
 .feedbackList li {
@@ -1827,6 +2319,7 @@ h2 {
 .appShell[data-theme="dark"] .metricVisibilityControl,
 .appShell[data-theme="dark"] .toggleControl,
 .appShell[data-theme="dark"] .setupTabs,
+.appShell[data-theme="dark"] .mainViewShell,
 .appShell[data-theme="dark"] .mainViewTabs,
 .appShell[data-theme="dark"] .providerRosterCard,
 .appShell[data-theme="dark"] .scenarioPanel,
@@ -1837,6 +2330,7 @@ h2 {
 .appShell[data-theme="dark"] .controlStrip button,
 .appShell[data-theme="dark"] .presetButtonGroup button,
 .appShell[data-theme="dark"] .providerButtonGroup button,
+.appShell[data-theme="dark"] .supportButtonGroup button,
 .appShell[data-theme="dark"] .shiftButtonGroup button,
 .appShell[data-theme="dark"] .triageModeButtonGroup button,
 .appShell[data-theme="dark"] .coachActions button,
@@ -1857,10 +2351,22 @@ h2 {
   border-color: #2c3948;
 }
 
+.appShell[data-theme="dark"] .mainViewPanel,
 .appShell[data-theme="dark"] .tabPanel,
 .appShell[data-theme="dark"] .tabMeasures div,
 .appShell[data-theme="dark"] .actionStatus,
+.appShell[data-theme="dark"] .benchmarkMetricComparison,
+.appShell[data-theme="dark"] .benchmarkPanel > .debriefBlock,
+.appShell[data-theme="dark"] .whatIfComparison,
 .appShell[data-theme="dark"] .whatIfCard,
+.appShell[data-theme="dark"] .chartCard,
+.appShell[data-theme="dark"] .chartLegend div,
+.appShell[data-theme="dark"] .lineChart,
+.appShell[data-theme="dark"] .coachComparisonControls label,
+.appShell[data-theme="dark"] .benchmarkTargetControl select,
+.appShell[data-theme="dark"] .debriefLegend div,
+.appShell[data-theme="dark"] .guardrailLegend div,
+.appShell[data-theme="dark"] .guardrailExplanation div,
 .appShell[data-theme="dark"] .whatIfCard dl div,
 .appShell[data-theme="dark"] .benchmarkGrid div,
 .appShell[data-theme="dark"] .activitySummary div,
@@ -1899,6 +2405,8 @@ h2 {
 .appShell[data-theme="dark"] .presetButtonGroup button:hover,
 .appShell[data-theme="dark"] .providerButtonGroup button.active,
 .appShell[data-theme="dark"] .providerButtonGroup button:hover,
+.appShell[data-theme="dark"] .supportButtonGroup button.active,
+.appShell[data-theme="dark"] .supportButtonGroup button:hover,
 .appShell[data-theme="dark"] .shiftButtonGroup button.active,
 .appShell[data-theme="dark"] .shiftButtonGroup button:hover,
 .appShell[data-theme="dark"] .triageModeButtonGroup button.active,
@@ -1939,12 +2447,15 @@ h2 {
 .appShell[data-theme="dark"] .themeToggle > span,
 .appShell[data-theme="dark"] .metricVisibilityControl > span,
 .appShell[data-theme="dark"] .scenarioPanelHeader small,
+.appShell[data-theme="dark"] .providerRosterCard small,
+.appShell[data-theme="dark"] .providerRosterDetails small > span,
 .appShell[data-theme="dark"] .scenarioControls label > span,
 .appShell[data-theme="dark"] .presetControl > span,
 .appShell[data-theme="dark"] .providerCountControl > span,
 .appShell[data-theme="dark"] .shiftLengthControl > span,
 .appShell[data-theme="dark"] .triageModeControl > span,
 .appShell[data-theme="dark"] .roomCapacityControl > span,
+.appShell[data-theme="dark"] .supportCountControl > span,
 .appShell[data-theme="dark"] .triageModeControl small,
 .appShell[data-theme="dark"] .scenarioToggle span,
 .appShell[data-theme="dark"] .metricLabel,
@@ -1961,6 +2472,12 @@ h2 {
 .appShell[data-theme="dark"] .detailGrid dt,
 .appShell[data-theme="dark"] .benchmarkGrid dt,
 .appShell[data-theme="dark"] .benchmarkGrid span,
+.appShell[data-theme="dark"] .benchmarkComparisonHeader,
+.appShell[data-theme="dark"] .benchmarkTargetControl label,
+.appShell[data-theme="dark"] .graphsHeader p,
+.appShell[data-theme="dark"] .chartHeader p,
+.appShell[data-theme="dark"] .chartHeader > span,
+.appShell[data-theme="dark"] .chartLegend dt,
 .appShell[data-theme="dark"] .whatIfComparison h3,
 .appShell[data-theme="dark"] .whatIfComparison p,
 .appShell[data-theme="dark"] .whatIfCard > small,
@@ -1975,7 +2492,16 @@ h2 {
 .appShell[data-theme="dark"] .coachSummary dt,
 .appShell[data-theme="dark"] .orderList small,
 .appShell[data-theme="dark"] .namedOrderList small,
+.appShell[data-theme="dark"] .debriefIntro,
+.appShell[data-theme="dark"] .debriefBlock p,
 .appShell[data-theme="dark"] .debriefSummary dt,
+.appShell[data-theme="dark"] .debriefLegend dt,
+.appShell[data-theme="dark"] .debriefLegend dd,
+.appShell[data-theme="dark"] .guardrailIntro,
+.appShell[data-theme="dark"] .guardrailLegend dt,
+.appShell[data-theme="dark"] .guardrailLegend dd,
+.appShell[data-theme="dark"] .guardrailExplanation dt,
+.appShell[data-theme="dark"] .guardrailExplanation dd,
 .appShell[data-theme="dark"] .feedbackList small,
 .appShell[data-theme="dark"] .actionStatus small,
 .appShell[data-theme="dark"] .eventList time {
@@ -1990,10 +2516,15 @@ h2 {
 .appShell[data-theme="dark"] .roomTile strong,
 .appShell[data-theme="dark"] .cardTopline,
 .appShell[data-theme="dark"] .scenarioToggle small,
+.appShell[data-theme="dark"] .providerRosterDetails small > strong,
 .appShell[data-theme="dark"] .actionStatus strong,
 .appShell[data-theme="dark"] .benchmarkPanel > strong,
 .appShell[data-theme="dark"] .benchmarkGrid strong,
+.appShell[data-theme="dark"] .benchmarkTargetControl select,
+.appShell[data-theme="dark"] .chartHeader h3,
+.appShell[data-theme="dark"] .chartLegend dd,
 .appShell[data-theme="dark"] .whatIfCard > strong,
+.appShell[data-theme="dark"] .coachComparisonControls label,
 .appShell[data-theme="dark"] .whatIfCard dd,
 .appShell[data-theme="dark"] .activitySummary dd,
 .appShell[data-theme="dark"] .activityList strong,
@@ -2012,6 +2543,12 @@ h2 {
 }
 
 .appShell[data-theme="dark"] .protocolLine,
+.appShell[data-theme="dark"] .benchmarkMetricComparison,
+.appShell[data-theme="dark"] .benchmarkPanel > .debriefBlock,
+.appShell[data-theme="dark"] .whatIfComparison,
+.appShell[data-theme="dark"] .chartCard,
+.appShell[data-theme="dark"] .chartLegend div,
+.appShell[data-theme="dark"] .lineChart,
 .appShell[data-theme="dark"] .benchmarkGrid div,
 .appShell[data-theme="dark"] .whatIfCard,
 .appShell[data-theme="dark"] .whatIfCard dl div,
@@ -2021,6 +2558,22 @@ h2 {
 .appShell[data-theme="dark"] .namedOrderList li,
 .appShell[data-theme="dark"] .debriefSummary div {
   border-color: #2c3948;
+}
+
+.appShell[data-theme="dark"] .chartAxis {
+  stroke: #667586;
+}
+
+.appShell[data-theme="dark"] .chartGridLine {
+  stroke: #2c3948;
+}
+
+.appShell[data-theme="dark"] .chartTick {
+  fill: #9aa8b7;
+}
+
+.appShell[data-theme="dark"] .chartPoint {
+  stroke: #111821;
 }
 
 @media (max-width: 1180px) {
@@ -2036,8 +2589,12 @@ h2 {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
 
-  .metricsGrid {
+  .metricSectionRow {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  .tabMeasures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .facilitySummary {
@@ -2045,6 +2602,14 @@ h2 {
   }
 
   .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .coachComparisonViewPanel .whatIfGrid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .graphGrid {
     grid-template-columns: 1fr;
   }
 
@@ -2075,7 +2640,7 @@ h2 {
     flex-direction: column;
   }
 
-  .metricsGrid {
+  .metricSectionRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2107,6 +2672,14 @@ h2 {
   }
 
   .tabMeasures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chartHeader {
+    display: grid;
+  }
+
+  .chartLegend {
     grid-template-columns: 1fr;
   }
 

@@ -56,6 +56,9 @@ export function getDefaultScenarioTuningConfig(baseScenario = defaultScenario): 
       baseScenario.triageProviderMode ?? (baseScenario.triageProviderEnabled ? "manual" : "unavailable"),
     roomCapacity: baseScenario.roomCapacity,
     providerCount: baseScenario.providerCount,
+    nurseCount: baseScenario.nurseCount,
+    techCount: baseScenario.techCount,
+    fastTrackEnabled: baseScenario.fastTrackEnabled,
     shiftDurationMinutes: baseScenario.shiftDurationMinutes,
     expectedArrivalsPerHour: Math.round(averageArrivalsPerHour),
     triageDurationMultiplier: baseScenario.triageDurationMultiplier,
@@ -63,7 +66,9 @@ export function getDefaultScenarioTuningConfig(baseScenario = defaultScenario): 
     triageTypicalMinutes: baseScenario.timingProfile.triage.typical,
     labTurnaroundTypicalMinutes: baseScenario.timingProfile.labTurnaround.typical,
     imagingTurnaroundTypicalMinutes: baseScenario.timingProfile.imagingTurnaround.typical,
+    admissionDecisionTypicalMinutes: baseScenario.timingProfile.admissionDecision.typical,
     boardingDurationTypicalMinutes: baseScenario.timingProfile.boardingDuration.typical,
+    roomCleaningTypicalMinutes: baseScenario.timingProfile.roomCleaning.typical,
     admitBoardingDelayMinutes: Math.round(averageBoardingDelay),
     lwbsEnabled: baseScenario.lwbsProfile.enabled,
     minimumWaitBeforeLWBS: baseScenario.lwbsProfile.minimumWaitBeforeLWBS,
@@ -76,15 +81,23 @@ export function createScenarioFromTuning(
 ): Scenario {
   const roomCapacity = boundedInteger(tuning.roomCapacity, 1, 40);
   const providerCount = boundedInteger(tuning.providerCount, 1, 4);
+  const nurseCount = boundedInteger(tuning.nurseCount, 1, 4);
+  const techCount = boundedInteger(tuning.techCount, 0, 2);
   const shiftDurationMinutes = boundedInteger(tuning.shiftDurationMinutes, 60, 2880);
   const expectedArrivalsPerHour = boundedInteger(tuning.expectedArrivalsPerHour, 0, 30);
   const providerEvaluationTypicalMinutes = boundedInteger(tuning.providerEvaluationTypicalMinutes, 1, 90);
   const triageTypicalMinutes = boundedInteger(tuning.triageTypicalMinutes, 1, 30);
   const labTurnaroundTypicalMinutes = boundedInteger(tuning.labTurnaroundTypicalMinutes, 1, 240);
   const imagingTurnaroundTypicalMinutes = boundedInteger(tuning.imagingTurnaroundTypicalMinutes, 1, 300);
+  const admissionDecisionTypicalMinutes = boundedInteger(tuning.admissionDecisionTypicalMinutes, 1, 360);
   const boardingDurationTypicalMinutes = boundedInteger(tuning.boardingDurationTypicalMinutes, 0, 720);
+  const roomCleaningTypicalMinutes = boundedInteger(tuning.roomCleaningTypicalMinutes, 0, 180);
   const minimumWaitBeforeLWBS = boundedInteger(tuning.minimumWaitBeforeLWBS, 0, 360);
   const boardingRange = timingRangeFromTypical(boardingDurationTypicalMinutes, 0.55, 2.4);
+  const roomCleaningRange =
+    roomCleaningTypicalMinutes === 0
+      ? { min: 0, typical: 0, max: 0 }
+      : timingRangeFromTypical(roomCleaningTypicalMinutes, 0.4, 2.25);
 
   return {
     ...baseScenario,
@@ -92,6 +105,9 @@ export function createScenarioFromTuning(
     triageProviderMode: tuning.triageProviderMode,
     roomCapacity,
     providerCount,
+    nurseCount,
+    techCount,
+    fastTrackEnabled: tuning.fastTrackEnabled,
     shiftDurationMinutes,
     triageDurationMultiplier: boundedDecimal(triageTypicalMinutes / baseScenario.timingProfile.triage.typical, 0.5, 2),
     timingProfile: {
@@ -100,7 +116,9 @@ export function createScenarioFromTuning(
       triage: timingRangeFromTypical(triageTypicalMinutes, 0.6, 2),
       labTurnaround: timingRangeFromTypical(labTurnaroundTypicalMinutes, 0.7, 1.8),
       imagingTurnaround: timingRangeFromTypical(imagingTurnaroundTypicalMinutes, 0.65, 1.9),
+      admissionDecision: timingRangeFromTypical(admissionDecisionTypicalMinutes, 0.45, 2.7),
       boardingDuration: boardingRange,
+      roomCleaning: roomCleaningRange,
     },
     arrivalProfile: buildArrivalProfile(shiftDurationMinutes, expectedArrivalsPerHour),
     boardingProfile: {

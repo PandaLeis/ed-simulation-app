@@ -1,4 +1,5 @@
 import type { RuntimePatient, SimulationMetrics, SimulationRun } from "./types";
+import { reassessmentOverdueMinutes } from "./waitingRoomSafety";
 
 const terminalStates = new Set(["departed", "lwbs"]);
 
@@ -34,11 +35,11 @@ function firstItemCollectedAt(patient: RuntimePatient, itemType: RuntimePatient[
 }
 
 function boardingMinutes(patient: RuntimePatient, currentMinute: number): number {
-  if (patient.dispositionType !== "admit_inpatient" || patient.dispositionDecisionAt === undefined) {
+  if (patient.dispositionType !== "admit_inpatient" || patient.admissionAcceptedAt === undefined) {
     return 0;
   }
 
-  return (patient.departedAt ?? currentMinute) - patient.dispositionDecisionAt;
+  return (patient.departedAt ?? currentMinute) - patient.admissionAcceptedAt;
 }
 
 function currentWaitMinutes(patient: RuntimePatient, currentMinute: number): number {
@@ -64,6 +65,10 @@ function waitingRoomStartMinute(patient: RuntimePatient): number | undefined {
 function waitingRoomEndMinute(patient: RuntimePatient, currentMinute: number): number | undefined {
   if (patient.roomedAt !== undefined) {
     return patient.roomedAt;
+  }
+
+  if (patient.fastTrackedAt !== undefined) {
+    return patient.fastTrackedAt;
   }
 
   if (patient.lwbsAt !== undefined) {
@@ -111,12 +116,17 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
     (patient) => patient.arrivedAt !== undefined && !terminalStates.has(patient.state),
   );
   const triageCensus = run.patients.filter((patient) => patient.state === "triage").length;
+  const fastTrackCensus = run.patients.filter((patient) => patient.state === "fast_track").length;
   const waitingPatients = run.patients.filter((patient) => patient.state === "waiting");
   const waitingRoomCensus = waitingPatients.length;
   const activePatientCensus = active.filter(
     (patient) => patient.state !== "waiting" && patient.state !== "triage",
   ).length;
   const boardingCensus = run.patients.filter((patient) => patient.state === "boarding").length;
+  const admissionPendingPatients = run.patients.filter((patient) => patient.state === "admission_pending");
+  const admissionDecisionValues = run.patients
+    .filter((patient) => patient.dispositionType === "admit_inpatient" && patient.dispositionDecisionAt !== undefined)
+    .map((patient) => (patient.admissionAcceptedAt ?? run.currentMinute) - (patient.dispositionDecisionAt ?? run.currentMinute));
   const waitingRoomWaits = waitingPatients.map((patient) => currentWaitingRoomWaitMinutes(patient, run.currentMinute));
   const moderateOrHigherRiskWaitingPatients = waitingPatients.filter(
     (patient) => patient.riskLevel === "moderate" || patient.riskLevel === "high" || patient.riskLevel === "critical",
@@ -132,6 +142,7 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
     (sum, patient) => sum + accumulatedWaitingRoomRiskMinutes(patient, run.currentMinute),
     0,
   );
+  const reassessmentOverdueValues = waitingPatients.map((patient) => reassessmentOverdueMinutes(patient, run.currentMinute));
   const arrivedChestPainPatients = arrived.filter((patient) => patient.complaintCategory === "chest_pain");
   const arrivedSuspectedAcsPatients = arrived.filter((patient) => patient.complaintCategory === "suspected_acs");
   const arrivedCardiacPatients = arrived.filter((patient) => patient.cardiacPathway !== "none");
@@ -206,6 +217,12 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
   const availableRooms = run.rooms.filter((room) => room.status === "available").length;
   const occupiedRooms = run.rooms.filter((room) => room.status === "occupied").length;
   const blockedRooms = run.rooms.filter((room) => room.status === "blocked").length;
+  const cleaningRooms = run.rooms.filter((room) => room.status === "cleaning").length;
+  const totalRoomCleaningMinutes = run.rooms
+    .filter((room) => room.status === "cleaning" && room.cleaningStartedAt !== undefined)
+    .reduce((sum, room) => sum + Math.max(0, run.currentMinute - (room.cleaningStartedAt ?? run.currentMinute)), 0);
+  const nursePool = run.supportResources?.find((pool) => pool.role === "nurse");
+  const techPool = run.supportResources?.find((pool) => pool.role === "tech");
   const elapsedHours = Math.max(1 / 60, (run.currentMinute - run.shiftStartMinute) / 60);
   const resultsReadyToDispositionValues = dispositioned
     .filter((patient) => patient.resultsReadyAt !== undefined)
@@ -225,12 +242,17 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
     lwbsWithOrdersPending: lwbsPatients.filter((patient) => patient.pendingItems.length > 0).length,
     triageCensus,
     waitingRoomCensus,
+    fastTrackCensus,
+    patientsFastTracked: run.patients.filter((patient) => patient.fastTrackedAt !== undefined).length,
     averageWaitingRoomWaitMinutes: average(waitingRoomWaits),
     longestWaitingRoomWaitMinutes: Math.max(0, ...waitingRoomWaits),
     moderateOrHigherRiskWaitingPatients,
     highRiskWaitingPatients,
     criticalRiskWaitingPatients,
     waitingRoomRiskMinutes,
+    reassessmentsOverdue: reassessmentOverdueValues.filter((minutes) => minutes > 0).length,
+    longestReassessmentOverdueMinutes: Math.max(0, ...reassessmentOverdueValues),
+    waitingRoomDeteriorations: run.patients.filter((patient) => patient.deterioratedAt !== undefined).length,
     chestPainPatientsArrived: arrivedChestPainPatients.length,
     suspectedAcsPatientsArrived: arrivedSuspectedAcsPatients.length,
     stemiAlertsActivated: run.patients.filter((patient) => patient.stemiAlertActivatedAt !== undefined).length,
@@ -277,11 +299,16 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
     sepsisWaitingWithoutRoom,
     sepsisLWBS: sepsisLWBSPatients.length,
     sepsisLWBSRate: rate(sepsisLWBSPatients.length, arrivedSepsisPatients.length),
+    admissionPendingCensus: admissionPendingPatients.length,
+    averageAdmissionDecisionMinutes: average(admissionDecisionValues),
+    totalAdmissionDecisionMinutes: admissionDecisionValues.reduce((sum, minutes) => sum + minutes, 0),
     activePatientCensus,
     boardingCensus,
     availableRooms,
     occupiedRooms,
     blockedRooms,
+    cleaningRooms,
+    totalRoomCleaningMinutes,
     longestCurrentWaitMinutes: Math.max(0, ...active.map((patient) => currentWaitMinutes(patient, run.currentMinute))),
     patientsSeenPerHour: seen.length / elapsedHours,
     averageDoorToProviderMinutes: average(
@@ -300,6 +327,10 @@ export function calculateMetrics(run: SimulationRun): SimulationMetrics {
     ),
     providerBusyMinutes: run.providers.reduce((sum, provider) => sum + provider.busyMinutes, 0),
     providerIdleMinutes: run.providers.reduce((sum, provider) => sum + provider.idleMinutes, 0),
+    nursesBusy: nursePool?.busy.length ?? 0,
+    techsBusy: techPool?.busy.length ?? 0,
+    nurseBusyMinutes: nursePool?.busyMinutes ?? 0,
+    techBusyMinutes: techPool?.busyMinutes ?? 0,
     peakWaitingRoomCensus: Math.max(run.metrics.peakWaitingRoomCensus, waitingRoomCensus),
     peakActivePatientCensus: Math.max(run.metrics.peakActivePatientCensus, activePatientCensus),
   };
@@ -320,12 +351,17 @@ export function emptyMetrics(): SimulationMetrics {
     lwbsWithOrdersPending: 0,
     triageCensus: 0,
     waitingRoomCensus: 0,
+    fastTrackCensus: 0,
+    patientsFastTracked: 0,
     averageWaitingRoomWaitMinutes: null,
     longestWaitingRoomWaitMinutes: 0,
     moderateOrHigherRiskWaitingPatients: 0,
     highRiskWaitingPatients: 0,
     criticalRiskWaitingPatients: 0,
     waitingRoomRiskMinutes: 0,
+    reassessmentsOverdue: 0,
+    longestReassessmentOverdueMinutes: 0,
+    waitingRoomDeteriorations: 0,
     chestPainPatientsArrived: 0,
     suspectedAcsPatientsArrived: 0,
     stemiAlertsActivated: 0,
@@ -358,11 +394,16 @@ export function emptyMetrics(): SimulationMetrics {
     sepsisWaitingWithoutRoom: 0,
     sepsisLWBS: 0,
     sepsisLWBSRate: 0,
+    admissionPendingCensus: 0,
+    averageAdmissionDecisionMinutes: null,
+    totalAdmissionDecisionMinutes: 0,
     activePatientCensus: 0,
     boardingCensus: 0,
     availableRooms: 0,
     occupiedRooms: 0,
     blockedRooms: 0,
+    cleaningRooms: 0,
+    totalRoomCleaningMinutes: 0,
     longestCurrentWaitMinutes: 0,
     patientsSeenPerHour: 0,
     averageDoorToProviderMinutes: null,
@@ -372,6 +413,10 @@ export function emptyMetrics(): SimulationMetrics {
     totalBoardingMinutes: 0,
     providerBusyMinutes: 0,
     providerIdleMinutes: 0,
+    nursesBusy: 0,
+    techsBusy: 0,
+    nurseBusyMinutes: 0,
+    techBusyMinutes: 0,
     peakWaitingRoomCensus: 0,
     peakActivePatientCensus: 0,
   };

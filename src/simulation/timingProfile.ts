@@ -6,7 +6,9 @@ export const defaultTimingProfile = {
   triage: { min: 3, typical: 5, max: 10 },
   labTurnaround: { min: 35, typical: 45, max: 75 },
   imagingTurnaround: { min: 30, typical: 55, max: 95 },
+  admissionDecision: { min: 20, typical: 45, max: 120 },
   boardingDuration: { min: 35, typical: 63, max: 150 },
+  roomCleaning: { min: 8, typical: 20, max: 45 },
 };
 
 export function timingRangeFromTypical(typical: number, lowerRatio = 0.7, upperRatio = 1.8): PertTimingRange {
@@ -49,7 +51,7 @@ function gammaSample(random: SeededRandom, shape: number): number {
 
 export function samplePertDuration(random: SeededRandom, range: PertTimingRange): number {
   if (range.max <= range.min) {
-    return Math.max(1, Math.round(range.typical));
+    return Math.max(0, Math.round(range.typical));
   }
 
   const clampedTypical = Math.min(range.max, Math.max(range.min, range.typical));
@@ -60,5 +62,5 @@ export function samplePertDuration(random: SeededRandom, range: PertTimingRange)
   const y = gammaSample(random, beta);
   const betaSample = x / (x + y);
 
-  return Math.max(1, Math.round(range.min + betaSample * (range.max - range.min)));
+  return Math.max(0, Math.round(range.min + betaSample * (range.max - range.min)));
 }

@@ -7,13 +7,18 @@ import { generatePatientDeck } from "../arrivalGenerator";
 import { createFlowGuardrails } from "../flowGuardrails";
 import { defaultScenario } from "../mockScenario";
 import {
+  createBenchmarkComparisonView,
   createOptimalFlowBenchmark,
   getBenchmarkCoachRecommendation,
   runCoachDemoActions,
+  runBalancedOperationsCoachBenchmark,
   runDispositionFocusCoachBenchmark,
+  runFastTrackCoachBenchmark,
   runFrontEndFocusCoachBenchmark,
   runMiddleFlowFocusCoachBenchmark,
   runOptimalFlowBenchmark,
+  runResourceAwareCoachBenchmark,
+  runSafetyFirstCoachBenchmark,
 } from "../optimalFlowBenchmark";
 import { createProviderDebrief } from "../providerDebrief";
 import { getProviderEvaluationTimingRange } from "../providerEvaluation";
@@ -201,6 +206,31 @@ test("same seed creates the same patient deck", () => {
   assert.equal(firstDeck.length, 48);
 });
 
+test("default training deck includes a deterministic randomized STEMI-alert patient", () => {
+  const firstDeck = generatePatientDeck(defaultScenario);
+  const secondDeck = generatePatientDeck(defaultScenario);
+  const alternateSeedDeck = generatePatientDeck({
+    ...defaultScenario,
+    randomSeed: `${defaultScenario.randomSeed}-alternate`,
+  });
+  const firstStemiPatients = firstDeck.filter((patient) => patient.cardiacPathway === "stemi_alert");
+  const alternateStemiPatients = alternateSeedDeck.filter((patient) => patient.cardiacPathway === "stemi_alert");
+
+  assert.deepEqual(secondDeck, firstDeck);
+  assert.equal(firstDeck.length, 48);
+  assert.equal(firstStemiPatients.length >= defaultScenario.minimumStemiAlertPatients, true);
+  assert.equal(
+    firstStemiPatients.every(
+      (patient) => patient.complaintCategory === "chest_pain" || patient.complaintCategory === "suspected_acs",
+    ),
+    true,
+  );
+  assert.notDeepEqual(
+    alternateStemiPatients.map((patient) => patient.id),
+    firstStemiPatients.map((patient) => patient.id),
+  );
+});
+
 test("scenario tuning defaults are derived from the default scenario", () => {
   const tuning = getDefaultScenarioTuningConfig();
   const scenario = createScenarioFromTuning(tuning);
@@ -208,6 +238,9 @@ test("scenario tuning defaults are derived from the default scenario", () => {
   assert.equal(tuning.triageProviderEnabled, defaultScenario.triageProviderEnabled);
   assert.equal(tuning.roomCapacity, defaultScenario.roomCapacity);
   assert.equal(tuning.providerCount, defaultScenario.providerCount);
+  assert.equal(tuning.nurseCount, defaultScenario.nurseCount);
+  assert.equal(tuning.techCount, defaultScenario.techCount);
+  assert.equal(tuning.fastTrackEnabled, defaultScenario.fastTrackEnabled);
   assert.equal(tuning.shiftDurationMinutes, defaultScenario.shiftDurationMinutes);
   assert.equal(tuning.expectedArrivalsPerHour, 12);
   assert.equal(tuning.triageDurationMultiplier, defaultScenario.triageDurationMultiplier);
@@ -215,12 +248,17 @@ test("scenario tuning defaults are derived from the default scenario", () => {
   assert.equal(tuning.triageTypicalMinutes, 5);
   assert.equal(tuning.labTurnaroundTypicalMinutes, 45);
   assert.equal(tuning.imagingTurnaroundTypicalMinutes, 55);
+  assert.equal(tuning.admissionDecisionTypicalMinutes, 45);
   assert.equal(tuning.boardingDurationTypicalMinutes, 63);
+  assert.equal(tuning.roomCleaningTypicalMinutes, 20);
   assert.equal(tuning.admitBoardingDelayMinutes, 63);
   assert.equal(tuning.lwbsEnabled, defaultScenario.lwbsProfile.enabled);
   assert.equal(tuning.minimumWaitBeforeLWBS, defaultScenario.lwbsProfile.minimumWaitBeforeLWBS);
   assert.equal(scenario.roomCapacity, defaultScenario.roomCapacity);
   assert.equal(scenario.providerCount, defaultScenario.providerCount);
+  assert.equal(scenario.nurseCount, defaultScenario.nurseCount);
+  assert.equal(scenario.techCount, defaultScenario.techCount);
+  assert.equal(scenario.fastTrackEnabled, defaultScenario.fastTrackEnabled);
   assert.equal(scenario.shiftDurationMinutes, defaultScenario.shiftDurationMinutes);
   assert.equal(scenario.arrivalProfile.length, 4);
 });
@@ -232,13 +270,18 @@ test("scenario tuning changes capacity, volume, shift length, and boarding delay
     triageProviderMode: "unavailable" as const,
     roomCapacity: 3,
     providerCount: 2,
+    nurseCount: 1,
+    techCount: 1,
+    fastTrackEnabled: false,
     shiftDurationMinutes: 180,
     expectedArrivalsPerHour: 4,
     providerEvaluationTypicalMinutes: 15,
     triageTypicalMinutes: 8,
     labTurnaroundTypicalMinutes: 55,
     imagingTurnaroundTypicalMinutes: 70,
+    admissionDecisionTypicalMinutes: 40,
     boardingDurationTypicalMinutes: 45,
+    roomCleaningTypicalMinutes: 25,
     admitBoardingDelayMinutes: 45,
     lwbsEnabled: true,
     minimumWaitBeforeLWBS: 30,
@@ -251,13 +294,18 @@ test("scenario tuning changes capacity, volume, shift length, and boarding delay
   assert.equal(scenario.triageProviderEnabled, false);
   assert.equal(scenario.roomCapacity, 3);
   assert.equal(scenario.providerCount, 2);
+  assert.equal(scenario.nurseCount, 1);
+  assert.equal(scenario.techCount, 1);
+  assert.equal(scenario.fastTrackEnabled, false);
   assert.equal(scenario.shiftDurationMinutes, 180);
   assert.equal(scenario.triageDurationMultiplier, 1.6);
   assert.equal(scenario.timingProfile.providerEvaluation.typical, 15);
   assert.equal(scenario.timingProfile.triage.typical, 8);
   assert.equal(scenario.timingProfile.labTurnaround.typical, 55);
   assert.equal(scenario.timingProfile.imagingTurnaround.typical, 70);
+  assert.equal(scenario.timingProfile.admissionDecision.typical, 40);
   assert.equal(scenario.timingProfile.boardingDuration.typical, 45);
+  assert.equal(scenario.timingProfile.roomCleaning.typical, 25);
   assert.deepEqual(scenario.arrivalProfile, [
     { hourOffset: 0, expectedArrivals: 4 },
     { hourOffset: 1, expectedArrivals: 4 },
@@ -269,13 +317,20 @@ test("scenario tuning changes capacity, volume, shift length, and boarding delay
     firstDeck.every(
       (patient) =>
         patient.expectedBoardingMinutes >= scenario.timingProfile.boardingDuration.min &&
-        patient.expectedBoardingMinutes <= scenario.timingProfile.boardingDuration.max,
+        patient.expectedBoardingMinutes <= scenario.timingProfile.boardingDuration.max &&
+        patient.expectedAdmissionDecisionMinutes >= scenario.timingProfile.admissionDecision.min &&
+        patient.expectedAdmissionDecisionMinutes <= scenario.timingProfile.admissionDecision.max &&
+        patient.expectedRoomCleaningMinutes >= scenario.timingProfile.roomCleaning.min &&
+        patient.expectedRoomCleaningMinutes <= scenario.timingProfile.roomCleaning.max,
     ),
     true,
   );
   assert.equal(scenario.lwbsProfile.enabled, true);
   assert.equal(scenario.lwbsProfile.minimumWaitBeforeLWBS, 30);
   assert.equal(run.rooms.length, 3);
+  assert.equal(run.supportResources.find((pool) => pool.role === "nurse")?.total, 1);
+  assert.equal(run.supportResources.find((pool) => pool.role === "tech")?.total, 1);
+  assert.equal(run.fastTrackEnabled, false);
   assert.equal(run.metrics.availableRooms, 3);
 });
 
@@ -295,6 +350,24 @@ test("scenario tuning supports four providers and forty-eight hour simulation wi
   assert.equal(scenario.arrivalProfile.length, 48);
   assert.equal(deck.length, 48);
   assert.equal(run.providers.length, 4);
+});
+
+test("scenario tuning bounds nurse and tech counts to UI-supported ranges", () => {
+  const highScenario = createScenarioFromTuning({
+    ...getDefaultScenarioTuningConfig(),
+    nurseCount: 12,
+    techCount: 12,
+  });
+  const lowScenario = createScenarioFromTuning({
+    ...getDefaultScenarioTuningConfig(),
+    nurseCount: 0,
+    techCount: -1,
+  });
+
+  assert.equal(highScenario.nurseCount, 4);
+  assert.equal(highScenario.techCount, 2);
+  assert.equal(lowScenario.nurseCount, 1);
+  assert.equal(lowScenario.techCount, 0);
 });
 
 test("scenario presets configure requested operational stressors", () => {
@@ -492,6 +565,7 @@ test("patient workup summary exposes bundle and pending order details", () => {
   const scenario = scenarioWith({
     triageProviderEnabled: true,
     triageProviderMode: "manual",
+    minimumStemiAlertPatients: 0,
     arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
     complaintDistribution: { values: [{ value: "chest_pain", weight: 1 }] },
   });
@@ -520,6 +594,7 @@ test("patient workup summary marks protocol results ready while waiting", () => 
   const scenario = scenarioWith({
     triageProviderEnabled: true,
     triageProviderMode: "manual",
+    minimumStemiAlertPatients: 0,
     arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
     complaintDistribution: { values: [{ value: "chest_pain", weight: 1 }] },
   });
@@ -617,6 +692,10 @@ test("flow guardrails flag idle providers with actionable patients", () => {
   const scenario = scenarioWith({
     triageProviderEnabled: false,
     arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    timingProfile: {
+      ...defaultScenario.timingProfile,
+      roomCleaning: { min: 5, typical: 5, max: 5 },
+    },
   });
   let run = startedNoWorkupRun(scenario);
   run = advanceTo(run, scenario, 60);
@@ -653,6 +732,36 @@ test("flow guardrails flag roomed unseen patients with delayed provider evaluati
   const summary = createFlowGuardrails(run);
 
   assert.equal(summary.guardrails.some((item) => item.title === "Roomed patient not yet seen"), true);
+});
+
+test("flow guardrails flag aging front-end triage backlog", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: true,
+    triageProviderMode: "automated",
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+  });
+  let run = startedRun(scenario);
+  run = {
+    ...run,
+    currentMinute: 65,
+    patients: run.patients.map((patient, index) =>
+      index === 0
+        ? {
+            ...patient,
+            state: "triage" as const,
+            arrivedAt: 0,
+            triagedAt: undefined,
+          }
+        : patient,
+    ),
+  };
+
+  const summary = createFlowGuardrails(run);
+  const guardrail = summary.guardrails.find((item) => item.title === "Front-end triage backlog is aging");
+
+  assert.notEqual(guardrail, undefined);
+  assert.equal(guardrail?.severity, "urgent");
+  assert.equal(guardrail?.metricValue, "65 min");
 });
 
 test("flow guardrails flag results-ready, disposition-ready, capacity, and boarding pressure", () => {
@@ -718,6 +827,55 @@ test("flow guardrails flag results-ready, disposition-ready, capacity, and board
   assert.equal(summary.guardrails.some((item) => item.title === "Disposition can release or define room status"), true);
   assert.equal(summary.guardrails.some((item) => item.title === "High-risk waiting patient with room capacity"), true);
   assert.equal(summary.guardrails.some((item) => item.title === "Boarding is consuming room capacity"), true);
+});
+
+test("automated triage prioritizes aged triage patients over newer high-acuity patients", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: true,
+    triageProviderMode: "automated",
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 2 }],
+    complaintDistribution: { values: [{ value: "minor_complaint", weight: 1 }] },
+    minimumStemiAlertPatients: 0,
+  });
+  let run = startedRun(scenario);
+  run = {
+    ...run,
+    currentMinute: 80,
+    patients: run.patients.map((patient, index) => {
+      if (index === 0) {
+        return {
+          ...patient,
+          id: "patient-old",
+          patientNumber: 1,
+          state: "triage" as const,
+          arrivedAt: 0,
+          esi: 5 as const,
+          expectedLabMinutes: 0,
+          expectedImagingMinutes: 0,
+          workupType: "none" as const,
+          cardiacPathway: "none" as const,
+        };
+      }
+
+      return {
+        ...patient,
+        id: "patient-new",
+        patientNumber: 2,
+        state: "triage" as const,
+        arrivedAt: 79,
+        esi: 2 as const,
+        expectedLabMinutes: 0,
+        expectedImagingMinutes: 0,
+        workupType: "none" as const,
+        cardiacPathway: "none" as const,
+      };
+    }),
+  };
+
+  run = advanceOneMinute(run, scenario);
+
+  assert.equal(run.triageProvider.status, "busy");
+  assert.equal(run.triageProvider.currentAction?.patientId, "patient-old");
 });
 
 test("optimal flow benchmark is deterministic for the same scenario deck", () => {
@@ -816,6 +974,10 @@ test("focused coach benchmarks are deterministic for the same scenario deck", ()
     runFrontEndFocusCoachBenchmark,
     runMiddleFlowFocusCoachBenchmark,
     runDispositionFocusCoachBenchmark,
+    runResourceAwareCoachBenchmark,
+    runSafetyFirstCoachBenchmark,
+    runFastTrackCoachBenchmark,
+    runBalancedOperationsCoachBenchmark,
   ];
 
   for (const runStrategy of strategies) {
@@ -860,12 +1022,56 @@ test("what-if coach comparison includes provider, optimal, and focused strategie
 
   assert.deepEqual(
     benchmark.whatIfComparison.summaries.map((summary) => summary.id),
-    ["provider_run", "optimal_flow", "front_end_focus", "middle_flow_focus", "disposition_focus"],
+    [
+      "provider_run",
+      "optimal_flow",
+      "front_end_focus",
+      "middle_flow_focus",
+      "disposition_focus",
+      "resource_aware",
+      "safety_first",
+      "fast_track",
+      "balanced_operations",
+    ],
   );
   assert.equal(benchmark.frontEndFocusRun.currentMinute, benchmark.benchmarkRun.currentMinute);
   assert.equal(benchmark.middleFlowFocusRun.currentMinute, benchmark.benchmarkRun.currentMinute);
   assert.equal(benchmark.dispositionFocusRun.currentMinute, benchmark.benchmarkRun.currentMinute);
+  assert.equal(benchmark.resourceAwareRun.currentMinute, benchmark.benchmarkRun.currentMinute);
+  assert.equal(benchmark.safetyFirstRun.currentMinute, benchmark.benchmarkRun.currentMinute);
+  assert.equal(benchmark.fastTrackRun.currentMinute, benchmark.benchmarkRun.currentMinute);
+  assert.equal(benchmark.balancedOperationsRun.currentMinute, benchmark.benchmarkRun.currentMinute);
   assert.equal(benchmark.whatIfComparison.summaries.every((summary) => summary.longestWaitMinutes >= 0), true);
+});
+
+test("benchmark comparison view can compare provider run against any coach target", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: true,
+    triageProviderMode: "automated",
+    roomCapacity: 4,
+    providerCount: 2,
+    shiftDurationMinutes: 180,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 8 }],
+    lwbsProfile: {
+      enabled: false,
+    },
+  });
+  const deck = generatePatientDeck(scenario);
+  let actualRun = startSimulation(createSimulationRun(scenario, deck));
+  actualRun = advanceTo(actualRun, scenario, 90);
+
+  const benchmark = createOptimalFlowBenchmark(scenario, deck, actualRun);
+  const optimalView = createBenchmarkComparisonView(actualRun, benchmark, "optimal_flow");
+  const balancedView = createBenchmarkComparisonView(actualRun, benchmark, "balanced_operations");
+
+  assert.equal(optimalView.targetLabel, "Optimal Flow Coach");
+  assert.equal(balancedView.targetLabel, "Balanced Operations Coach");
+  assert.deepEqual(
+    balancedView.comparisons.map((comparison) => comparison.label),
+    ["LWBS", "Longest wait", "Door to provider", "Results to disposition", "Risk minutes", "Seen / hour"],
+  );
+  assert.equal(balancedView.opportunities.length <= 5, true);
+  assert.notEqual(balancedView.targetLabel, optimalView.targetLabel);
 });
 
 test("what-if coach comparison shows front-end focus can leave roomed results waiting behind optimal flow", () => {
@@ -968,6 +1174,10 @@ test("activity export includes provider and all coach strategy runs", () => {
     { run: benchmark.frontEndFocusRun, strategyId: "front_end_focus", strategyLabel: "Front-End Focus Coach" },
     { run: benchmark.middleFlowFocusRun, strategyId: "middle_flow_focus", strategyLabel: "Middle Flow Focus Coach" },
     { run: benchmark.dispositionFocusRun, strategyId: "disposition_focus", strategyLabel: "Disposition Focus Coach" },
+    { run: benchmark.resourceAwareRun, strategyId: "resource_aware", strategyLabel: "Resource-Aware Coach" },
+    { run: benchmark.safetyFirstRun, strategyId: "safety_first", strategyLabel: "Safety First Coach" },
+    { run: benchmark.fastTrackRun, strategyId: "fast_track", strategyLabel: "Fast Track Coach" },
+    { run: benchmark.balancedOperationsRun, strategyId: "balanced_operations", strategyLabel: "Balanced Operations Coach" },
   ]);
 
   assert.equal(csv.startsWith("strategyId,strategyLabel,id,runId,simulationMinute,kind"), true);
@@ -976,6 +1186,10 @@ test("activity export includes provider and all coach strategy runs", () => {
   assert.equal(csv.includes("Front-End Focus Coach"), true);
   assert.equal(csv.includes("Middle Flow Focus Coach"), true);
   assert.equal(csv.includes("Disposition Focus Coach"), true);
+  assert.equal(csv.includes("Resource-Aware Coach"), true);
+  assert.equal(csv.includes("Safety First Coach"), true);
+  assert.equal(csv.includes("Fast Track Coach"), true);
+  assert.equal(csv.includes("Balanced Operations Coach"), true);
   assert.equal(csv.includes("decision"), true);
 });
 
@@ -1005,6 +1219,8 @@ test("coach demo applies available coach recommendations automatically", () => {
   const scenario = scenarioWith({
     triageProviderEnabled: false,
     providerCount: 2,
+    nurseCount: 2,
+    techCount: 2,
     roomCapacity: 2,
     arrivalProfile: [{ hourOffset: 0, expectedArrivals: 2 }],
     lwbsProfile: {
@@ -1395,6 +1611,174 @@ test("front-end triage routes arrivals to triage before the waiting room", () =>
   assert.equal(run.metrics.waitingRoomCensus, 1);
 });
 
+test("fast track moves eligible waiting patients without consuming an ED room", () => {
+  const scenario = scenarioWith({
+    fastTrackEnabled: true,
+    triageProviderEnabled: false,
+    roomCapacity: 1,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    complaintDistribution: { values: [{ value: "minor_complaint", weight: 1 }] },
+    minimumStemiAlertPatients: 0,
+  });
+  const deck = generatePatientDeck(scenario).map((patient) => ({
+    ...patient,
+    arrivalMinute: 0,
+    esi: 5 as const,
+    workupType: "none" as const,
+    expectedLabMinutes: 0,
+    expectedImagingMinutes: 0,
+    cardiacPathway: "none" as const,
+  }));
+  let run = startSimulation(createSimulationRun(scenario, deck));
+
+  run = advanceOneMinute(run, scenario);
+
+  const patient = run.patients[0];
+  assertDefined(patient, "Expected fast-track patient.");
+  const actions = getAvailableProviderActions(run, patient.id);
+
+  assert.equal(actions.find((action) => action.type === "fast_track_patient")?.enabled, true);
+
+  run = applyProviderAction(run, "fast_track_patient", patient.id);
+  run = advanceTo(run, scenario, run.currentMinute + 1);
+
+  const fastTrackedPatient = run.patients[0];
+  assertDefined(fastTrackedPatient, "Expected fast-tracked patient.");
+  assert.equal(fastTrackedPatient.state, "fast_track");
+  assert.equal(fastTrackedPatient.fastTrackedAt, run.currentMinute);
+  assert.equal(run.rooms[0]?.status, "available");
+  assert.equal(run.metrics.fastTrackCensus, 1);
+  assert.equal(run.metrics.patientsFastTracked, 1);
+  assert.equal(run.metrics.waitingRoomCensus, 0);
+});
+
+test("fast track toggle disables fast-track patient action", () => {
+  const scenario = scenarioWith({
+    fastTrackEnabled: false,
+    triageProviderEnabled: false,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    complaintDistribution: { values: [{ value: "minor_complaint", weight: 1 }] },
+    minimumStemiAlertPatients: 0,
+  });
+  const deck = generatePatientDeck(scenario).map((patient) => ({
+    ...patient,
+    arrivalMinute: 0,
+    esi: 5 as const,
+    workupType: "none" as const,
+    expectedLabMinutes: 0,
+    expectedImagingMinutes: 0,
+    cardiacPathway: "none" as const,
+  }));
+  let run = startSimulation(createSimulationRun(scenario, deck));
+
+  run = advanceOneMinute(run, scenario);
+
+  const patient = run.patients[0];
+  assertDefined(patient, "Expected waiting low-acuity patient.");
+  const action = getAvailableProviderActions(run, patient.id).find((candidate) => candidate.type === "fast_track_patient");
+
+  assert.equal(run.fastTrackEnabled, false);
+  assert.equal(action?.enabled, false);
+  assert.equal(action?.disabledReason, "Fast Track is disabled");
+});
+
+test("waiting-room reassessment action resets overdue reassessment clock", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: false,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    lwbsProfile: {
+      enabled: false,
+    },
+    minimumStemiAlertPatients: 0,
+  });
+  const deck = generatePatientDeck(scenario).map((patient) => ({
+    ...patient,
+    arrivalMinute: 0,
+    esi: 5 as const,
+    workupType: "none" as const,
+    expectedLabMinutes: 0,
+    expectedImagingMinutes: 0,
+    cardiacPathway: "none" as const,
+  }));
+  let run = startSimulation(createSimulationRun(scenario, deck));
+
+  run = advanceOneMinute(run, scenario);
+  const patientId = run.patients[0]?.id;
+  assertDefined(patientId, "Expected reassessment test patient.");
+  assert.equal(run.patients[0]?.nextReassessmentDueAt, 61);
+
+  run = advanceTo(run, scenario, 62);
+  const overdueAction = getAvailableProviderActions(run, patientId).find((action) => action.type === "reassess_waiting_patient");
+  assert.equal(overdueAction?.enabled, true);
+  assert.equal(run.metrics.reassessmentsOverdue, 1);
+
+  run = applyProviderAction(run, "reassess_waiting_patient", patientId);
+  run = advanceTo(run, scenario, run.currentMinute + 3);
+
+  const reassessedPatient = run.patients.find((patient) => patient.id === patientId);
+  assertDefined(reassessedPatient, "Expected reassessed patient.");
+  assert.equal(reassessedPatient.lastReassessedAt, run.currentMinute);
+  assert.equal(reassessedPatient.nextReassessmentDueAt, 80);
+  assert.equal(run.metrics.reassessmentsOverdue, 0);
+  assert.equal(run.events.some((event) => event.type === "patient_reassessed" && event.patientId === patientId), true);
+});
+
+test("waiting-room patient deteriorates after overdue reassessment grace period", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: false,
+    shiftDurationMinutes: 180,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    lwbsProfile: {
+      enabled: false,
+    },
+    minimumStemiAlertPatients: 0,
+  });
+  const deck = generatePatientDeck(scenario).map((patient) => ({
+    ...patient,
+    arrivalMinute: 0,
+    esi: 5 as const,
+    workupType: "none" as const,
+    expectedLabMinutes: 0,
+    expectedImagingMinutes: 0,
+    cardiacPathway: "none" as const,
+  }));
+  let run = startSimulation(createSimulationRun(scenario, deck));
+  run = advanceOneMinute(run, scenario);
+  const patientId = run.patients[0]?.id;
+  assertDefined(patientId, "Expected deterioration test patient.");
+  run = {
+    ...run,
+    currentMinute: 30,
+    patients: run.patients.map((patient) =>
+      patient.id === patientId
+        ? {
+            ...patient,
+            state: "waiting" as const,
+            arrivedAt: 0,
+            nextReassessmentDueAt: 0,
+            riskLevel: "low" as const,
+          }
+        : patient,
+    ),
+  };
+
+  run = advanceOneMinute(run, scenario);
+
+  const deterioratedPatient = run.patients.find((patient) => patient.id === patientId);
+  const deteriorationEvent = run.events.find((event) => event.type === "patient_deteriorated" && event.patientId === patientId);
+  const guardrails = createFlowGuardrails(run);
+
+  assertDefined(deterioratedPatient, "Expected deteriorated patient.");
+  assert.equal(deterioratedPatient.deterioratedAt, 31);
+  assert.equal(deterioratedPatient.deteriorationCount, 1);
+  assert.equal(deterioratedPatient.esi, 4);
+  assert.equal(deterioratedPatient.riskLevel, "high");
+  assert.equal(run.metrics.waitingRoomDeteriorations, 1);
+  assertDefined(deteriorationEvent, "Expected deterioration event.");
+  assert.equal(deteriorationEvent.details?.overdueMinutes, 31);
+  assert.equal(guardrails.guardrails.some((guardrail) => guardrail.title === "Waiting-room patient deteriorated"), true);
+});
+
 test("automated front-end triage starts protocol orders without using an ED provider", () => {
   const scenario = scenarioWith({
     triageProviderEnabled: true,
@@ -1423,6 +1807,33 @@ test("automated front-end triage starts protocol orders without using an ED prov
   assertDefined(automatedDecision, "Expected automated protocol-order decision.");
   assert.equal(automatedDecision.providerId, run.triageProvider.id);
   assert.equal(automatedDecision.resultingState, "triage");
+});
+
+test("automated front-end triage does not bypass nurse and tech constraints for protocol orders", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: true,
+    triageProviderMode: "automated",
+    nurseCount: 1,
+    techCount: 0,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+  });
+  const deck = generatePatientDeck(scenario).map((patient) => ({
+    ...patient,
+    arrivalMinute: 0,
+    workupType: "basic_labs" as const,
+    expectedLabMinutes: 30,
+    expectedImagingMinutes: 0,
+  }));
+  let run = startSimulation(createSimulationRun(scenario, deck));
+
+  run = advanceOneMinute(run, scenario);
+
+  const patient = run.patients[0];
+  assertDefined(patient, "Expected automated triage resource test patient.");
+  assert.equal(patient.ordersPlacedAt, undefined);
+  assert.equal(patient.pendingItems.length, 0);
+  assert.equal(run.decisions.some((decision) => decision.actionType === "start_protocol_orders"), false);
+  assert.equal(run.triageProvider.currentAction?.type, "complete_triage");
 });
 
 test("automated front-end triage sends patients to waiting after protocol work starts", () => {
@@ -1962,6 +2373,57 @@ test("room capacity prevents rooming when no rooms are available", () => {
   assert.equal(roomAction?.disabledReason, "No ED room is available");
 });
 
+test("support resource constraints can prevent rooming despite room availability", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: false,
+    roomCapacity: 2,
+    nurseCount: 1,
+    techCount: 0,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+  });
+  let run = startedRun(scenario);
+  run = advanceTo(run, scenario, 60);
+
+  const patientId = firstPatientId(run);
+  const roomAction = getAvailableProviderActions(run, patientId).find((action) => action.type === "room_patient");
+
+  assert.equal(run.metrics.availableRooms, 2);
+  assert.equal(roomAction?.enabled, false);
+  assert.equal(roomAction?.disabledReason, "tech resource unavailable");
+});
+
+test("support resources are reserved during rooming and released when the action completes", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: false,
+    roomCapacity: 2,
+    providerCount: 2,
+    nurseCount: 1,
+    techCount: 1,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 2 }],
+  });
+  let run = startedRun(scenario);
+  run = advanceTo(run, scenario, 60);
+
+  const firstWaitingId = firstPatientId(run);
+  run = applyProviderAction(run, "room_patient", firstWaitingId);
+
+  assert.equal(run.metrics.nursesBusy, 1);
+  assert.equal(run.metrics.techsBusy, 1);
+
+  const secondWaiting = run.patients.find((patient) => patient.state === "waiting" && patient.id !== firstWaitingId);
+  assertDefined(secondWaiting, "Expected a second waiting patient.");
+  const blockedRoomAction = getAvailableProviderActions(run, secondWaiting.id).find((action) => action.type === "room_patient");
+  assert.equal(blockedRoomAction?.enabled, false);
+  assert.equal(blockedRoomAction?.disabledReason, "nurse and tech resource unavailable");
+
+  run = advanceTo(run, scenario, run.currentMinute + 2);
+
+  assert.equal(run.metrics.nursesBusy, 0);
+  assert.equal(run.metrics.techsBusy, 0);
+  const availableRoomAction = getAvailableProviderActions(run, secondWaiting.id).find((action) => action.type === "room_patient");
+  assert.equal(availableRoomAction?.enabled, true);
+});
+
 test("invalid provider actions are rejected without changing state or records", () => {
   const scenario = scenarioWith({
     triageProviderEnabled: false,
@@ -2082,6 +2544,8 @@ test("provider evaluation sampled duration stays within ESI-adjusted timing rang
 test("multiple providers can work simultaneous patient actions", () => {
   const scenario = scenarioWith({
     providerCount: 2,
+    nurseCount: 2,
+    techCount: 2,
     roomCapacity: 2,
     triageProviderEnabled: false,
     arrivalProfile: [{ hourOffset: 0, expectedArrivals: 2 }],
@@ -2609,7 +3073,17 @@ test("discharge releases the room and updates metrics", () => {
   assert.equal(patient?.dispositionType, "discharge_home");
   assert.equal(run.metrics.patientsDeparted, 1);
   assert.equal(run.metrics.patientsDispositioned, 1);
+  assert.equal(run.metrics.availableRooms, scenario.roomCapacity - 1);
+  assert.equal(run.metrics.cleaningRooms, 1);
+  const cleaningRoom = run.rooms.find((room) => room.previousPatientId === patientId);
+  assert.equal(cleaningRoom?.status, "cleaning");
+  assert.equal(run.events.some((event) => event.type === "room_cleaning_started"), true);
+
+  run = advanceTo(run, scenario, cleaningRoom?.cleaningReadyAt ?? run.currentMinute);
+
   assert.equal(run.metrics.availableRooms, scenario.roomCapacity);
+  assert.equal(run.metrics.cleaningRooms, 0);
+  assert.equal(run.events.some((event) => event.type === "room_available"), true);
 });
 
 test("valid provider actions move a patient through the expected state path", () => {
@@ -2658,7 +3132,9 @@ test("admitted patients board and keep the room blocked until departure", () => 
     },
     timingProfile: {
       ...defaultScenario.timingProfile,
+      admissionDecision: { min: 5, typical: 5, max: 5 },
       boardingDuration: { min: 5, typical: 5, max: 5 },
+      roomCleaning: { min: 5, typical: 5, max: 5 },
     },
   });
   let run = startedNoWorkupRun(scenario);
@@ -2672,9 +3148,20 @@ test("admitted patients board and keep the room blocked until departure", () => 
   run = runAction(run, scenario, "admit_inpatient", patientId);
 
   let patient = run.patients.find((candidate) => candidate.id === patientId);
-  assert.equal(patient?.state, "boarding");
-  assert.equal(run.metrics.boardingCensus, 1);
+  assert.equal(patient?.state, "admission_pending");
+  assert.equal(run.metrics.admissionPendingCensus, 1);
+  assert.equal(run.metrics.boardingCensus, 0);
   assert.equal(run.metrics.availableRooms, 0);
+
+  run = advanceTo(run, scenario, run.currentMinute + 5);
+
+  patient = run.patients.find((candidate) => candidate.id === patientId);
+  assert.equal(patient?.state, "boarding");
+  assert.equal(patient?.admissionAcceptedAt, run.currentMinute);
+  assert.equal(run.metrics.admissionPendingCensus, 0);
+  assert.equal(run.metrics.boardingCensus, 1);
+  assert.equal(run.metrics.averageAdmissionDecisionMinutes, 5);
+  assert.equal(run.events.some((event) => event.type === "admission_accepted" && event.patientId === patientId), true);
 
   run = advanceTo(run, scenario, run.currentMinute + 5);
 
@@ -2682,8 +3169,14 @@ test("admitted patients board and keep the room blocked until departure", () => 
   assert.equal(patient?.state, "departed");
   assert.equal(patient?.dispositionType, "admit_inpatient");
   assert.equal(run.metrics.boardingCensus, 0);
-  assert.equal(run.metrics.availableRooms, 1);
+  assert.equal(run.metrics.availableRooms, 0);
+  assert.equal(run.metrics.cleaningRooms, 1);
   assert.equal(run.metrics.totalBoardingMinutes, 5);
+
+  run = advanceTo(run, scenario, run.currentMinute + 5);
+
+  assert.equal(run.metrics.availableRooms, 1);
+  assert.equal(run.metrics.cleaningRooms, 0);
 });
 
 test("metrics update as patients move through the run", () => {

@@ -8,7 +8,7 @@ export function isCardiacComplaint(complaint: ComplaintCategory): boolean {
 }
 
 export function isDiagnosticPendingItem(item: PendingItem): boolean {
-  return item.type !== "boarding_bed";
+  return item.type !== "boarding_bed" && item.type !== "admission_decision";
 }
 
 export function isCardiacDiagnosticItem(item: PendingItem): boolean {

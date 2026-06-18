@@ -6,7 +6,19 @@ import { calculateMetrics, emptyMetrics } from "./metricsEngine";
 import { sampleProviderEvaluationMinutes } from "./providerEvaluation";
 import { buildSepsisPendingItems, isSepsisWorkupPatient } from "./sepsisWorkflow";
 import { createSeededRandom } from "./seededRandom";
+import {
+  accrueSupportResourceTime,
+  createSupportResourcePools,
+  hasAvailableSupportResources,
+  releaseCompletedSupportResources,
+  reserveSupportResources,
+} from "./supportResources";
 import { getTriageDurationMinutes } from "./triageDuration";
+import {
+  isReassessmentOverdue,
+  nextReassessmentDueAt,
+  reassessmentOverdueMinutes,
+} from "./waitingRoomSafety";
 import type {
   EDRoom,
   PatientState,
@@ -20,6 +32,8 @@ import type {
   SimulationRun,
   TriageProviderMode,
 } from "./types";
+
+const FRONT_END_TRIAGE_AGING_PRIORITY_MINUTES = 60;
 
 function createRunId(scenario: Scenario): string {
   const randomId = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -98,6 +112,7 @@ export function createSimulationRun(scenario: Scenario, deck: ScenarioPatient[])
     currentMinute: scenario.shiftStartMinute,
     startedAt: new Date().toISOString(),
     status: "not_started",
+    fastTrackEnabled: scenario.fastTrackEnabled,
     patients: createRuntimePatients(deck),
     rooms,
     provider: primaryProvider,
@@ -109,6 +124,7 @@ export function createSimulationRun(scenario: Scenario, deck: ScenarioPatient[])
       busyMinutes: 0,
       idleMinutes: 0,
     },
+    supportResources: createSupportResourcePools(scenario.nurseCount, scenario.techCount),
     triageDurationProfile: scenario.triageDurationProfile,
     triageDurationMultiplier: scenario.triageDurationMultiplier,
     timingProfile: scenario.timingProfile,
@@ -179,6 +195,7 @@ export function setFrontEndTriageProviderMode(run: SimulationRun, mode: TriagePr
       return {
         ...patient,
         state: "waiting" as const,
+        nextReassessmentDueAt: nextReassessmentDueAt(patient, run.currentMinute),
       };
     }
 
@@ -195,6 +212,7 @@ export function setFrontEndTriageProviderMode(run: SimulationRun, mode: TriagePr
         ...patient,
         state: "triage" as const,
         arrivalPath: "front_end_triage" as const,
+        nextReassessmentDueAt: undefined,
       };
     }
 
@@ -221,13 +239,18 @@ export function advanceOneMinute(run: SimulationRun, scenario: Scenario): Simula
   };
 
   nextRun = accrueProviderTime(nextRun);
+  nextRun = accrueSupportResourceTime(nextRun);
+  nextRun = releaseCompletedSupportResources(nextRun);
+  nextRun = processRoomCleaning(nextRun);
   nextRun = processArrivals(nextRun);
   nextRun = processTriageProviderCompletion(nextRun);
   nextRun = processProviderCompletion(nextRun, scenario);
   nextRun = processAutomatedTriage(nextRun);
   nextRun = processPendingItems(nextRun);
+  nextRun = processAdmissionAcceptances(nextRun);
   nextRun = processBoardingDepartures(nextRun);
   nextRun = updateWaitingRisk(nextRun);
+  nextRun = processWaitingRoomReassessmentAndDeterioration(nextRun);
   nextRun = processLWBS(nextRun, scenario);
 
   if (nextRun.currentMinute >= scenario.shiftStartMinute + scenario.shiftDurationMinutes) {
@@ -306,7 +329,7 @@ export function applyProviderAction(
     });
   }
 
-  return synchronizePrimaryProvider({
+  const providerRun = synchronizePrimaryProvider({
     ...run,
     providers: run.providers.map((provider) =>
       provider.id === idleProvider?.id
@@ -327,6 +350,17 @@ export function applyProviderAction(
     ),
     decisions: [...run.decisions, decision],
   });
+
+  return withMetrics(
+    reserveSupportResources(
+      providerRun,
+      actionType,
+      patientId,
+      decision.id,
+      run.currentMinute,
+      run.currentMinute + decision.timeCostMinutes,
+    ),
+  );
 }
 
 function findIdleProvider(run: SimulationRun): ProviderState | undefined {
@@ -368,6 +402,7 @@ function processArrivals(run: SimulationRun): SimulationRun {
       state: newState,
       arrivalPath: run.triageProviderEnabled ? "front_end_triage" : "direct_waiting_room",
       arrivedAt: run.currentMinute,
+      nextReassessmentDueAt: newState === "waiting" ? nextReassessmentDueAt(patient, run.currentMinute) : undefined,
     };
 
     events = appendEventToList(run, events, {
@@ -390,23 +425,45 @@ function processArrivals(run: SimulationRun): SimulationRun {
   };
 }
 
-function triagePatientPriority(left: RuntimePatient, right: RuntimePatient): number {
-  const cardiacDifference = Number(isCardiacWorkupPatient(right)) - Number(isCardiacWorkupPatient(left));
-  if (cardiacDifference !== 0) {
-    return cardiacDifference;
-  }
+function triageWaitMinutes(patient: RuntimePatient, currentMinute: number): number {
+  return patient.arrivedAt === undefined ? 0 : Math.max(0, currentMinute - patient.arrivedAt);
+}
 
-  const sepsisDifference = Number(isSepsisWorkupPatient(right)) - Number(isSepsisWorkupPatient(left));
-  if (sepsisDifference !== 0) {
-    return sepsisDifference;
-  }
+function triagePatientPriority(currentMinute: number) {
+  return (left: RuntimePatient, right: RuntimePatient): number => {
+    const leftWait = triageWaitMinutes(left, currentMinute);
+    const rightWait = triageWaitMinutes(right, currentMinute);
+    const leftAged = leftWait >= FRONT_END_TRIAGE_AGING_PRIORITY_MINUTES;
+    const rightAged = rightWait >= FRONT_END_TRIAGE_AGING_PRIORITY_MINUTES;
+    const agingDifference = Number(rightAged) - Number(leftAged);
+    if (agingDifference !== 0) {
+      return agingDifference;
+    }
 
-  const esiDifference = left.esi - right.esi;
-  if (esiDifference !== 0) {
-    return esiDifference;
-  }
+    if (leftAged && rightAged) {
+      const waitDifference = rightWait - leftWait;
+      if (waitDifference !== 0) {
+        return waitDifference;
+      }
+    }
 
-  return left.patientNumber - right.patientNumber;
+    const cardiacDifference = Number(isCardiacWorkupPatient(right)) - Number(isCardiacWorkupPatient(left));
+    if (cardiacDifference !== 0) {
+      return cardiacDifference;
+    }
+
+    const sepsisDifference = Number(isSepsisWorkupPatient(right)) - Number(isSepsisWorkupPatient(left));
+    if (sepsisDifference !== 0) {
+      return sepsisDifference;
+    }
+
+    const esiDifference = left.esi - right.esi;
+    if (esiDifference !== 0) {
+      return esiDifference;
+    }
+
+    return left.patientNumber - right.patientNumber;
+  };
 }
 
 function hasAvailableProtocolOrders(patient: RuntimePatient): boolean {
@@ -459,13 +516,15 @@ function processAutomatedTriage(run: SimulationRun): SimulationRun {
 
   const patient = [...run.patients]
     .filter((candidate) => candidate.state === "triage")
-    .sort(triagePatientPriority)[0];
+    .sort(triagePatientPriority(run.currentMinute))[0];
 
   if (!patient) {
     return run;
   }
 
-  const actionType: ProviderActionType = hasAvailableProtocolOrders(patient) ? "start_protocol_orders" : "complete_triage";
+  const canStartProtocolOrders =
+    hasAvailableProtocolOrders(patient) && hasAvailableSupportResources(run, "start_protocol_orders");
+  const actionType: ProviderActionType = canStartProtocolOrders ? "start_protocol_orders" : "complete_triage";
   if (actionType === "complete_triage") {
     return startTriageCompletion(run, patient);
   }
@@ -548,6 +607,10 @@ function completeProviderAction(
   switch (actionType) {
     case "complete_triage":
       return completeTriage(run, patient);
+    case "fast_track_patient":
+      return fastTrackPatient(run, patient);
+    case "reassess_waiting_patient":
+      return reassessWaitingPatient(run, patient);
     case "room_patient":
       return roomPatient(run, patient);
     case "start_protocol_orders":
@@ -591,6 +654,52 @@ function seePatient(run: SimulationRun, patient: RuntimePatient): SimulationRun 
   );
 }
 
+function fastTrackPatient(run: SimulationRun, patient: RuntimePatient): SimulationRun {
+  return updatePatientState(
+    run,
+    patient.id,
+    "fast_track",
+    {
+      fastTrackedAt: run.currentMinute,
+      nextReassessmentDueAt: undefined,
+    },
+    "patient_fast_tracked",
+    `${patient.id} moved to Fast Track / vertical care.`,
+  );
+}
+
+function reassessWaitingPatient(run: SimulationRun, patient: RuntimePatient): SimulationRun {
+  if (patient.state !== "waiting" || !isReassessmentOverdue(patient, run.currentMinute)) {
+    return run;
+  }
+
+  return appendEvent(
+    {
+      ...run,
+      patients: run.patients.map((candidate) =>
+        candidate.id === patient.id
+          ? {
+              ...candidate,
+              lastReassessedAt: run.currentMinute,
+              nextReassessmentDueAt: nextReassessmentDueAt(candidate, run.currentMinute),
+            }
+          : candidate,
+      ),
+    },
+    {
+      type: "patient_reassessed",
+      patientId: patient.id,
+      previousState: patient.state,
+      newState: patient.state,
+      message: `${patient.id} was reassessed in the waiting room.`,
+      details: {
+        overdueMinutes: reassessmentOverdueMinutes(patient, run.currentMinute),
+        nextReassessmentDueAt: nextReassessmentDueAt(patient, run.currentMinute),
+      },
+    },
+  );
+}
+
 function roomedDiagnosticState(patient: RuntimePatient): PatientState {
   const diagnosticItems = patient.pendingItems.filter(isDiagnosticPendingItem);
   if (diagnosticItems.length === 0) {
@@ -609,6 +718,7 @@ function completeTriage(run: SimulationRun, patient: RuntimePatient): Simulation
     "waiting",
     {
       triagedAt: run.currentMinute,
+      nextReassessmentDueAt: nextReassessmentDueAt(patient, run.currentMinute),
     },
     "triage_completed",
     `${patient.id} completed front-end triage and moved to the waiting room.`,
@@ -635,6 +745,7 @@ function roomPatient(run: SimulationRun, patient: RuntimePatient): SimulationRun
     {
       roomId: room.id,
       roomedAt: run.currentMinute,
+      nextReassessmentDueAt: undefined,
     },
     "patient_roomed",
     `${patient.id} was roomed in ${room.id}.`,
@@ -809,6 +920,33 @@ function processPendingItems(run: SimulationRun): SimulationRun {
 }
 
 function admitPatient(run: SimulationRun, scenario: Scenario, patient: RuntimePatient): SimulationRun {
+  if (!scenario.boardingProfile.enabled) {
+    return departPatient(run, patient, "admit_inpatient");
+  }
+
+  const admissionReadyAt = run.currentMinute + patient.expectedAdmissionDecisionMinutes;
+  const pendingItem = {
+    type: "admission_decision" as const,
+    orderedAt: run.currentMinute,
+    readyAt: admissionReadyAt,
+    status: "pending" as const,
+  };
+
+  return updatePatientState(
+    run,
+    patient.id,
+    "admission_pending",
+    {
+      dispositionDecisionAt: run.currentMinute,
+      dispositionType: "admit_inpatient" as const,
+      pendingItems: [pendingItem],
+    },
+    "admission_requested",
+    `${patient.id} admission requested; awaiting consult/admission acceptance.`,
+  );
+}
+
+function startBoarding(run: SimulationRun, patient: RuntimePatient): SimulationRun {
   const boardingReadyAt = run.currentMinute + patient.expectedBoardingMinutes;
   const pendingItem = {
     type: "boarding_bed" as const,
@@ -820,30 +958,55 @@ function admitPatient(run: SimulationRun, scenario: Scenario, patient: RuntimePa
   let nextRun = updatePatientState(
     run,
     patient.id,
-    scenario.boardingProfile.enabled ? "boarding" : "departed",
+    "boarding",
     {
-      dispositionDecisionAt: run.currentMinute,
+      admissionAcceptedAt: run.currentMinute,
       dispositionType: "admit_inpatient" as const,
-      pendingItems: scenario.boardingProfile.enabled ? [pendingItem] : [],
-      departedAt: scenario.boardingProfile.enabled ? undefined : run.currentMinute,
+      pendingItems: [pendingItem],
     },
-    scenario.boardingProfile.enabled ? "patient_boarding_started" : "patient_departed",
-    scenario.boardingProfile.enabled
-      ? `${patient.id} admitted and boarding.`
-      : `${patient.id} admitted and departed ED.`,
+    "patient_boarding_started",
+    `${patient.id} admission accepted and boarding started.`,
   );
 
   nextRun = {
     ...nextRun,
     rooms: nextRun.rooms.map((room) =>
-      room.patientId === patient.id && scenario.boardingProfile.enabled
+      room.patientId === patient.id
         ? { ...room, status: "blocked" as const }
         : room,
     ),
   };
 
-  if (!scenario.boardingProfile.enabled) {
-    nextRun = releasePatientRoom(nextRun, patient.id);
+  return nextRun;
+}
+
+function processAdmissionAcceptances(run: SimulationRun): SimulationRun {
+  let nextRun = run;
+
+  for (const patient of run.patients) {
+    if (patient.state !== "admission_pending") {
+      continue;
+    }
+
+    const admissionItem = patient.pendingItems.find((item) => item.type === "admission_decision");
+    if (!admissionItem || admissionItem.readyAt > run.currentMinute) {
+      continue;
+    }
+
+    nextRun = appendEvent(
+      nextRun,
+      {
+        type: "admission_accepted",
+        patientId: patient.id,
+        previousState: "admission_pending",
+        newState: "boarding",
+        message: `${patient.id} admission was accepted.`,
+        details: {
+          admissionDecisionMinutes: run.currentMinute - (patient.dispositionDecisionAt ?? run.currentMinute),
+        },
+      },
+    );
+    nextRun = startBoarding(nextRun, patient);
   }
 
   return nextRun;
@@ -893,30 +1056,97 @@ function departPatient(
 
 function releasePatientRoom(run: SimulationRun, patientId: string): SimulationRun {
   const room = run.rooms.find((candidate) => candidate.patientId === patientId);
-  const rooms = run.rooms.map((candidate) =>
-    candidate.patientId === patientId
-      ? { id: candidate.id, status: "available" as const, patientId: undefined }
-      : candidate,
-  );
-
   if (!room) {
-    return {
-      ...run,
-      rooms,
-    };
+    return run;
+  }
+
+  const patient = run.patients.find((candidate) => candidate.id === patientId);
+  const cleaningMinutes = Math.max(0, patient?.expectedRoomCleaningMinutes ?? run.timingProfile.roomCleaning.typical);
+  if (cleaningMinutes === 0) {
+    return appendEvent(
+      {
+        ...run,
+        rooms: run.rooms.map((candidate) =>
+          candidate.id === room.id
+            ? {
+                id: candidate.id,
+                status: "available" as const,
+              }
+            : candidate,
+        ),
+      },
+      {
+        type: "room_available",
+        message: `${room.id} is available.`,
+        details: { roomId: room.id, previousPatientId: patientId },
+      },
+    );
   }
 
   return appendEvent(
     {
       ...run,
-      rooms,
+      rooms: run.rooms.map((candidate) =>
+        candidate.id === room.id
+          ? {
+              id: candidate.id,
+              previousPatientId: patientId,
+              status: "cleaning" as const,
+              cleaningStartedAt: run.currentMinute,
+              cleaningReadyAt: run.currentMinute + cleaningMinutes,
+            }
+          : candidate,
+      ),
     },
     {
-      type: "room_available",
-      message: `${room.id} is available.`,
-      details: { roomId: room.id },
+      type: "room_cleaning_started",
+      message: `${room.id} started room turnover cleaning.`,
+      details: {
+        roomId: room.id,
+        previousPatientId: patientId,
+        cleaningReadyAt: run.currentMinute + cleaningMinutes,
+        cleaningMinutes,
+      },
     },
   );
+}
+
+function processRoomCleaning(run: SimulationRun): SimulationRun {
+  let events = run.events;
+  let changed = false;
+
+  const rooms = run.rooms.map((room) => {
+    if (room.status !== "cleaning" || room.cleaningReadyAt === undefined || room.cleaningReadyAt > run.currentMinute) {
+      return room;
+    }
+
+    changed = true;
+    events = appendEventToList(run, events, {
+      type: "room_available",
+      message: `${room.id} is available after room turnover cleaning.`,
+      details: {
+        roomId: room.id,
+        previousPatientId: room.previousPatientId,
+        cleaningStartedAt: room.cleaningStartedAt,
+        cleaningReadyAt: room.cleaningReadyAt,
+        cleaningMinutes:
+          room.cleaningStartedAt === undefined ? undefined : room.cleaningReadyAt - room.cleaningStartedAt,
+      },
+    });
+
+    return {
+      id: room.id,
+      status: "available" as const,
+    };
+  });
+
+  return changed
+    ? {
+        ...run,
+        rooms,
+        events,
+      }
+    : run;
 }
 
 function updateWaitingRisk(run: SimulationRun): SimulationRun {
@@ -950,6 +1180,69 @@ function updateWaitingRisk(run: SimulationRun): SimulationRun {
   return {
     ...run,
     patients,
+  };
+}
+
+function escalatedRiskLevel(riskLevel: RiskLevel): RiskLevel {
+  switch (riskLevel) {
+    case "low":
+      return "moderate";
+    case "moderate":
+      return "high";
+    default:
+      return "critical";
+  }
+}
+
+function processWaitingRoomReassessmentAndDeterioration(run: SimulationRun): SimulationRun {
+  let events = run.events;
+  const patients = run.patients.map((patient) => {
+    if (patient.state !== "waiting" || patient.arrivedAt === undefined) {
+      return patient;
+    }
+
+    const nextDueAt = patient.nextReassessmentDueAt ?? nextReassessmentDueAt(patient, patient.triagedAt ?? patient.arrivedAt);
+    const overdueMinutes = reassessmentOverdueMinutes({ nextReassessmentDueAt: nextDueAt }, run.currentMinute);
+
+    if (patient.deterioratedAt !== undefined || overdueMinutes < 30) {
+      return {
+        ...patient,
+        nextReassessmentDueAt: nextDueAt,
+      };
+    }
+
+    const nextRiskLevel = escalatedRiskLevel(patient.riskLevel);
+    const nextEsi = patient.esi > 2 ? ((patient.esi - 1) as RuntimePatient["esi"]) : patient.esi;
+
+    events = appendEventToList(run, events, {
+      type: "patient_deteriorated",
+      patientId: patient.id,
+      previousState: patient.state,
+      newState: patient.state,
+      message: `${patient.id} deteriorated while waiting and needs reassessment escalation.`,
+      details: {
+        overdueMinutes,
+        previousEsi: patient.esi,
+        newEsi: nextEsi,
+        previousRiskLevel: patient.riskLevel,
+        newRiskLevel: nextRiskLevel,
+      },
+    });
+
+    return {
+      ...patient,
+      esi: nextEsi,
+      riskLevel: nextRiskLevel,
+      deterioratedAt: run.currentMinute,
+      deteriorationCount: patient.deteriorationCount + 1,
+      nextReassessmentDueAt: nextReassessmentDueAt({ ...patient, esi: nextEsi, riskLevel: nextRiskLevel }, run.currentMinute),
+    };
+  });
+
+  return {
+    ...run,
+    patients,
+    events,
   };
 }
 

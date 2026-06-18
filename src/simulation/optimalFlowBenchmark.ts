@@ -1,13 +1,16 @@
 import { getAvailableProviderActions } from "./actionRules";
 import { isCardiacWorkupPatient, isDiagnosticPendingItem } from "./cardiacWorkflow";
+import { isSepsisWorkupPatient } from "./sepsisWorkflow";
 import {
   advanceOneMinute,
   applyProviderAction,
   createSimulationRun,
   startSimulation,
 } from "./simulationEngine";
+import { isReassessmentOverdue } from "./waitingRoomSafety";
 import type {
   BenchmarkCoachRecommendation,
+  BenchmarkComparisonView,
   BenchmarkMetricComparison,
   BenchmarkPatientOpportunity,
   OptimalFlowBenchmark,
@@ -18,6 +21,7 @@ import type {
   SimulationMetrics,
   SimulationRun,
   WhatIfCoachComparison,
+  WhatIfCoachStrategyId,
   WhatIfCoachStrategySummary,
 } from "./types";
 
@@ -64,6 +68,29 @@ function chooseDispositionAction(patient: RuntimePatient): ProviderActionType {
   return patient.admitProbability >= patient.dischargeProbability ? "admit_inpatient" : "discharge_home";
 }
 
+function chooseWaitingFlowAction(run: SimulationRun, patients: RuntimePatient[]): { actionType: ProviderActionType; patientId: string } | undefined {
+  const waitingPatients = patients
+    .filter((patient) => patient.state === "waiting")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute));
+  const waitingPatient = waitingPatients.find(
+    (patient) => enabledAction(run, patient, "room_patient") || enabledAction(run, patient, "fast_track_patient"),
+  );
+
+  if (!waitingPatient) {
+    return undefined;
+  }
+
+  if (enabledAction(run, waitingPatient, "fast_track_patient")) {
+    return { actionType: "fast_track_patient", patientId: waitingPatient.id };
+  }
+
+  if (enabledAction(run, waitingPatient, "room_patient")) {
+    return { actionType: "room_patient", patientId: waitingPatient.id };
+  }
+
+  return undefined;
+}
+
 function chooseBenchmarkAction(run: SimulationRun): { actionType: ProviderActionType; patientId: string } | undefined {
   const patients = [...run.patients];
 
@@ -105,11 +132,16 @@ function chooseBenchmarkAction(run: SimulationRun): { actionType: ProviderAction
     return { actionType: "see_patient", patientId: unseenResultsPendingPatient.id };
   }
 
-  const waitingPatient = patients
-    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "room_patient"))
+  const waitingFlowAction = chooseWaitingFlowAction(run, patients);
+  if (waitingFlowAction) {
+    return waitingFlowAction;
+  }
+
+  const reassessmentPatient = patients
+    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "reassess_waiting_patient"))
     .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
-  if (waitingPatient) {
-    return { actionType: "room_patient", patientId: waitingPatient.id };
+  if (reassessmentPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: reassessmentPatient.id };
   }
 
   const roomedPatient = patients
@@ -189,12 +221,16 @@ function chooseCoachAction(run: SimulationRun): { actionType: ProviderActionType
     return { actionType: "review_results", patientId: resultsReadyPatient.id };
   }
 
-  const waitingPatients = patients
-    .filter((patient) => patient.state === "waiting")
-    .sort((left, right) => sortByPriority(left, right, run.currentMinute));
-  const roomablePatient = waitingPatients.find((patient) => enabledAction(run, patient, "room_patient"));
-  if (roomablePatient) {
-    return { actionType: "room_patient", patientId: roomablePatient.id };
+  const waitingFlowAction = chooseWaitingFlowAction(run, patients);
+  if (waitingFlowAction) {
+    return waitingFlowAction;
+  }
+
+  const reassessmentPatient = patients
+    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "reassess_waiting_patient"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (reassessmentPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: reassessmentPatient.id };
   }
 
   const seenPatient = patients
@@ -204,7 +240,7 @@ function chooseCoachAction(run: SimulationRun): { actionType: ProviderActionType
     return { actionType: "place_orders", patientId: seenPatient.id };
   }
 
-  if (waitingPatients.length > 0) {
+  if (patients.some((patient) => patient.state === "waiting")) {
     return undefined;
   }
 
@@ -394,6 +430,328 @@ function chooseDispositionFocusAction(run: SimulationRun): { actionType: Provide
   return undefined;
 }
 
+function chooseResourceAwareAction(run: SimulationRun): { actionType: ProviderActionType; patientId: string } | undefined {
+  const patients = [...run.patients];
+  const nurseTotal = run.supportResources?.find((pool) => pool.role === "nurse")?.total ?? 0;
+  const techTotal = run.supportResources?.find((pool) => pool.role === "tech")?.total ?? 0;
+  const nursesConstrained = nurseTotal > 0 && run.metrics.nursesBusy >= nurseTotal;
+  const techsConstrained = techTotal > 0 && run.metrics.techsBusy >= techTotal;
+  const supportConstrained = nursesConstrained || techsConstrained;
+
+  const dispositionPatient = patients
+    .filter((patient) => patient.state === "ready_for_disposition")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (dispositionPatient) {
+    const dispositionAction = chooseDispositionAction(dispositionPatient);
+    if (enabledAction(run, dispositionPatient, dispositionAction)) {
+      return { actionType: dispositionAction, patientId: dispositionPatient.id };
+    }
+  }
+
+  const resultsReadyPatient = patients
+    .filter((patient) => patient.state === "results_ready" && enabledAction(run, patient, "review_results"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (resultsReadyPatient) {
+    return { actionType: "review_results", patientId: resultsReadyPatient.id };
+  }
+
+  const unseenRoomedPatient = patients
+    .filter(
+      (patient) =>
+        (patient.state === "roomed" || patient.state === "results_pending" || patient.state === "results_ready") &&
+        patient.providerSeenAt === undefined &&
+        enabledAction(run, patient, "see_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (unseenRoomedPatient) {
+    return { actionType: "see_patient", patientId: unseenRoomedPatient.id };
+  }
+
+  if (supportConstrained) {
+    return undefined;
+  }
+
+  const seenPatient = patients
+    .filter((patient) => patient.state === "provider_seen" && enabledAction(run, patient, "place_orders"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (seenPatient) {
+    return { actionType: "place_orders", patientId: seenPatient.id };
+  }
+
+  const waitingFlowAction = chooseWaitingFlowAction(run, patients);
+  if (waitingFlowAction) {
+    return waitingFlowAction;
+  }
+
+  const reassessmentPatient = patients
+    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "reassess_waiting_patient"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (reassessmentPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: reassessmentPatient.id };
+  }
+
+  const triagePatients = patients
+    .filter((patient) => patient.state === "triage")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute));
+  const protocolPatient = triagePatients.find((patient) => enabledAction(run, patient, "start_protocol_orders"));
+  if (protocolPatient) {
+    return { actionType: "start_protocol_orders", patientId: protocolPatient.id };
+  }
+  const triagePatient = triagePatients.find((patient) => enabledAction(run, patient, "complete_triage"));
+  if (triagePatient) {
+    return { actionType: "complete_triage", patientId: triagePatient.id };
+  }
+
+  return undefined;
+}
+
+function chooseSafetyFirstAction(run: SimulationRun): { actionType: ProviderActionType; patientId: string } | undefined {
+  const patients = [...run.patients];
+
+  const timeSensitiveProtocolPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "triage" &&
+        (isCardiacWorkupPatient(patient) || isSepsisWorkupPatient(patient)) &&
+        enabledAction(run, patient, "start_protocol_orders"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (timeSensitiveProtocolPatient) {
+    return { actionType: "start_protocol_orders", patientId: timeSensitiveProtocolPatient.id };
+  }
+
+  const deterioratedWaitingPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        patient.deterioratedAt !== undefined &&
+        enabledAction(run, patient, "reassess_waiting_patient"),
+    )
+    .sort((left, right) => (left.deterioratedAt ?? 0) - (right.deterioratedAt ?? 0))[0];
+  if (deterioratedWaitingPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: deterioratedWaitingPatient.id };
+  }
+
+  const overdueReassessmentPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        isReassessmentOverdue(patient, run.currentMinute) &&
+        enabledAction(run, patient, "reassess_waiting_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (overdueReassessmentPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: overdueReassessmentPatient.id };
+  }
+
+  const timeSensitiveWaitingPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        (isCardiacWorkupPatient(patient) || isSepsisWorkupPatient(patient)) &&
+        enabledAction(run, patient, "room_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (timeSensitiveWaitingPatient) {
+    return { actionType: "room_patient", patientId: timeSensitiveWaitingPatient.id };
+  }
+
+  const criticalWaitingPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        (patient.riskLevel === "critical" || patient.esi <= 2) &&
+        enabledAction(run, patient, "room_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (criticalWaitingPatient) {
+    return { actionType: "room_patient", patientId: criticalWaitingPatient.id };
+  }
+
+  const timeSensitiveResultsPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "results_ready" &&
+        (isCardiacWorkupPatient(patient) || isSepsisWorkupPatient(patient)) &&
+        enabledAction(run, patient, "review_results"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (timeSensitiveResultsPatient) {
+    return { actionType: "review_results", patientId: timeSensitiveResultsPatient.id };
+  }
+
+  const timeSensitiveUnseenRoomedPatient = patients
+    .filter(
+      (patient) =>
+        (patient.state === "roomed" || patient.state === "results_pending" || patient.state === "results_ready") &&
+        patient.providerSeenAt === undefined &&
+        (isCardiacWorkupPatient(patient) || isSepsisWorkupPatient(patient) || patient.riskLevel === "critical") &&
+        enabledAction(run, patient, "see_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (timeSensitiveUnseenRoomedPatient) {
+    return { actionType: "see_patient", patientId: timeSensitiveUnseenRoomedPatient.id };
+  }
+
+  const dispositionPatient = patients
+    .filter((patient) => patient.state === "ready_for_disposition")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (dispositionPatient) {
+    const dispositionAction = chooseDispositionAction(dispositionPatient);
+    if (enabledAction(run, dispositionPatient, dispositionAction)) {
+      return { actionType: dispositionAction, patientId: dispositionPatient.id };
+    }
+  }
+
+  return chooseBenchmarkAction(run);
+}
+
+function chooseFastTrackFocusAction(run: SimulationRun): { actionType: ProviderActionType; patientId: string } | undefined {
+  const patients = [...run.patients];
+
+  const fastTrackDispositionPatient = patients
+    .filter((patient) => patient.state === "ready_for_disposition" && patient.fastTrackedAt !== undefined)
+    .sort(lowAcuitySort)[0];
+  if (fastTrackDispositionPatient) {
+    const dispositionAction = chooseDispositionAction(fastTrackDispositionPatient);
+    if (enabledAction(run, fastTrackDispositionPatient, dispositionAction)) {
+      return { actionType: dispositionAction, patientId: fastTrackDispositionPatient.id };
+    }
+  }
+
+  const fastTrackResultsPatient = patients
+    .filter((patient) => patient.state === "results_ready" && patient.fastTrackedAt !== undefined && enabledAction(run, patient, "review_results"))
+    .sort(lowAcuitySort)[0];
+  if (fastTrackResultsPatient) {
+    return { actionType: "review_results", patientId: fastTrackResultsPatient.id };
+  }
+
+  const unseenFastTrackPatient = patients
+    .filter((patient) => patient.state === "fast_track" && patient.providerSeenAt === undefined && enabledAction(run, patient, "see_patient"))
+    .sort(lowAcuitySort)[0];
+  if (unseenFastTrackPatient) {
+    return { actionType: "see_patient", patientId: unseenFastTrackPatient.id };
+  }
+
+  const seenFastTrackPatient = patients
+    .filter((patient) => patient.state === "provider_seen" && patient.fastTrackedAt !== undefined && enabledAction(run, patient, "place_orders"))
+    .sort(lowAcuitySort)[0];
+  if (seenFastTrackPatient) {
+    return { actionType: "place_orders", patientId: seenFastTrackPatient.id };
+  }
+
+  const fastTrackCandidate = patients
+    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "fast_track_patient"))
+    .sort(lowAcuitySort)[0];
+  if (fastTrackCandidate) {
+    return { actionType: "fast_track_patient", patientId: fastTrackCandidate.id };
+  }
+
+  return chooseBenchmarkAction(run);
+}
+
+function chooseBalancedOperationsAction(run: SimulationRun): { actionType: ProviderActionType; patientId: string } | undefined {
+  const patients = [...run.patients];
+
+  const timeSensitiveProtocolPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "triage" &&
+        (isCardiacWorkupPatient(patient) || isSepsisWorkupPatient(patient)) &&
+        enabledAction(run, patient, "start_protocol_orders"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (timeSensitiveProtocolPatient) {
+    return { actionType: "start_protocol_orders", patientId: timeSensitiveProtocolPatient.id };
+  }
+
+  const deterioratedWaitingPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        patient.deterioratedAt !== undefined &&
+        enabledAction(run, patient, "reassess_waiting_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (deterioratedWaitingPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: deterioratedWaitingPatient.id };
+  }
+
+  const dispositionPatient = patients
+    .filter((patient) => patient.state === "ready_for_disposition")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (dispositionPatient) {
+    const dispositionAction = chooseDispositionAction(dispositionPatient);
+    if (enabledAction(run, dispositionPatient, dispositionAction)) {
+      return { actionType: dispositionAction, patientId: dispositionPatient.id };
+    }
+  }
+
+  const resultsReadyPatient = patients
+    .filter((patient) => patient.state === "results_ready" && enabledAction(run, patient, "review_results"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (resultsReadyPatient) {
+    return { actionType: "review_results", patientId: resultsReadyPatient.id };
+  }
+
+  const unseenRoomedPatient = patients
+    .filter(
+      (patient) =>
+        (patient.state === "roomed" || patient.state === "results_pending" || patient.state === "results_ready") &&
+        patient.providerSeenAt === undefined &&
+        enabledAction(run, patient, "see_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (unseenRoomedPatient) {
+    return { actionType: "see_patient", patientId: unseenRoomedPatient.id };
+  }
+
+  const seenPatient = patients
+    .filter((patient) => patient.state === "provider_seen" && enabledAction(run, patient, "place_orders"))
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (seenPatient) {
+    return { actionType: "place_orders", patientId: seenPatient.id };
+  }
+
+  const fastTrackCandidate = patients
+    .filter((patient) => patient.state === "waiting" && enabledAction(run, patient, "fast_track_patient"))
+    .sort(lowAcuitySort)[0];
+  if (fastTrackCandidate) {
+    return { actionType: "fast_track_patient", patientId: fastTrackCandidate.id };
+  }
+
+  const waitingFlowAction = chooseWaitingFlowAction(run, patients);
+  if (waitingFlowAction) {
+    return waitingFlowAction;
+  }
+
+  const overdueReassessmentPatient = patients
+    .filter(
+      (patient) =>
+        patient.state === "waiting" &&
+        isReassessmentOverdue(patient, run.currentMinute) &&
+        enabledAction(run, patient, "reassess_waiting_patient"),
+    )
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute))[0];
+  if (overdueReassessmentPatient) {
+    return { actionType: "reassess_waiting_patient", patientId: overdueReassessmentPatient.id };
+  }
+
+  const triagePatients = patients
+    .filter((patient) => patient.state === "triage")
+    .sort((left, right) => sortByPriority(left, right, run.currentMinute));
+  const protocolPatient = triagePatients.find((patient) => enabledAction(run, patient, "start_protocol_orders"));
+  if (protocolPatient) {
+    return { actionType: "start_protocol_orders", patientId: protocolPatient.id };
+  }
+  const triagePatient = triagePatients.find((patient) => enabledAction(run, patient, "complete_triage"));
+  if (triagePatient) {
+    return { actionType: "complete_triage", patientId: triagePatient.id };
+  }
+
+  return chooseBenchmarkAction(run);
+}
+
 function recommendationReason(run: SimulationRun, patient: RuntimePatient, actionType: ProviderActionType): string {
   const wait = waitMinutes(patient, run.currentMinute);
   const patientSummary = `${patient.id} is ESI ${patient.esi}, ${patient.riskLevel} risk, waiting ${wait} minutes.`;
@@ -409,6 +767,10 @@ function recommendationReason(run: SimulationRun, patient: RuntimePatient, actio
       return `${patientSummary} Move the patient out of Front-End Triage so the waiting-room queue reflects completed triage.`;
     case "room_patient":
       return `${patientSummary} Rooming this patient now uses available capacity for the highest-priority waiting patient.`;
+    case "fast_track_patient":
+      return `${patientSummary} Fast Track can move this lower-acuity patient through vertical care without consuming an ED room.`;
+    case "reassess_waiting_patient":
+      return `${patientSummary} Reassessment is overdue; reassessing resets the waiting-room safety clock and may prevent further deterioration.`;
     case "see_patient":
       if (diagnosticResultsReady(patient)) {
         return `${patientSummary} Diagnostic results are already ready, so provider evaluation can move directly toward results review.`;
@@ -608,6 +970,22 @@ export function runDispositionFocusCoachBenchmark(scenario: Scenario, deck: Scen
   return runFocusedCoachBenchmark(scenario, deck, chooseDispositionFocusAction, untilMinute);
 }
 
+export function runResourceAwareCoachBenchmark(scenario: Scenario, deck: ScenarioPatient[], untilMinute?: number): SimulationRun {
+  return runFocusedCoachBenchmark(scenario, deck, chooseResourceAwareAction, untilMinute);
+}
+
+export function runSafetyFirstCoachBenchmark(scenario: Scenario, deck: ScenarioPatient[], untilMinute?: number): SimulationRun {
+  return runFocusedCoachBenchmark(scenario, deck, chooseSafetyFirstAction, untilMinute);
+}
+
+export function runFastTrackCoachBenchmark(scenario: Scenario, deck: ScenarioPatient[], untilMinute?: number): SimulationRun {
+  return runFocusedCoachBenchmark(scenario, deck, chooseFastTrackFocusAction, untilMinute);
+}
+
+export function runBalancedOperationsCoachBenchmark(scenario: Scenario, deck: ScenarioPatient[], untilMinute?: number): SimulationRun {
+  return runFocusedCoachBenchmark(scenario, deck, chooseBalancedOperationsAction, untilMinute);
+}
+
 function formatNumber(value: number | null): string {
   return value === null ? "-" : value.toFixed(0);
 }
@@ -670,6 +1048,61 @@ function metricComparisons(actual: SimulationMetrics, benchmark: SimulationMetri
     compareLowerIsBetter("Risk minutes", actual.waitingRoomRiskMinutes, benchmark.waitingRoomRiskMinutes, " min"),
     compareHigherIsBetter("Seen / hour", actual.patientsSeenPerHour, benchmark.patientsSeenPerHour),
   ];
+}
+
+function benchmarkRunForStrategy(benchmark: OptimalFlowBenchmark, strategyId: WhatIfCoachStrategyId): SimulationRun {
+  switch (strategyId) {
+    case "front_end_focus":
+      return benchmark.frontEndFocusRun;
+    case "middle_flow_focus":
+      return benchmark.middleFlowFocusRun;
+    case "disposition_focus":
+      return benchmark.dispositionFocusRun;
+    case "resource_aware":
+      return benchmark.resourceAwareRun;
+    case "safety_first":
+      return benchmark.safetyFirstRun;
+    case "fast_track":
+      return benchmark.fastTrackRun;
+    case "balanced_operations":
+      return benchmark.balancedOperationsRun;
+    case "optimal_flow":
+    case "provider_run":
+      return benchmark.benchmarkRun;
+  }
+}
+
+function benchmarkLabelForStrategy(benchmark: OptimalFlowBenchmark, strategyId: WhatIfCoachStrategyId): string {
+  const summary = benchmark.whatIfComparison.summaries.find((candidate) => candidate.id === strategyId);
+
+  return summary?.label ?? "Optimal Flow Coach";
+}
+
+function comparisonHeadline(comparisons: BenchmarkMetricComparison[], targetLabel: string): string {
+  const worseComparisons = comparisons.filter((comparison) => comparison.interpretation === "worse").length;
+
+  return worseComparisons === 0
+    ? `Provider Run is tracking close to ${targetLabel}.`
+    : `${worseComparisons} operational metric(s) trail ${targetLabel}.`;
+}
+
+export function createBenchmarkComparisonView(
+  actualRun: SimulationRun,
+  benchmark: OptimalFlowBenchmark,
+  targetStrategyId: WhatIfCoachStrategyId,
+): BenchmarkComparisonView {
+  const normalizedStrategyId = targetStrategyId === "provider_run" ? "optimal_flow" : targetStrategyId;
+  const targetRun = benchmarkRunForStrategy(benchmark, normalizedStrategyId);
+  const targetLabel = benchmarkLabelForStrategy(benchmark, normalizedStrategyId);
+  const comparisons = metricComparisons(actualRun.metrics, targetRun.metrics);
+
+  return {
+    targetStrategyId: normalizedStrategyId,
+    targetLabel,
+    headline: comparisonHeadline(comparisons, targetLabel),
+    comparisons,
+    opportunities: patientOpportunities(actualRun, targetRun),
+  };
 }
 
 function patientById(run: SimulationRun, patientId: string): RuntimePatient | undefined {
@@ -763,6 +1196,10 @@ function createWhatIfCoachComparison(
   frontEndFocusRun: SimulationRun,
   middleFlowFocusRun: SimulationRun,
   dispositionFocusRun: SimulationRun,
+  resourceAwareRun: SimulationRun,
+  safetyFirstRun: SimulationRun,
+  fastTrackRun: SimulationRun,
+  balancedOperationsRun: SimulationRun,
 ): WhatIfCoachComparison {
   return {
     headline: "Compare how different operational focus strategies change patient flow from the same scenario.",
@@ -792,6 +1229,26 @@ function createWhatIfCoachComparison(
         label: "Disposition Focus Coach",
         description: "Prioritizes results review and discharge/admit decisions to clear rooms and define boarding.",
       }),
+      strategySummary(resourceAwareRun, {
+        id: "resource_aware",
+        label: "Resource-Aware Coach",
+        description: "Works around nurse, tech, room, and provider constraints before consuming scarce support capacity.",
+      }),
+      strategySummary(safetyFirstRun, {
+        id: "safety_first",
+        label: "Safety First Coach",
+        description: "Prioritizes deteriorating patients, overdue reassessments, high-risk waits, and time-sensitive cardiac/sepsis flow.",
+      }),
+      strategySummary(fastTrackRun, {
+        id: "fast_track",
+        label: "Fast Track Coach",
+        description: "Prioritizes eligible lower-acuity patients into Fast Track and keeps vertical-care patients moving.",
+      }),
+      strategySummary(balancedOperationsRun, {
+        id: "balanced_operations",
+        label: "Balanced Operations Coach",
+        description: "Blends safety, throughput, disposition, Fast Track, and resource-aware priorities.",
+      }),
     ],
   };
 }
@@ -805,18 +1262,23 @@ export function createOptimalFlowBenchmark(
   const frontEndFocusRun = runFrontEndFocusCoachBenchmark(scenario, deck, actualRun.currentMinute);
   const middleFlowFocusRun = runMiddleFlowFocusCoachBenchmark(scenario, deck, actualRun.currentMinute);
   const dispositionFocusRun = runDispositionFocusCoachBenchmark(scenario, deck, actualRun.currentMinute);
+  const resourceAwareRun = runResourceAwareCoachBenchmark(scenario, deck, actualRun.currentMinute);
+  const safetyFirstRun = runSafetyFirstCoachBenchmark(scenario, deck, actualRun.currentMinute);
+  const fastTrackRun = runFastTrackCoachBenchmark(scenario, deck, actualRun.currentMinute);
+  const balancedOperationsRun = runBalancedOperationsCoachBenchmark(scenario, deck, actualRun.currentMinute);
   const comparisons = metricComparisons(actualRun.metrics, benchmarkRun.metrics);
-  const worseComparisons = comparisons.filter((comparison) => comparison.interpretation === "worse").length;
+  const headline = comparisonHeadline(comparisons, "Optimal Flow Coach");
 
   return {
     benchmarkRun,
     frontEndFocusRun,
     middleFlowFocusRun,
     dispositionFocusRun,
-    headline:
-      worseComparisons === 0
-        ? "Actual flow is tracking close to benchmark."
-        : `${worseComparisons} operational metric(s) trail the benchmark.`,
+    resourceAwareRun,
+    safetyFirstRun,
+    fastTrackRun,
+    balancedOperationsRun,
+    headline,
     comparisons,
     opportunities: patientOpportunities(actualRun, benchmarkRun),
     whatIfComparison: createWhatIfCoachComparison(
@@ -825,6 +1287,10 @@ export function createOptimalFlowBenchmark(
       frontEndFocusRun,
       middleFlowFocusRun,
       dispositionFocusRun,
+      resourceAwareRun,
+      safetyFirstRun,
+      fastTrackRun,
+      balancedOperationsRun,
     ),
   };
 }

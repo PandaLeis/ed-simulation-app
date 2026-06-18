@@ -21,6 +21,7 @@ const pendingItemLabels: Record<PendingItem["type"], string> = {
   blood_cultures: "Blood cultures",
   antibiotics: "Antibiotics",
   iv_fluids: "IV fluids",
+  admission_decision: "Admission acceptance",
   boarding_bed: "Boarding bed",
 };
 

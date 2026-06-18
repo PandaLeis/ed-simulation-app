@@ -1,6 +1,6 @@
 # ED Provider Simulation App - v1 Feature Summary
 
-Last updated: June 16, 2026
+Last updated: June 18, 2026
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The simulation core is separated from the React UI and owns the ED rules, state 
 
 Implemented capabilities:
 - Deterministic synthetic patient deck generation from scenario seed.
-- Patient state machine from arrival through triage, waiting, rooming, provider evaluation, orders, results, disposition, boarding, departure, or LWBS.
+- Patient state machine from arrival through triage, waiting, rooming, provider evaluation, orders, results, disposition, admission pending, boarding, departure, or LWBS.
 - Provider action validation through `getAvailableProviderActions`.
 - Provider action time costs.
 - Event logging for arrivals, triage, rooming, orders, results, disposition, boarding, room release, LWBS, and workflow changes.
@@ -44,12 +44,12 @@ Implemented areas:
 - Live Operations tab.
 - Scenario Tuning tab.
 - Additional Stats tab.
-- Main view tabs for Workflow and Facility Setup.
+- Main view tabs for Workflow, Facility Setup, Benchmark, Coach Comparison, and Graphs.
 - Patient Status panel.
 - Process flow columns.
 - Facility Setup room map with available, occupied, and blocked room status.
 - Facility summary cards for room availability, waiting room, triage, and boarding.
-- Right rail with Actions, Coach, Benchmark, Debrief, and Events.
+- Right rail with Actions, Coach, Guardrails, Debrief, and Activity.
 - Dark mode and light mode.
 - Auto-run clock with configurable speed.
 - Departed and LWBS patient cards show closed risk status and stopped elapsed time.
@@ -58,10 +58,12 @@ Implemented areas:
 Current process columns:
 - Front-End Triage
 - Waiting Room
+- Fast Track
 - Roomed: Awaiting Provider
 - Roomed: Workup Pending
 - Roomed: Results Ready
 - Roomed: Disposition Needed
+- Admission Pending
 - Boarding
 - Departed
 
@@ -77,19 +79,27 @@ Implemented controls:
 - Front-End Triage Provider mode: unavailable, manual, or automated.
 - ED room capacity.
 - Provider count.
+- Nurse count.
+- Tech count.
+- Fast Track enabled/disabled.
 - Simulation length: 2, 4, 8, 12, 24, or 48 hours.
 - Arrivals per hour.
 - Typical provider evaluation minutes from the local ED.
 - Typical front-end triage minutes from the local ED.
 - Typical lab turnaround minutes from the local ED.
 - Typical imaging turnaround minutes from the local ED.
+- Typical admission acceptance / consult delay minutes from the local ED.
 - Typical boarding duration minutes from the local ED.
+- Typical room cleaning / bed turnover minutes from the local ED.
 - LWBS enabled/disabled.
 - Minimum wait before LWBS.
 
 Default v1 baseline:
 - Automated Front-End Triage Provider.
+- Fast Track enabled.
 - 1 ED provider.
+- 2 nurses.
+- 1 tech.
 - 4-hour shift.
 - 12 expected arrivals per hour.
 - 48 synthetic patients generated in the default scenario.
@@ -114,6 +124,7 @@ Implemented behavior:
 - Automated Front-End Triage can manage the triage line without ED provider clicks.
 - Automated Front-End Triage handles one triage patient per simulation minute.
 - Automated Front-End Triage prioritizes lower ESI number first, then patient arrival order.
+- Automated Front-End Triage applies an aging override after prolonged front-end waits so older triage patients are not indefinitely buried behind newer higher-acuity arrivals.
 - Automated Front-End Triage starts available protocol orders before sending that patient to the Waiting Room.
 - Automated Front-End Triage sends no-workup patients directly to the Waiting Room.
 - Automated Front-End Triage logs provider decisions under the separate front-end triage provider.
@@ -124,6 +135,7 @@ Implemented behavior:
 - Turning the triage provider off moves current triage patients to the Waiting Room.
 - Turning the triage provider back on returns untriaged waiting patients to Front-End Triage.
 - Patients who already completed triage remain in the Waiting Room when triage is re-enabled.
+- Flow Guardrails flag aging front-end triage backlog when patients have not cleared triage within the configured v1 threshold.
 
 Important source of truth:
 - `triagedAt` determines whether the patient has completed triage.
@@ -131,6 +143,59 @@ Important source of truth:
 Primary files:
 - `src/simulation/simulationEngine.ts`
 - `src/simulation/actionRules.ts`
+
+## v1 Fast Track / Vertical Care
+
+Fast Track is modeled as a separate vertical-care lane for lower-acuity synthetic patients. It is designed to decompress room demand without changing clinical diagnosis or treatment rules.
+
+Implemented behavior:
+- Scenario Tuning can enable or disable Fast Track.
+- Eligible waiting-room patients can be moved to Fast Track without consuming an ED room.
+- Fast Track eligibility is limited in v1 to lower-acuity ESI 4-5 patients without cardiac or sepsis pathways and without complex workups.
+- Fast Track patients remain available for ED provider evaluation, orders, results review, and disposition.
+- The Coach can recommend Fast Track when the next waiting patient is eligible, preserving rooms for higher-acuity flow.
+- Fast Track census and total patients fast-tracked are tracked in metrics.
+- Patient details show when the patient was fast-tracked.
+
+Important boundary:
+- Fast Track is an operational placement lane, not a clinical decision-support pathway.
+- Fast Track v1 does not create a separate staffing pool; it still uses the ED provider action model.
+
+Primary files:
+- `src/simulation/types.ts`
+- `src/simulation/actionRules.ts`
+- `src/simulation/simulationEngine.ts`
+- `src/simulation/metricsEngine.ts`
+- `src/simulation/scenarioTuning.ts`
+- `src/ui/App.tsx`
+
+## v1 Waiting Room Reassessment + Deterioration
+
+Waiting Room Reassessment + Deterioration models operational safety pressure while synthetic patients wait. It is not clinical decision support and does not diagnose patient deterioration.
+
+Implemented behavior:
+- Waiting-room patients receive a next reassessment due time when they enter the waiting room.
+- Reassessment intervals are based on synthetic ESI and current operational risk level.
+- Overdue waiting-room patients expose a provider action to reassess the patient.
+- Reassessment records `lastReassessedAt` and schedules the next reassessment due time.
+- Patients who remain overdue beyond the v1 grace period can deteriorate deterministically while waiting.
+- Deterioration increases operational risk and can raise synthetic acuity priority.
+- Deterioration logs a patient event and is visible on the patient card and Patient Status panel.
+- Live metrics track reassessments overdue, longest reassessment overdue, and waiting-room deteriorations.
+- Flow Guardrails flag overdue reassessment and deteriorated waiting-room patients.
+- Coach Mode can recommend reassessment when a waiting-room patient is overdue and no better placement action is available.
+
+Important boundary:
+- Reassessment and deterioration are operational training signals only.
+- The feature does not recommend medical treatment, diagnosis, or real-world triage decisions.
+
+Primary files:
+- `src/simulation/waitingRoomSafety.ts`
+- `src/simulation/simulationEngine.ts`
+- `src/simulation/actionRules.ts`
+- `src/simulation/metricsEngine.ts`
+- `src/simulation/flowGuardrails.ts`
+- `src/ui/App.tsx`
 
 ## v1 Protocol Orders and Workup Bundles
 
@@ -141,6 +206,7 @@ Implemented behavior:
 - Expanded Complaint Taxonomy v1 for broader synthetic ED presentations.
 - Chest pain and suspected ACS synthetic presentations in the default complaint mix.
 - Suspected ACS patients are modeled as high-acuity and cardiac-workup heavy without asserting a confirmed diagnosis.
+- The default training deck guarantees at least one deterministic, seed-randomized STEMI-alert pathway patient when an eligible chest pain or suspected ACS candidate is available.
 - Workup type shown in Patient Status.
 - Protocol status shown on patient cards and details.
 - Orders identified in triage.
@@ -152,6 +218,7 @@ Chest pain / suspected ACS workflow behavior:
 - Chest pain remains the presenting complaint, while suspected ACS represents an operational higher-risk pathway.
 - Cardiac workups create discrete synthetic orders for ECG, troponin, repeat troponin, and chest X-ray.
 - A small deterministic subset of cardiac patients follows a STEMI-alert pathway without asserting a confirmed diagnosis.
+- STEMI-alert pathway patients display a stronger `STEMI` badge on the patient card in addition to the cardiac pathway marker.
 - ECG completion, ECG review, and STEMI-alert activation are logged as simulation events.
 - Promptly started cardiac protocols target ECG completion under 10 minutes from arrival.
 - Automated Front-End Triage prioritizes cardiac protocol orders to protect door-to-ECG flow.
@@ -238,7 +305,9 @@ Implemented PERT-timed areas:
 - Front-End Triage.
 - Lab turnaround.
 - Imaging turnaround.
+- Admission acceptance / consult delay.
 - Boarding duration.
+- Room cleaning / bed turnover.
 
 Provider evaluation time uses the scenario's typical provider evaluation minutes as the baseline, then adjusts the timing range by ESI acuity:
 - ESI 1: 1.8x
@@ -257,6 +326,105 @@ Primary files:
 - `src/simulation/scenarioTuning.ts`
 - `src/simulation/arrivalGenerator.ts`
 - `src/simulation/simulationEngine.ts`
+
+## v1 Consult / Admission Delay
+
+Consult / Admission Delay models the operational gap between the ED provider deciding to admit a patient and the inpatient service or accepting process completing admission acceptance. It is a flow-delay model only and does not represent clinical consultation advice.
+
+Implemented behavior:
+- The `admit_inpatient` provider action moves the patient to Admission Pending when boarding is enabled.
+- Admission Pending patients keep occupying their ED room while waiting for acceptance.
+- A deterministic patient-specific admission acceptance delay is generated from the scenario timing profile.
+- Once admission acceptance is ready, the patient moves to Boarding and the occupied room becomes blocked.
+- Boarding duration begins after admission acceptance, not at the initial admit decision.
+- Admission request and admission acceptance events are logged.
+- Patient details show admission requested and admission accepted times.
+- Scenario Tuning includes a local ED typical admission acceptance / consult delay input.
+- Facility Setup and live metrics show the Admission Pending census.
+
+Implemented metrics:
+- Admission Pending census.
+- Average admission acceptance delay.
+- Total admission delay minutes.
+- Boarding minutes after admission acceptance.
+
+Important boundary:
+- This is an operational acceptance-delay model, not a clinical consult workflow or specialty-specific decision pathway.
+
+Primary files:
+- `src/simulation/types.ts`
+- `src/simulation/timingProfile.ts`
+- `src/simulation/arrivalGenerator.ts`
+- `src/simulation/scenarioTuning.ts`
+- `src/simulation/simulationEngine.ts`
+- `src/simulation/metricsEngine.ts`
+- `src/ui/App.tsx`
+
+## v1 Bed Turnover / Room Cleaning
+
+Bed Turnover / Room Cleaning models the operational delay between a patient leaving an ED room and that room becoming ready for the next patient.
+
+Implemented behavior:
+- Discharged and admitted-departed patients no longer make the room instantly available.
+- The room enters a `cleaning` state after the patient departs.
+- Cleaning duration is deterministic and generated from the scenario timing profile.
+- The room becomes available only after the cleaning ready time is reached.
+- Room cleaning start and room available events are logged.
+- Scenario Tuning includes a local ED typical room cleaning / bed turnover input.
+- Facility Setup shows cleaning rooms in the room summary, legend, and room map.
+- Flow Guardrails flag room turnover pressure when cleaning rooms exist and no rooms are available.
+
+Implemented metrics:
+- Cleaning rooms.
+- Current room cleaning minutes.
+- Available, occupied, blocked, and cleaning room counts.
+
+Important boundary:
+- Room cleaning is an operational throughput delay only; it does not model EVS staffing assignments or infection-control rules.
+
+Primary files:
+- `src/simulation/types.ts`
+- `src/simulation/timingProfile.ts`
+- `src/simulation/arrivalGenerator.ts`
+- `src/simulation/scenarioTuning.ts`
+- `src/simulation/simulationEngine.ts`
+- `src/simulation/metricsEngine.ts`
+- `src/simulation/flowGuardrails.ts`
+- `src/ui/App.tsx`
+
+## v1 Nurse / Tech Resource Constraints
+
+Nurse / Tech Resource Constraints model operational support capacity that can limit patient movement even when an ED provider and room are available.
+
+Implemented behavior:
+- Scenario Tuning includes configurable nurse count and tech count.
+- Rooming requires both nurse and tech capacity.
+- Fast Track movement requires tech capacity.
+- Waiting-room reassessment requires nurse capacity.
+- Protocol order starts and provider order placement require nurse and tech capacity.
+- Discharge and admit decisions require nurse capacity.
+- Support resources are reserved for the action duration and released when the action completes.
+- Action buttons are disabled with resource-specific reasons when required support capacity is unavailable.
+- Live Operations shows nurse and tech busy status.
+- Flow Guardrails flag nurse or tech capacity pressure when patients need movement or disposition.
+
+Implemented metrics:
+- Nurses busy.
+- Techs busy.
+- Nurse busy minutes.
+- Tech busy minutes.
+
+Important boundary:
+- Nurse and tech resources are operational capacity constraints only. v1 does not assign named staff members, model skill mix, or make clinical staffing recommendations.
+
+Primary files:
+- `src/simulation/supportResources.ts`
+- `src/simulation/actionRules.ts`
+- `src/simulation/simulationEngine.ts`
+- `src/simulation/metricsEngine.ts`
+- `src/simulation/flowGuardrails.ts`
+- `src/simulation/scenarioTuning.ts`
+- `src/ui/App.tsx`
 
 ## v1 LWBS
 
@@ -308,6 +476,7 @@ The Debrief tab summarizes provider decisions and operational bottlenecks.
 
 Implemented feedback:
 - Headline summary for seen, departed, and LWBS.
+- In-app explanation of how to interpret positive feedback, watch items, and opportunities.
 - Door-to-provider.
 - Seen per hour.
 - LWBS.
@@ -317,6 +486,7 @@ Implemented feedback:
 - Bottleneck flags.
 - Decision feedback.
 - Notable patient timelines.
+- Section-level explanations for bottlenecks, decision feedback, and notable patients.
 
 Primary file:
 - `src/simulation/providerDebrief.ts`
@@ -330,6 +500,7 @@ Implemented guardrails:
 - Roomed patient not yet seen after a delay.
 - Results ready and available for review.
 - Disposition-ready patient awaiting discharge or admit decision.
+- Admission acceptance delay after admit decision.
 - High-risk waiting-room patient while room capacity is available.
 - Boarding pressure consuming or blocking room capacity.
 
@@ -337,6 +508,7 @@ Important boundary:
 - Guardrails are generated in the simulation layer.
 - Guardrails do not automatically perform actions.
 - Guardrails teach operational flow opportunities during the live run.
+- The Guardrails tab explains severity, operational rationale, and suggested flow response for each active guardrail.
 
 Primary files:
 - `src/simulation/flowGuardrails.ts`
@@ -350,6 +522,8 @@ Implemented behavior:
 - Runs a benchmark simulation in the simulation layer.
 - Uses the same synthetic arrivals and scenario inputs.
 - Compares actual flow against benchmark flow at the same simulation minute.
+- Labels the detailed comparison as Provider Run versus the selected coach target.
+- Allows the detailed comparison target to be changed from Optimal Flow Coach to any focused coach.
 - Does not replace the user run.
 - Does not make clinical recommendations.
 - Identifies operational differences such as earlier rooming opportunities.
@@ -375,16 +549,22 @@ Primary file:
 
 ## v1 What-If Coach Comparison
 
-The Benchmark tab also shows what would happen if the coach emphasized different operational sections of the ED process.
+The Coach Comparison tab shows what would happen if the coach emphasized different operational sections of the ED process.
 
 Implemented behavior:
 - Runs focused coach benchmarks in the simulation layer.
 - Uses the same scenario and same synthetic patient deck as the provider run and optimal benchmark.
 - Keeps the comparison deterministic for the same seed and scenario.
-- Shows five side-by-side strategies: Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, and Disposition Focus Coach.
+- Shows nine selectable strategies: Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach.
+- Lets the user choose which coach comparison cards are visible in the Coach Comparison tab.
+- Lets the user choose which coach the Provider Run is compared against in the detailed metric rows.
 - Front-End Focus Coach prioritizes triage, protocol starts, and waiting-room intake before downstream roomed-patient work.
 - Middle Flow Focus Coach prioritizes roomed patients, provider evaluation, orders, and diagnostic result movement.
 - Disposition Focus Coach prioritizes results review and discharge/admit decisions to clear rooms and define boarding.
+- Resource-Aware Coach prioritizes useful work around nurse, tech, room, and provider constraints before consuming scarce support capacity.
+- Safety First Coach prioritizes deteriorating patients, overdue reassessments, high-risk waiting patients, and time-sensitive cardiac/sepsis flow before general throughput optimization.
+- Fast Track Coach prioritizes eligible lower-acuity waiting-room patients into Fast Track and keeps vertical-care patients moving through evaluation, results, and disposition.
+- Balanced Operations Coach blends safety, throughput, disposition, Fast Track, and resource-aware priorities as a general-purpose teaching comparator.
 - Compares key outcomes including departed patients, LWBS, longest wait, seen per hour, results-ready patients waiting, boarding minutes, door-to-ECG performance, and sepsis antibiotics timing.
 
 Important boundary:
@@ -395,6 +575,23 @@ Important boundary:
 Primary files:
 - `src/simulation/optimalFlowBenchmark.ts`
 - `src/simulation/types.ts`
+- `src/ui/App.tsx`
+- `src/ui/styles.css`
+
+## v1 Graphs
+
+The Graphs tab shows operational trends over simulation time using the current run event log.
+
+Implemented behavior:
+- Adds Graphs as a main workspace tab after Benchmark.
+- Reconstructs time-series points from simulation events and patient state transitions.
+- Shows Flow Census Over Time for waiting room, roomed active patients, results waiting, and admission/boarding.
+- Shows Throughput Over Time for arrivals, patients seen, departures, and LWBS.
+- Shows Safety + Quality Signals for reassessments, deteriorations, LWBS, and STEMI alerts.
+- Uses local SVG charts without adding a charting dependency.
+- Keeps graph display out of the simulation rules.
+
+Primary files:
 - `src/ui/App.tsx`
 - `src/ui/styles.css`
 
@@ -410,7 +607,7 @@ Implemented behavior:
 - Preserves benchmark-only actions so the user can see what optimal flow would have done even if the provider did not make that selection.
 - Exposes an Activity right-rail tab for recent activity and summary counts.
 - Exports the activity timeline as a CSV file from the browser.
-- Exports an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, and Disposition Focus Coach records.
+- Exports an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
 
 Primary files:
 - `src/simulation/activityTimeline.ts`

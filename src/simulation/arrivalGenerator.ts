@@ -316,6 +316,110 @@ function workupDistributionForComplaint(complaint: ComplaintCategory): Scenario[
   return complaintWorkupDistribution[complaint];
 }
 
+function stemiPromotionScore(patient: ScenarioPatient): number {
+  if (patient.cardiacPathway === "stemi_alert") {
+    return 0;
+  }
+
+  if (patient.complaintCategory === "suspected_acs" && patient.workupType === "cardiac") {
+    return 1;
+  }
+
+  if (patient.complaintCategory === "chest_pain" && patient.workupType === "cardiac") {
+    return 2;
+  }
+
+  if (patient.complaintCategory === "suspected_acs" || patient.complaintCategory === "chest_pain") {
+    return 3;
+  }
+
+  if (patient.cardiacPathway === "possible_acs") {
+    return 4;
+  }
+
+  if (patient.workupType === "cardiac") {
+    return 5;
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+function chooseStemiPromotionCandidates(
+  deck: ScenarioPatient[],
+  promotionCount: number,
+  seed: string,
+): string[] {
+  const promotionRandom = createSeededRandom(`${seed}:stemi-promotion`);
+  const candidates = deck
+    .filter((patient) => patient.cardiacPathway !== "stemi_alert")
+    .map((patient) => ({ patient, score: stemiPromotionScore(patient) }))
+    .filter(({ score }) => Number.isFinite(score))
+    .sort((left, right) => left.patient.patientNumber - right.patient.patientNumber);
+  const promotedIds: string[] = [];
+
+  while (promotedIds.length < promotionCount && candidates.length > 0) {
+    const bestScore = Math.min(...candidates.map((candidate) => candidate.score));
+    const bestCandidateIndexes = candidates
+      .map((candidate, index) => ({ index, score: candidate.score }))
+      .filter((candidate) => candidate.score === bestScore)
+      .map((candidate) => candidate.index);
+    const selectedCandidateIndex = promotionRandom.pick(bestCandidateIndexes);
+    const [selected] = candidates.splice(selectedCandidateIndex, 1);
+
+    if (selected) {
+      promotedIds.push(selected.patient.id);
+    }
+  }
+
+  return promotedIds;
+}
+
+function ensureMinimumStemiAlertPatients(
+  deck: ScenarioPatient[],
+  minimumStemiAlertPatients: number,
+  seed: string,
+): ScenarioPatient[] {
+  const required = Math.max(0, Math.floor(minimumStemiAlertPatients));
+  const currentStemiCount = deck.filter((patient) => patient.cardiacPathway === "stemi_alert").length;
+
+  if (required === 0 || currentStemiCount >= required) {
+    return deck;
+  }
+
+  const candidates = chooseStemiPromotionCandidates(deck, required - currentStemiCount, seed);
+
+  if (candidates.length === 0) {
+    return deck;
+  }
+
+  const promotedIds = new Set(candidates);
+
+  return deck.map((patient) => {
+    if (!promotedIds.has(patient.id)) {
+      return patient;
+    }
+
+    const timing = workupTiming.cardiac;
+
+    return {
+      ...patient,
+      esi: patient.esi > 2 ? 2 : patient.esi,
+      workupType: "cardiac",
+      cardiacPathway: "stemi_alert",
+      admitProbability: Math.max(patient.admitProbability, 0.65),
+      dischargeProbability: Math.min(patient.dischargeProbability, 0.3),
+      expectedLabMinutes:
+        patient.expectedLabMinutes > 0
+          ? patient.expectedLabMinutes
+          : timing.labs,
+      expectedImagingMinutes:
+        patient.expectedImagingMinutes > 0
+          ? patient.expectedImagingMinutes
+          : timing.imaging,
+    };
+  });
+}
+
 export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
   const random = createSeededRandom(scenario.randomSeed);
   const deck: ScenarioPatient[] = [];
@@ -337,6 +441,7 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
         Math.max(0.01, admissionByEsi[esi] + complaintRiskModifier(complaintCategory)),
       );
       const patientNumber = deck.length + 1;
+      const roomCleaningRandom = createSeededRandom(`${scenario.randomSeed}:room-cleaning:${patientNumber}`);
 
       deck.push({
         id: `patient-${String(patientNumber).padStart(3, "0")}`,
@@ -356,7 +461,9 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
           timing.imaging === 0
             ? 0
             : samplePertDuration(random, timingRangeFromTypical(timing.imaging * imagingScale, 0.65, 1.9)),
+        expectedAdmissionDecisionMinutes: samplePertDuration(random, scenario.timingProfile.admissionDecision),
         expectedBoardingMinutes: samplePertDuration(random, scenario.timingProfile.boardingDuration),
+        expectedRoomCleaningMinutes: samplePertDuration(roomCleaningRandom, scenario.timingProfile.roomCleaning),
         cardiacPathway,
         lwbsBaseRisk: Math.max(0.02, 0.18 - esi * 0.025),
         patienceProfile: random.weighted({
@@ -370,7 +477,9 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
     }
   }
 
-  return deck.sort((left, right) => left.arrivalMinute - right.arrivalMinute);
+  return ensureMinimumStemiAlertPatients(deck, scenario.minimumStemiAlertPatients, scenario.randomSeed).sort(
+    (left, right) => left.arrivalMinute - right.arrivalMinute,
+  );
 }
 
 export function createRuntimePatients(deck: ScenarioPatient[]) {
@@ -379,5 +488,6 @@ export function createRuntimePatients(deck: ScenarioPatient[]) {
     state: "not_arrived" as const,
     pendingItems: [],
     riskLevel: "low" as const,
+    deteriorationCount: 0,
   }));
 }

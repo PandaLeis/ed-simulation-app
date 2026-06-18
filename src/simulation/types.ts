@@ -36,6 +36,7 @@ export type PatientState =
   | "not_arrived"
   | "triage"
   | "waiting"
+  | "fast_track"
   | "roomed"
   | "provider_seen"
   | "orders_placed"
@@ -43,6 +44,7 @@ export type PatientState =
   | "results_ready"
   | "ready_for_disposition"
   | "disposition_decision_made"
+  | "admission_pending"
   | "boarding"
   | "departed"
   | "lwbs";
@@ -60,15 +62,20 @@ export type PendingItemType =
   | "blood_cultures"
   | "antibiotics"
   | "iv_fluids"
+  | "admission_decision"
   | "boarding_bed";
 
 export type CardiacPathway = "none" | "possible_acs" | "stemi_alert";
 
 export type TriageProviderMode = "unavailable" | "manual" | "automated";
 
+export type SupportResourceRole = "nurse" | "tech";
+
 export type ProviderActionType =
   | "complete_triage"
   | "room_patient"
+  | "fast_track_patient"
+  | "reassess_waiting_patient"
   | "start_protocol_orders"
   | "see_patient"
   | "place_orders"
@@ -117,7 +124,9 @@ export interface TimingProfile {
   triage: PertTimingRange;
   labTurnaround: PertTimingRange;
   imagingTurnaround: PertTimingRange;
+  admissionDecision: PertTimingRange;
   boardingDuration: PertTimingRange;
+  roomCleaning: PertTimingRange;
 }
 
 export interface Scenario {
@@ -128,6 +137,9 @@ export interface Scenario {
   randomSeed: string;
   roomCapacity: number;
   providerCount: number;
+  nurseCount: number;
+  techCount: number;
+  fastTrackEnabled: boolean;
   triageProviderEnabled: boolean;
   triageProviderMode: TriageProviderMode;
   arrivalProfile: HourlyArrivalProfile[];
@@ -139,6 +151,7 @@ export interface Scenario {
   timingProfile: TimingProfile;
   boardingProfile: BoardingProfile;
   lwbsProfile: LWBSProfile;
+  minimumStemiAlertPatients: number;
 }
 
 export interface ScenarioTuningConfig {
@@ -146,6 +159,9 @@ export interface ScenarioTuningConfig {
   triageProviderMode: TriageProviderMode;
   roomCapacity: number;
   providerCount: number;
+  nurseCount: number;
+  techCount: number;
+  fastTrackEnabled: boolean;
   shiftDurationMinutes: number;
   expectedArrivalsPerHour: number;
   triageDurationMultiplier: number;
@@ -153,7 +169,9 @@ export interface ScenarioTuningConfig {
   triageTypicalMinutes: number;
   labTurnaroundTypicalMinutes: number;
   imagingTurnaroundTypicalMinutes: number;
+  admissionDecisionTypicalMinutes: number;
   boardingDurationTypicalMinutes: number;
+  roomCleaningTypicalMinutes: number;
   admitBoardingDelayMinutes: number;
   lwbsEnabled: boolean;
   minimumWaitBeforeLWBS: number;
@@ -181,7 +199,9 @@ export interface ScenarioPatient {
   observationProbability: number;
   expectedLabMinutes: number;
   expectedImagingMinutes: number;
+  expectedAdmissionDecisionMinutes: number;
   expectedBoardingMinutes: number;
+  expectedRoomCleaningMinutes: number;
   cardiacPathway: CardiacPathway;
   lwbsBaseRisk: number;
   patienceProfile: "low" | "medium" | "high";
@@ -205,11 +225,17 @@ export interface RuntimePatient extends ScenarioPatient {
   triagedAt?: number;
   roomedAt?: number;
   providerSeenAt?: number;
+  fastTrackedAt?: number;
+  lastReassessedAt?: number;
+  nextReassessmentDueAt?: number;
+  deterioratedAt?: number;
+  deteriorationCount: number;
   ordersPlacedAt?: number;
   resultsReadyAt?: number;
   resultsReviewedAt?: number;
   readyForDispositionAt?: number;
   dispositionDecisionAt?: number;
+  admissionAcceptedAt?: number;
   departedAt?: number;
   lwbsAt?: number;
   ecgCompletedAt?: number;
@@ -224,7 +250,10 @@ export interface RuntimePatient extends ScenarioPatient {
 export interface EDRoom {
   id: string;
   patientId?: string;
-  status: "available" | "occupied" | "blocked";
+  previousPatientId?: string;
+  status: "available" | "occupied" | "blocked" | "cleaning";
+  cleaningStartedAt?: number;
+  cleaningReadyAt?: number;
 }
 
 export interface ProviderAction {
@@ -242,6 +271,24 @@ export interface ProviderState {
   status: "idle" | "busy";
   busyUntilMinute?: number;
   currentAction?: ProviderAction;
+  busyMinutes: number;
+  idleMinutes: number;
+}
+
+export interface SupportResourceAssignment {
+  id: string;
+  role: SupportResourceRole;
+  actionType: ProviderActionType;
+  patientId?: string;
+  decisionId: string;
+  startedAt: number;
+  completedAt: number;
+}
+
+export interface SupportResourcePool {
+  role: SupportResourceRole;
+  total: number;
+  busy: SupportResourceAssignment[];
   busyMinutes: number;
   idleMinutes: number;
 }
@@ -271,6 +318,9 @@ export type SimulationEventType =
   | "triage_bypassed"
   | "triage_reopened"
   | "triage_completed"
+  | "patient_fast_tracked"
+  | "patient_reassessed"
+  | "patient_deteriorated"
   | "patient_roomed"
   | "provider_saw_patient"
   | "orders_placed"
@@ -281,9 +331,12 @@ export type SimulationEventType =
   | "results_reviewed"
   | "patient_ready_for_disposition"
   | "disposition_decision_made"
+  | "admission_requested"
+  | "admission_accepted"
   | "patient_boarding_started"
   | "patient_departed"
   | "patient_lwbs"
+  | "room_cleaning_started"
   | "room_available"
   | "metric_updated";
 
@@ -311,12 +364,17 @@ export interface SimulationMetrics {
   lwbsWithOrdersPending: number;
   triageCensus: number;
   waitingRoomCensus: number;
+  fastTrackCensus: number;
+  patientsFastTracked: number;
   averageWaitingRoomWaitMinutes: number | null;
   longestWaitingRoomWaitMinutes: number;
   moderateOrHigherRiskWaitingPatients: number;
   highRiskWaitingPatients: number;
   criticalRiskWaitingPatients: number;
   waitingRoomRiskMinutes: number;
+  reassessmentsOverdue: number;
+  longestReassessmentOverdueMinutes: number;
+  waitingRoomDeteriorations: number;
   chestPainPatientsArrived: number;
   suspectedAcsPatientsArrived: number;
   stemiAlertsActivated: number;
@@ -349,11 +407,16 @@ export interface SimulationMetrics {
   sepsisWaitingWithoutRoom: number;
   sepsisLWBS: number;
   sepsisLWBSRate: number;
+  admissionPendingCensus: number;
+  averageAdmissionDecisionMinutes: number | null;
+  totalAdmissionDecisionMinutes: number;
   activePatientCensus: number;
   boardingCensus: number;
   availableRooms: number;
   occupiedRooms: number;
   blockedRooms: number;
+  cleaningRooms: number;
+  totalRoomCleaningMinutes: number;
   longestCurrentWaitMinutes: number;
   patientsSeenPerHour: number;
   averageDoorToProviderMinutes: number | null;
@@ -363,6 +426,10 @@ export interface SimulationMetrics {
   totalBoardingMinutes: number;
   providerBusyMinutes: number;
   providerIdleMinutes: number;
+  nursesBusy: number;
+  techsBusy: number;
+  nurseBusyMinutes: number;
+  techBusyMinutes: number;
   peakWaitingRoomCensus: number;
   peakActivePatientCensus: number;
 }
@@ -379,11 +446,13 @@ export interface SimulationRun {
   startedAt: string;
   endedAt?: string;
   status: "not_started" | "running" | "paused" | "shift_ended" | "completed";
+  fastTrackEnabled: boolean;
   patients: RuntimePatient[];
   rooms: EDRoom[];
   provider: ProviderState;
   providers: ProviderState[];
   triageProvider: ProviderState;
+  supportResources: SupportResourcePool[];
   triageDurationProfile: TriageDurationProfile;
   triageDurationMultiplier: number;
   timingProfile: TimingProfile;
@@ -459,10 +528,22 @@ export interface OptimalFlowBenchmark {
   frontEndFocusRun: SimulationRun;
   middleFlowFocusRun: SimulationRun;
   dispositionFocusRun: SimulationRun;
+  resourceAwareRun: SimulationRun;
+  safetyFirstRun: SimulationRun;
+  fastTrackRun: SimulationRun;
+  balancedOperationsRun: SimulationRun;
   headline: string;
   comparisons: BenchmarkMetricComparison[];
   opportunities: BenchmarkPatientOpportunity[];
   whatIfComparison: WhatIfCoachComparison;
+}
+
+export interface BenchmarkComparisonView {
+  targetStrategyId: WhatIfCoachStrategyId;
+  targetLabel: string;
+  headline: string;
+  comparisons: BenchmarkMetricComparison[];
+  opportunities: BenchmarkPatientOpportunity[];
 }
 
 export interface BenchmarkCoachRecommendation {
@@ -478,7 +559,11 @@ export type WhatIfCoachStrategyId =
   | "optimal_flow"
   | "front_end_focus"
   | "middle_flow_focus"
-  | "disposition_focus";
+  | "disposition_focus"
+  | "resource_aware"
+  | "safety_first"
+  | "fast_track"
+  | "balanced_operations";
 
 export interface WhatIfCoachStrategySummary {
   id: WhatIfCoachStrategyId;

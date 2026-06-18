@@ -1,10 +1,16 @@
 import type { ProviderActionOption, ProviderActionType, RuntimePatient, SimulationRun } from "./types";
 import { getProviderEvaluationTypicalMinutes } from "./providerEvaluation";
 import { getTriageDurationMinutes } from "./triageDuration";
+import { isCardiacWorkupPatient } from "./cardiacWorkflow";
+import { isSepsisWorkupPatient } from "./sepsisWorkflow";
+import { isReassessmentOverdue } from "./waitingRoomSafety";
+import { hasAvailableSupportResources, supportResourceUnavailableReason } from "./supportResources";
 
 export const DEFAULT_ACTION_COST_MINUTES: Record<ProviderActionType, number> = {
   complete_triage: 0,
   room_patient: 2,
+  fast_track_patient: 1,
+  reassess_waiting_patient: 3,
   start_protocol_orders: 0,
   see_patient: 12,
   place_orders: 4,
@@ -17,6 +23,8 @@ export const DEFAULT_ACTION_COST_MINUTES: Record<ProviderActionType, number> = {
 export const ACTION_LABELS: Record<ProviderActionType, string> = {
   complete_triage: "Send to waiting room",
   room_patient: "Room patient",
+  fast_track_patient: "Move to Fast Track",
+  reassess_waiting_patient: "Reassess waiting patient",
   start_protocol_orders: "Start protocol orders",
   see_patient: "See patient",
   place_orders: "Place orders",
@@ -96,14 +104,37 @@ function actionsForPatient(run: SimulationRun, patient: RuntimePatient): Provide
   const pendingRoomAssignments = run.providers.filter((provider) => provider.currentAction?.type === "room_patient").length;
   const availableRoomCount = run.rooms.filter((room) => room.status === "available").length;
   const roomAvailable = availableRoomCount - pendingRoomAssignments > 0;
+  const roomingSupportAvailable = hasAvailableSupportResources(run, "room_patient");
   const providerEvaluationTypicalMinutes = getProviderEvaluationTypicalMinutes(patient, run.timingProfile.providerEvaluation);
+  const fastTrackEligible = run.fastTrackEnabled && isFastTrackEligible(patient);
 
   switch (patient.state) {
     case "waiting":
       return [
-        option("room_patient", roomAvailable, roomAvailable ? undefined : "No ED room is available"),
+        option(
+          "reassess_waiting_patient",
+          isReassessmentOverdue(patient, run.currentMinute) && hasAvailableSupportResources(run, "reassess_waiting_patient"),
+          isReassessmentOverdue(patient, run.currentMinute)
+            ? supportResourceUnavailableReason(run, "reassess_waiting_patient")
+            : "Reassessment is not due yet",
+        ),
+        option(
+          "fast_track_patient",
+          fastTrackEligible && hasAvailableSupportResources(run, "fast_track_patient"),
+          run.fastTrackEnabled
+            ? fastTrackEligible
+              ? supportResourceUnavailableReason(run, "fast_track_patient")
+              : "Patient is not eligible for Fast Track v1"
+            : "Fast Track is disabled",
+        ),
+        option(
+          "room_patient",
+          roomAvailable && roomingSupportAvailable,
+          roomAvailable ? supportResourceUnavailableReason(run, "room_patient") : "No ED room is available",
+        ),
         option("continue_waiting", true),
       ];
+    case "fast_track":
     case "roomed":
       return [option("see_patient", true, undefined, providerEvaluationTypicalMinutes), option("continue_waiting", true)];
     case "results_pending":
@@ -124,7 +155,14 @@ function actionsForPatient(run: SimulationRun, patient: RuntimePatient): Provide
         ];
       }
 
-      return [option("place_orders", true), option("continue_waiting", true)];
+      return [
+        option(
+          "place_orders",
+          hasAvailableSupportResources(run, "place_orders"),
+          supportResourceUnavailableReason(run, "place_orders"),
+        ),
+        option("continue_waiting", true),
+      ];
     case "results_ready":
       if (patient.providerSeenAt === undefined) {
         return [option("see_patient", true, undefined, providerEvaluationTypicalMinutes), option("continue_waiting", true)];
@@ -132,10 +170,33 @@ function actionsForPatient(run: SimulationRun, patient: RuntimePatient): Provide
 
       return [option("review_results", true), option("continue_waiting", true)];
     case "ready_for_disposition":
-      return [option("discharge_home", true), option("admit_inpatient", true), option("continue_waiting", true)];
+      return [
+        option(
+          "discharge_home",
+          hasAvailableSupportResources(run, "discharge_home"),
+          supportResourceUnavailableReason(run, "discharge_home"),
+        ),
+        option(
+          "admit_inpatient",
+          hasAvailableSupportResources(run, "admit_inpatient"),
+          supportResourceUnavailableReason(run, "admit_inpatient"),
+        ),
+        option("continue_waiting", true),
+      ];
     default:
       return [option("continue_waiting", true)];
   }
+}
+
+function isFastTrackEligible(patient: RuntimePatient): boolean {
+  return (
+    patient.esi >= 4 &&
+    patient.providerSeenAt === undefined &&
+    patient.dispositionDecisionAt === undefined &&
+    !isCardiacWorkupPatient(patient) &&
+    !isSepsisWorkupPatient(patient) &&
+    (patient.workupType === "none" || patient.workupType === "basic_labs" || patient.workupType === "labs_imaging")
+  );
 }
 
 function triageActionsForPatient(run: SimulationRun, patient: RuntimePatient): ProviderActionOption[] {
@@ -157,10 +218,10 @@ function triageActionsForPatient(run: SimulationRun, patient: RuntimePatient): P
     option("complete_triage", triageProviderAvailable, triageProviderAvailable ? undefined : unavailableReason, triageDuration),
     option(
       "start_protocol_orders",
-      triageProviderAvailable && protocolOrdersAvailable,
+      triageProviderAvailable && protocolOrdersAvailable && hasAvailableSupportResources(run, "start_protocol_orders"),
       triageProviderAvailable
         ? protocolOrdersAvailable
-          ? undefined
+          ? supportResourceUnavailableReason(run, "start_protocol_orders")
           : "Protocol orders are unavailable"
         : unavailableReason,
     ),
