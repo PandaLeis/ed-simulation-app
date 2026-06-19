@@ -942,7 +942,7 @@ function admitPatient(run: SimulationRun, scenario: Scenario, patient: RuntimePa
       pendingItems: [pendingItem],
     },
     "admission_requested",
-    `${patient.id} admission requested; awaiting consult/admission acceptance.`,
+    `${patient.id} admission requested; awaiting hospitalist consult/admission acceptance.`,
   );
 }
 
@@ -965,7 +965,7 @@ function startBoarding(run: SimulationRun, patient: RuntimePatient): SimulationR
       pendingItems: [pendingItem],
     },
     "patient_boarding_started",
-    `${patient.id} admission accepted and boarding started.`,
+    `${patient.id} hospitalist accepted admission, placed admission orders, requested inpatient bed, and boarding started.`,
   );
 
   nextRun = {
@@ -1000,7 +1000,7 @@ function processAdmissionAcceptances(run: SimulationRun): SimulationRun {
         patientId: patient.id,
         previousState: "admission_pending",
         newState: "boarding",
-        message: `${patient.id} admission was accepted.`,
+        message: `${patient.id} admission was accepted by hospitalist.`,
         details: {
           admissionDecisionMinutes: run.currentMinute - (patient.dispositionDecisionAt ?? run.currentMinute),
         },
@@ -1047,7 +1047,7 @@ function departPatient(
     },
     "patient_departed",
     dispositionType === "admit_inpatient"
-      ? `${patient.id} departed the ED after boarding.`
+      ? `${patient.id} inpatient bed assigned; patient departed the ED after boarding.`
       : `${patient.id} discharged home.`,
   );
 

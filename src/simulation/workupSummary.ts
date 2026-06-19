@@ -21,8 +21,8 @@ const pendingItemLabels: Record<PendingItem["type"], string> = {
   blood_cultures: "Blood cultures",
   antibiotics: "Antibiotics",
   iv_fluids: "IV fluids",
-  admission_decision: "Admission acceptance",
-  boarding_bed: "Boarding bed",
+  admission_decision: "Hospitalist acceptance",
+  boarding_bed: "Inpatient bed assignment",
 };
 
 const sepsisProtocolOrders: Array<{ name: string; category: PendingItemType }> = [

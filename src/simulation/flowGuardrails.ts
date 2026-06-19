@@ -171,8 +171,8 @@ export function createFlowGuardrails(run: SimulationRun): FlowGuardrailSummary {
   if (run.metrics.admissionPendingCensus > 0 && run.metrics.totalAdmissionDecisionMinutes >= 45) {
     addGuardrail(guardrails, {
       severity: "watch",
-      title: "Admission acceptance delay",
-      message: "Admitted patients are waiting for consult/admission acceptance before boarding can start.",
+      title: "Hospitalist response delaying admission",
+      message: "Admitted patients are waiting for hospitalist consult/admission acceptance before boarding can start.",
       metricValue: `${run.metrics.admissionPendingCensus} pending`,
     });
   }

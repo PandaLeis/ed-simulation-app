@@ -1,6 +1,6 @@
 # ED Provider Simulation App - v1 Feature Summary
 
-Last updated: June 18, 2026
+Last updated: June 19, 2026
 
 ## Purpose
 
@@ -49,9 +49,11 @@ Implemented areas:
 - Process flow columns.
 - Facility Setup room map with available, occupied, and blocked room status.
 - Facility summary cards for room availability, waiting room, triage, and boarding.
-- Right rail with Actions, Coach, Guardrails, Debrief, and Activity.
-- Dark mode and light mode.
+- Facility summary cards include room cleaning, next room ready, hospitalist pending, admission pending, and boarding status.
+- Right rail with Actions, Coach, Guardrails, Debrief, Activity, and Export.
+- Display Options control for Heart Metrics, Sepsis Metrics, Tooltips, and Dark Mode / Light Mode.
 - Auto-run clock with configurable speed.
+- Hover/focus tooltips for major tabs, status cards, controls, metrics, right-rail tabs, and export actions.
 - Departed and LWBS patient cards show closed risk status and stopped elapsed time.
 - Patient cards show whether the ED provider has seen the patient.
 
@@ -88,7 +90,7 @@ Implemented controls:
 - Typical front-end triage minutes from the local ED.
 - Typical lab turnaround minutes from the local ED.
 - Typical imaging turnaround minutes from the local ED.
-- Typical admission acceptance / consult delay minutes from the local ED.
+- Typical hospitalist response / admission acceptance delay minutes from the local ED.
 - Typical boarding duration minutes from the local ED.
 - Typical room cleaning / bed turnover minutes from the local ED.
 - LWBS enabled/disabled.
@@ -327,29 +329,34 @@ Primary files:
 - `src/simulation/arrivalGenerator.ts`
 - `src/simulation/simulationEngine.ts`
 
-## v1 Consult / Admission Delay
+## v1 Hospitalist Consult / Admission Workflow
 
-Consult / Admission Delay models the operational gap between the ED provider deciding to admit a patient and the inpatient service or accepting process completing admission acceptance. It is a flow-delay model only and does not represent clinical consultation advice.
+Hospitalist Consult / Admission Workflow models the operational handoff after the ED provider decides to admit a patient. It covers hospitalist consult/admit request, hospitalist response time, acceptance or request for more information, admission orders, bed request, boarding, inpatient bed assignment, and ED departure. It is a flow-delay model only and does not represent clinical consultation advice.
 
 Implemented behavior:
 - The `admit_inpatient` provider action moves the patient to Admission Pending when boarding is enabled.
-- Admission Pending patients keep occupying their ED room while waiting for acceptance.
-- A deterministic patient-specific admission acceptance delay is generated from the scenario timing profile.
-- Once admission acceptance is ready, the patient moves to Boarding and the occupied room becomes blocked.
-- Boarding duration begins after admission acceptance, not at the initial admit decision.
-- Admission request and admission acceptance events are logged.
-- Patient details show admission requested and admission accepted times.
-- Scenario Tuning includes a local ED typical admission acceptance / consult delay input.
-- Facility Setup and live metrics show the Admission Pending census.
+- Admission Pending patients keep occupying their ED room while waiting for hospitalist response / admission acceptance.
+- A deterministic patient-specific hospitalist response delay is generated from the scenario timing profile.
+- Once hospitalist acceptance is ready, the simulation records acceptance, admission orders, bed request, and boarding start as hospitalist-owned milestones.
+- Boarding duration begins after hospitalist acceptance, not at the initial ED admit decision.
+- Inpatient bed assignment and ED departure occur when the boarding-bed wait completes.
+- Admission request, hospitalist acceptance, boarding start, inpatient bed assignment, and ED departure events are logged.
+- Patient details show the full hospitalist workflow: Hospitalist Consult / Admit Request, Hospitalist Response Time, Acceptance / Request More Info, Admission Orders, Bed Request, Boarding, Inpatient Bed Assigned, and ED Departure.
+- Scenario Tuning includes a local ED typical hospitalist response input.
+- Live Operations shows Hospitalist status with pending consults and next response timing.
+- Facility Setup and live metrics show Admission Pending, Hospitalist Pending, and Boarding census.
 
 Implemented metrics:
+- Hospitalist consults pending.
+- Next hospitalist response.
+- Average hospitalist response.
 - Admission Pending census.
-- Average admission acceptance delay.
 - Total admission delay minutes.
-- Boarding minutes after admission acceptance.
+- Boarding census.
+- Boarding minutes after hospitalist acceptance.
 
 Important boundary:
-- This is an operational acceptance-delay model, not a clinical consult workflow or specialty-specific decision pathway.
+- This is an operational hospitalist handoff and acceptance-delay model, not clinical consultation advice, inpatient order recommendation, or a specialty-specific decision pathway.
 
 Primary files:
 - `src/simulation/types.ts`
@@ -372,10 +379,14 @@ Implemented behavior:
 - Room cleaning start and room available events are logged.
 - Scenario Tuning includes a local ED typical room cleaning / bed turnover input.
 - Facility Setup shows cleaning rooms in the room summary, legend, and room map.
+- Facility Setup shows Next Room Ready when a room is currently available or when a cleaning room has a ready time.
 - Flow Guardrails flag room turnover pressure when cleaning rooms exist and no rooms are available.
 
 Implemented metrics:
 - Cleaning rooms.
+- Next room ready.
+- Average active cleaning time.
+- Waiting for clean room.
 - Current room cleaning minutes.
 - Available, occupied, blocked, and cleaning room counts.
 
@@ -500,7 +511,7 @@ Implemented guardrails:
 - Roomed patient not yet seen after a delay.
 - Results ready and available for review.
 - Disposition-ready patient awaiting discharge or admit decision.
-- Admission acceptance delay after admit decision.
+- Hospitalist response delaying admission.
 - High-risk waiting-room patient while room capacity is available.
 - Boarding pressure consuming or blocking room capacity.
 
@@ -606,8 +617,9 @@ Implemented behavior:
 - Shows benchmark minute and actual-vs-benchmark variance for matched decisions.
 - Preserves benchmark-only actions so the user can see what optimal flow would have done even if the provider did not make that selection.
 - Exposes an Activity right-rail tab for recent activity and summary counts.
-- Exports the activity timeline as a CSV file from the browser.
-- Exports an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
+- Exposes a separate Export right-rail tab for download and copy actions.
+- Exports or copies the activity timeline as CSV from the browser.
+- Exports or copies an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
 
 Primary files:
 - `src/simulation/activityTimeline.ts`
@@ -658,6 +670,8 @@ Core live and additional metrics include:
 - Front-End Triage census.
 - Room utilization.
 - Boarding pressure.
+- Hospitalist pending consults and response timing.
+- Room cleaning / next room ready status.
 - Provider workload.
 - Disposition timing.
 - LWBS count and rate.

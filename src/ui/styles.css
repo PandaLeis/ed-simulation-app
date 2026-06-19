@@ -114,7 +114,7 @@ h2 {
 .statusMessageRow {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .controlStrip button,
@@ -172,6 +172,80 @@ h2 {
   height: var(--status-height);
   min-width: 0;
   padding: 0 10px;
+}
+
+.statusTooltip {
+  outline: none;
+  position: relative;
+}
+
+.statusTooltip::after {
+  background: #1e2a36;
+  border-radius: 8px;
+  bottom: calc(100% + 8px);
+  box-shadow: 0 10px 24px rgb(18 32 47 / 0.18);
+  color: #ffffff;
+  content: attr(data-tooltip);
+  font-size: 0.72rem;
+  font-weight: 800;
+  left: 0;
+  line-height: 1.35;
+  max-width: min(320px, 78vw);
+  min-width: min(260px, 78vw);
+  opacity: 0;
+  padding: 10px 12px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  white-space: normal;
+  z-index: 30;
+}
+
+.statusTooltip::before {
+  border: 7px solid transparent;
+  border-top-color: #1e2a36;
+  bottom: calc(100% - 6px);
+  content: "";
+  left: 18px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  z-index: 31;
+}
+
+.statusTooltip:hover,
+.statusTooltip:focus-visible,
+.speedControl.statusTooltip:focus-within,
+.themeToggle.statusTooltip:focus-within,
+.metricVisibilityControl.statusTooltip:focus-within {
+  border-color: #2b6f8a;
+}
+
+.statusTooltip:hover::after,
+.statusTooltip:hover::before,
+.statusTooltip:focus-visible::after,
+.statusTooltip:focus-visible::before,
+.speedControl.statusTooltip:focus-within::after,
+.speedControl.statusTooltip:focus-within::before,
+.themeToggle.statusTooltip:focus-within::after,
+.themeToggle.statusTooltip:focus-within::before,
+.metricVisibilityControl.statusTooltip:focus-within::after,
+.metricVisibilityControl.statusTooltip:focus-within::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.appShell[data-tooltips="off"] .statusTooltip::after,
+.appShell[data-tooltips="off"] .statusTooltip::before {
+  content: none;
+  opacity: 0;
 }
 
 .statusMessageRow .providerStatus svg,
@@ -309,6 +383,12 @@ h2 {
   min-width: 142px;
 }
 
+.metricVisibilityControl {
+  grid-template-columns: auto auto auto auto;
+  margin-left: auto;
+  min-width: 450px;
+}
+
 .speedControl > span,
 .themeToggle > span,
 .metricVisibilityControl > span {
@@ -355,6 +435,7 @@ h2 {
   color: #18202a;
   font-size: 0.82rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .toggleControl {
@@ -381,7 +462,7 @@ h2 {
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   display: grid;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .setupTabList {
@@ -389,7 +470,7 @@ h2 {
   border-bottom: 1px solid #d7dde4;
   display: flex;
   gap: 6px;
-  overflow-x: auto;
+  overflow: visible;
   padding: 8px;
 }
 
@@ -867,7 +948,7 @@ h2 {
   border-bottom: 1px solid #d7dde4;
   display: flex;
   gap: 6px;
-  overflow-x: auto;
+  overflow: visible;
   padding: 8px;
 }
 
@@ -889,6 +970,22 @@ h2 {
   background: #ffffff;
   border-color: #b8d4de;
   color: #1f6f8b;
+}
+
+.tabTooltip::after {
+  bottom: auto;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+}
+
+.tabTooltip::before {
+  border-bottom-color: #1e2a36;
+  border-top-color: transparent;
+  bottom: auto;
+  left: 18px;
+  top: calc(100% - 6px);
+  z-index: 61;
 }
 
 .mainViewPanel {
@@ -1354,6 +1451,14 @@ h2 {
   margin: 0;
 }
 
+.panelExplanation {
+  color: #667586;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .detailGrid {
   align-items: start;
   display: grid;
@@ -1387,6 +1492,10 @@ h2 {
   grid-column: 2;
 }
 
+.detailGrid .detailHospitalistWorkflow {
+  grid-column: 3 / -1;
+}
+
 .detailGrid dt {
   color: #667586;
   font-size: 0.68rem;
@@ -1399,6 +1508,37 @@ h2 {
   font-size: 0.86rem;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.hospitalistMilestones {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.hospitalistMilestones div {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+}
+
+.hospitalistMilestones dt {
+  color: #667586;
+  font-size: 0.62rem;
+  font-weight: 900;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hospitalistMilestones dd {
+  color: #18202a;
+  font-size: 0.76rem;
+  font-weight: 850;
+  margin: 0;
 }
 
 .orderList,
@@ -2144,6 +2284,13 @@ h2 {
   border-left-color: #c19a2e;
 }
 
+.guardrailItemHeader {
+  align-items: start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
 .feedbackList span {
   font-size: 0.82rem;
   font-weight: 900;
@@ -2157,9 +2304,12 @@ h2 {
 
 .feedbackList em {
   color: #1f6f8b;
+  flex: 0 0 auto;
   font-size: 0.76rem;
   font-style: normal;
   font-weight: 900;
+  line-height: 1.2;
+  padding-top: 1px;
 }
 
 .activityPanel {
@@ -2175,10 +2325,10 @@ h2 {
 }
 
 .activityToolbarActions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: stretch;
+  width: 100%;
 }
 
 .activityToolbar span {
@@ -2197,6 +2347,7 @@ h2 {
   font-weight: 900;
   min-height: 34px;
   padding: 0 9px;
+  width: 100%;
 }
 
 .activityToolbar button:disabled {
@@ -2469,6 +2620,7 @@ h2 {
 .appShell[data-theme="dark"] .protocolLine small,
 .appShell[data-theme="dark"] .patientStatusHeader span,
 .appShell[data-theme="dark"] .emptyState,
+.appShell[data-theme="dark"] .panelExplanation,
 .appShell[data-theme="dark"] .detailGrid dt,
 .appShell[data-theme="dark"] .benchmarkGrid dt,
 .appShell[data-theme="dark"] .benchmarkGrid span,
@@ -2502,6 +2654,7 @@ h2 {
 .appShell[data-theme="dark"] .guardrailLegend dd,
 .appShell[data-theme="dark"] .guardrailExplanation dt,
 .appShell[data-theme="dark"] .guardrailExplanation dd,
+.appShell[data-theme="dark"] .hospitalistMilestones dt,
 .appShell[data-theme="dark"] .feedbackList small,
 .appShell[data-theme="dark"] .actionStatus small,
 .appShell[data-theme="dark"] .eventList time {
@@ -2531,7 +2684,8 @@ h2 {
 .appShell[data-theme="dark"] .coachPanel > strong,
 .appShell[data-theme="dark"] .coachSummary dd,
 .appShell[data-theme="dark"] .debriefPanel > strong,
-.appShell[data-theme="dark"] .feedbackList span {
+.appShell[data-theme="dark"] .feedbackList span,
+.appShell[data-theme="dark"] .hospitalistMilestones dd {
   color: #f2f6fa;
 }
 
@@ -2556,7 +2710,8 @@ h2 {
 .appShell[data-theme="dark"] .coachSummary div,
 .appShell[data-theme="dark"] .orderList li,
 .appShell[data-theme="dark"] .namedOrderList li,
-.appShell[data-theme="dark"] .debriefSummary div {
+.appShell[data-theme="dark"] .debriefSummary div,
+.appShell[data-theme="dark"] .hospitalistMilestones div {
   border-color: #2c3948;
 }
 
@@ -2574,6 +2729,20 @@ h2 {
 
 .appShell[data-theme="dark"] .chartPoint {
   stroke: #111821;
+}
+
+.appShell[data-theme="dark"] .statusTooltip::after {
+  background: #e6edf5;
+  color: #111821;
+}
+
+.appShell[data-theme="dark"] .statusTooltip::before {
+  border-top-color: #e6edf5;
+}
+
+.appShell[data-theme="dark"] .tabTooltip::before {
+  border-bottom-color: #e6edf5;
+  border-top-color: transparent;
 }
 
 @media (max-width: 1180px) {
@@ -2623,6 +2792,14 @@ h2 {
   .detailGrid .detailOrders,
   .detailGrid .detailWide {
     grid-column: span 3;
+  }
+
+  .detailGrid .detailHospitalistWorkflow {
+    grid-column: 1 / -1;
+  }
+
+  .hospitalistMilestones {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .sidePanel {
@@ -2689,10 +2866,15 @@ h2 {
 
   .detailGrid .detailCompact,
   .detailGrid .detailExpectedOrders,
+  .detailGrid .detailHospitalistWorkflow,
   .detailGrid .detailImpact,
   .detailGrid .detailOrders,
   .detailGrid .detailWide {
     grid-column: 1 / -1;
+  }
+
+  .hospitalistMilestones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .board {

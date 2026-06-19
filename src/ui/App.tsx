@@ -143,12 +143,12 @@ const DEFAULT_AUTO_ADVANCE_SECONDS = 2;
 type SetupPanelTab = "live-operations" | "scenario" | "additional-stats";
 type ColorMode = "light" | "dark";
 type MainViewTab = "workflow" | "facility" | "benchmark" | "coach-comparison" | "graphs";
-type RightRailTab = "actions" | "coach" | "guardrails" | "debrief" | "activity";
+type RightRailTab = "actions" | "coach" | "guardrails" | "debrief" | "activity" | "export";
 
 const GUARDRAIL_EXPLANATIONS: Record<string, { action: string; why: string }> = {
-  "Admission acceptance delay": {
-    action: "Resolve acceptance or boarding status so the room impact is visible.",
-    why: "Patients awaiting admission decisions can continue occupying ED capacity.",
+  "Hospitalist response delaying admission": {
+    action: "Follow up on the hospitalist consult or admission acceptance so boarding status and room impact are visible.",
+    why: "Patients awaiting hospitalist acceptance can continue occupying ED capacity and delay room turnover.",
   },
   "Boarding is consuming room capacity": {
     action: "Account for boarded patients as occupied capacity when deciding who can be roomed next.",
@@ -233,6 +233,7 @@ interface SavedAppState {
   selectedSetupPanelTab: SetupPanelTab;
   showHeartMetrics: boolean;
   showSepsisMetrics: boolean;
+  showTooltips?: boolean;
 }
 
 function loadSavedAppState(): SavedAppState | undefined {
@@ -290,6 +291,24 @@ function formatMinute(minute: number): string {
   const suffix = hour >= 12 ? "PM" : "AM";
 
   return `${displayHour}:${displayMinute} ${suffix}`;
+}
+
+function nextRoomReadyMinutes(rooms: EDRoom[], currentMinute: number): number | undefined {
+  const readyTimes = rooms
+    .filter((room) => room.status === "cleaning" && room.cleaningReadyAt !== undefined)
+    .map((room) => Math.max(0, (room.cleaningReadyAt ?? currentMinute) - currentMinute));
+
+  return readyTimes.length > 0 ? Math.min(...readyTimes) : undefined;
+}
+
+function formatRoomReadyStatus(rooms: EDRoom[], currentMinute: number): string {
+  if (rooms.some((room) => room.status === "available")) {
+    return "Now";
+  }
+
+  const minutes = nextRoomReadyMinutes(rooms, currentMinute);
+
+  return minutes === undefined ? "-" : `${minutes} min`;
 }
 
 function mergeDefined<T extends object>(defaults: T, saved: Partial<T> | undefined): T {
@@ -537,6 +556,29 @@ function supportResourceStatusText(run: SimulationRun): string {
   const techTotal = run.supportResources.find((pool) => pool.role === "tech")?.total ?? 0;
 
   return `Nurses ${run.metrics.nursesBusy}/${nurseTotal} busy · Techs ${run.metrics.techsBusy}/${techTotal} busy`;
+}
+
+function pendingHospitalistResponseMinutes(run: SimulationRun): number | undefined {
+  const pendingResponseTimes = run.patients
+    .filter((patient) => patient.state === "admission_pending")
+    .flatMap((patient) =>
+      patient.pendingItems
+        .filter((item) => item.type === "admission_decision")
+        .map((item) => Math.max(0, item.readyAt - run.currentMinute)),
+    );
+
+  return pendingResponseTimes.length > 0 ? Math.min(...pendingResponseTimes) : undefined;
+}
+
+function hospitalistStatusText(run: SimulationRun): string {
+  if (run.metrics.admissionPendingCensus === 0) {
+    return "Hospitalist available · no consults pending";
+  }
+
+  const nextResponseMinutes = pendingHospitalistResponseMinutes(run);
+  const nextResponseText = nextResponseMinutes === undefined ? "response pending" : `next response ${nextResponseMinutes} min`;
+
+  return `Hospitalist ${run.metrics.admissionPendingCensus} pending · ${nextResponseText}`;
 }
 
 function providerSuggestionPriority(suggestion: ProviderSuggestion): number {
@@ -837,7 +879,22 @@ function coreMetricTabs(run: SimulationRun): CoreMetricTab[] {
         { label: "Occupied rooms", value: String(run.metrics.occupiedRooms) },
         { label: "Blocked rooms", value: String(run.metrics.blockedRooms) },
         { label: "Cleaning rooms", value: String(run.metrics.cleaningRooms) },
+        { label: "Next room ready", value: formatRoomReadyStatus(run.rooms, run.currentMinute) },
+        {
+          label: "Avg active cleaning",
+          value:
+            run.metrics.cleaningRooms > 0
+              ? `${formatNumber(run.metrics.totalRoomCleaningMinutes / run.metrics.cleaningRooms)} min`
+              : "-",
+        },
         { label: "Room cleaning minutes", value: `${run.metrics.totalRoomCleaningMinutes} min` },
+        {
+          label: "Waiting for clean room",
+          value:
+            run.metrics.availableRooms === 0 && run.metrics.cleaningRooms > 0
+              ? String(run.metrics.waitingRoomCensus)
+              : "0",
+        },
       ],
     },
     {
@@ -903,8 +960,16 @@ function coreMetricTabs(run: SimulationRun): CoreMetricTab[] {
       value: String(run.metrics.boardingCensus),
       subValue: "patients",
       measures: [
+        { label: "Hospitalist consults pending", value: String(run.metrics.admissionPendingCensus) },
+        {
+          label: "Next hospitalist response",
+          value:
+            pendingHospitalistResponseMinutes(run) === undefined
+              ? "-"
+              : `${pendingHospitalistResponseMinutes(run)} min`,
+        },
         { label: "Admission pending", value: String(run.metrics.admissionPendingCensus) },
-        { label: "Average admission acceptance", value: `${formatNumber(run.metrics.averageAdmissionDecisionMinutes)} min` },
+        { label: "Average hospitalist response", value: `${formatNumber(run.metrics.averageAdmissionDecisionMinutes)} min` },
         { label: "Total admission delay minutes", value: `${run.metrics.totalAdmissionDecisionMinutes} min` },
         { label: "Boarding census", value: String(run.metrics.boardingCensus) },
         { label: "Total boarding minutes", value: `${run.metrics.totalBoardingMinutes} min` },
@@ -935,7 +1000,7 @@ function coreMetricTabs(run: SimulationRun): CoreMetricTab[] {
           value: `${formatNumber(run.metrics.averageResultsReadyToDispositionMinutes)} min`,
         },
         { label: "Admission pending", value: String(run.metrics.admissionPendingCensus) },
-        { label: "Average admission acceptance", value: `${formatNumber(run.metrics.averageAdmissionDecisionMinutes)} min` },
+        { label: "Average hospitalist response", value: `${formatNumber(run.metrics.averageAdmissionDecisionMinutes)} min` },
         { label: "Patients dispositioned", value: String(run.metrics.patientsDispositioned) },
       ],
     },
@@ -1101,6 +1166,137 @@ function tabMeasureIcon(label: string): React.ReactNode {
   return <CircleGauge size={iconSize} />;
 }
 
+function metricTooltip(label: string): string {
+  const descriptions: Record<string, string> = {
+    "Abx <=60": "Percent of sepsis patients who received antibiotics within 60 minutes of arrival.",
+    "Active Census": "Patients currently active in the ED workflow, excluding patients who have already departed or left without being seen.",
+    "Admission Pending": "Patients who need an admission decision or bed assignment and are still occupying ED flow capacity.",
+    "Admission delay minutes": "Total time patients have spent waiting on admission decisions or acceptance.",
+    "Arrived patients": "Total patients who have arrived during this simulation run.",
+    "Average admission acceptance": "Average time from admission request to an acceptance or boarding decision.",
+    "Average hospitalist response": "Average time from ED admission request to hospitalist acceptance for admitted patients.",
+    "Average door-to-ECG": "Average time from patient arrival to ECG completion for chest pain or suspected ACS patients.",
+    "Average door-to-recognition": "Average time from arrival to sepsis recognition.",
+    "Average ED LOS": "Average emergency department length of stay from arrival to departure.",
+    "Average results-ready to disposition": "Average time from results becoming ready to the provider entering a disposition decision.",
+    "Average time to disposition": "Average time from arrival to the provider disposition decision.",
+    "Average wait before LWBS": "Average waiting-room time before patients left without being seen.",
+    "Average waiting-room wait": "Average current wait time for patients still in the waiting room.",
+    "Avg active cleaning": "Average elapsed cleaning time among rooms that are currently in turnover.",
+    "Blocked rooms": "Rooms unavailable for new patients because they are blocked by boarding, constraints, or operational issues.",
+    Boarding: "Patients currently boarding in the ED after admission, still consuming ED room capacity.",
+    "Boarding census": "Current number of admitted patients boarding in ED rooms.",
+    "Boarding Min": "Cumulative boarding minutes accumulated during the current simulation run.",
+    "Cardiac results awaiting review": "Cardiac diagnostic results that are ready but have not yet been reviewed by the provider.",
+    "Chest Pain LWBS": "Chest pain patients who left without being seen, shown as count and rate.",
+    "Chest pain arrivals": "Total chest pain patients who have arrived during this simulation run.",
+    "Critical risk": "Waiting-room patients currently classified as critical risk.",
+    "Door Antibiotics": "Average time from arrival to antibiotics for sepsis patients.",
+    "Door-to-ECG <=10 min": "Percent of chest pain or suspected ACS patients whose ECG was completed within 10 minutes of arrival.",
+    "Door ECG <=10": "Percent of chest pain or suspected ACS patients whose ECG was completed within 10 minutes of arrival.",
+    "Door-to-fluids": "Average time from arrival to IV fluids for sepsis patients.",
+    "Door-to-lactate collection": "Average time from arrival to lactate specimen collection for sepsis patients.",
+    "Door-to-lactate result": "Average time from arrival to lactate result availability for sepsis patients.",
+    "Door-to-blood cultures": "Average time from arrival to blood culture collection for sepsis patients.",
+    "ECG delayed over 10 min": "Number of chest pain or suspected ACS patients whose ECG exceeded the 10-minute target.",
+    "ECG reviewed <=10 min": "Percent of ECGs reviewed within 10 minutes of being completed.",
+    "ECG Reviewed <=10": "Percent of ECGs reviewed within 10 minutes of being completed.",
+    "ECG-to-STEMI activation": "Average time from ECG completion to STEMI-alert activation.",
+    "Fast Track": "Patients currently in the fast-track pathway or total patients routed there, depending on the metric panel.",
+    "Front-End Triage": "Patients currently in automated front-end triage before moving into the waiting room or care area.",
+    "High / critical risk": "Waiting-room patients currently classified as high or critical risk.",
+    "High-risk LWBS": "High-risk patients who left without being seen.",
+    "Hospitalist consults pending": "Admitted patients currently waiting for hospitalist consult response or admission acceptance.",
+    "Hospitalist Pending": "Admitted patients currently waiting for hospitalist consult response or admission acceptance.",
+    "In Fast Track": "Patients currently assigned to the fast-track care pathway.",
+    "In front-end triage": "Patients currently being processed by front-end triage.",
+    "Longest current wait": "Longest current wait among patients who have not yet been seen by a provider.",
+    "Longest reassessment overdue": "Longest overdue interval among patients who need a waiting-room reassessment.",
+    "Longest Wait": "Longest current wait among patients who have not yet been seen by a provider.",
+    "Longest waiting-room wait": "Longest current wait among patients still in the waiting room.",
+    LWBS: "Patients who left without being seen, shown as count and percentage of arrivals.",
+    "LWBS count": "Total patients who left without being seen.",
+    "LWBS rate": "Percent of arrived patients who left without being seen.",
+    "LWBS with pending orders": "Patients who left without being seen while orders were still pending.",
+    "Median Door ECG": "Median time from arrival to ECG completion for chest pain or suspected ACS patients.",
+    "Median door-to-ECG": "Median time from arrival to ECG completion for chest pain or suspected ACS patients.",
+    "Median door-to-antibiotics": "Median time from arrival to antibiotics for sepsis patients.",
+    "Moderate-or-higher risk": "Waiting-room patients currently classified as moderate, high, or critical risk.",
+    "Nurse/Tech": "Current nurse and technician workload, shown as nurses busy / techs busy.",
+    "Nurse busy minutes": "Cumulative minutes nurses have been tied up on rooming, protocols, and care tasks.",
+    "Nurses busy": "Nurses currently tied up on active ED support work.",
+    "Next Room Ready": "Estimated time until a room is ready. Shows Now when at least one room is already available.",
+    "Next room ready": "Estimated time until a room is ready. Shows Now when at least one room is already available.",
+    "Next hospitalist response": "Estimated minutes until the next pending hospitalist admission response is expected.",
+    "Occupied rooms": "Rooms currently occupied by active ED patients.",
+    "Patients departed": "Patients who completed the ED visit and left the department.",
+    "Patients dispositioned": "Patients who have received a disposition decision.",
+    "Patients fast-tracked": "Total patients routed to fast track during this simulation run.",
+    "Patients seen": "Patients evaluated by an ED provider.",
+    "Patients seen / hour": "Provider throughput rate based on patients seen during the run.",
+    "Pathways started": "Patients for whom the sepsis pathway was started.",
+    "P90 Door ECG": "90th percentile arrival-to-ECG time for chest pain or suspected ACS patients.",
+    "P90 door-to-ECG": "90th percentile arrival-to-ECG time for chest pain or suspected ACS patients.",
+    "P90 door-to-antibiotics": "90th percentile arrival-to-antibiotics time for sepsis patients.",
+    "Provider busy minutes": "Cumulative minutes providers have been busy evaluating, reviewing, or dispositioning patients.",
+    "Provider count": "Number of ED providers configured for this run.",
+    "Provider idle minutes": "Cumulative provider idle minutes while the simulation was active.",
+    "Reassessments overdue": "Waiting-room patients whose reassessment timer is overdue.",
+    "Recheck Due": "Waiting-room patients whose reassessment timer is overdue.",
+    "Results to Disp": "Average time from results becoming ready to the provider entering a disposition decision.",
+    "Room cleaning minutes": "Cumulative time rooms have spent in cleaning status.",
+    "Rooms Available": "Rooms open and ready for the next patient.",
+    "Rooms Blocked": "Rooms unavailable for new patients because they are blocked by boarding, constraints, or operational issues.",
+    "Rooms Cleaning": "Rooms currently unavailable because cleaning is in progress.",
+    "Rooms Occupied": "Rooms currently occupied by active ED patients.",
+    "Sepsis arrivals": "Total sepsis patients who have arrived during this simulation run.",
+    "Sepsis LWBS": "Sepsis patients who left without being seen, shown as count and rate.",
+    "Sepsis Rec <=10": "Percent of sepsis patients recognized within 10 minutes of arrival.",
+    "Sepsis Recognition <=10 min": "Percent of sepsis patients recognized within 10 minutes of arrival.",
+    "Sepsis waiting without room": "Sepsis patients waiting without an assigned ED room.",
+    "Sepsis Waiting": "Sepsis patients waiting without an assigned ED room.",
+    "Seen / Hour": "Provider throughput rate based on patients seen during the run.",
+    "STEMI-alert pathways": "Number of STEMI-alert pathways activated.",
+    "Suspected ACS arrivals": "Total suspected ACS patients who have arrived during this simulation run.",
+    "Suspected ACS LWBS": "Suspected ACS patients who left without being seen, shown as count and rate.",
+    "Tech busy minutes": "Cumulative minutes technicians have been tied up on active support work.",
+    "Techs busy": "Technicians currently tied up on active ED support work.",
+    "Total admission delay minutes": "Cumulative minutes patients have spent waiting on admission decisions or acceptance.",
+    "Total boarding minutes": "Cumulative minutes admitted patients have spent boarding in the ED.",
+    "Troponin result turnaround": "Average time from troponin collection to result availability.",
+    "Troponin TAT": "Average time from troponin collection to result availability.",
+    "Waiting Room": "Patients currently waiting for ED rooming or provider evaluation.",
+    "Waiting for clean room": "Patients in the waiting room while no room is available and at least one room is still cleaning.",
+    "Waiting room census": "Patients currently waiting for ED rooming or provider evaluation.",
+    "Waiting-room deteriorations": "Number of waiting-room patients whose risk worsened while waiting.",
+    "Waiting-room risk minutes": "Cumulative weighted risk time accumulated by patients waiting in the waiting room.",
+  };
+
+  if (descriptions[label]) {
+    return descriptions[label];
+  }
+
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes("lwbs")) {
+    return "Patients who left without being seen, with count or rate depending on the metric.";
+  }
+
+  if (normalized.includes("door") || normalized.includes("average") || normalized.includes("median") || normalized.includes("p90")) {
+    return "Timing metric summarizing how long this step takes during the simulation.";
+  }
+
+  if (normalized.includes("busy") || normalized.includes("idle")) {
+    return "Resource workload metric showing how staff capacity is being used.";
+  }
+
+  if (normalized.includes("census") || normalized.includes("waiting") || normalized.includes("patients")) {
+    return "Patient count metric showing current volume or total patients in this category.";
+  }
+
+  return `${label} metric for the current simulation run.`;
+}
+
 function tabMeasureGridStyle(measureCount: number): CSSProperties {
   const columnCount = measureCount > 7 ? Math.ceil(measureCount / 2) : Math.max(1, measureCount);
 
@@ -1168,6 +1364,7 @@ export function App() {
     useState<WhatIfCoachStrategyId>(defaultBenchmarkComparisonId);
   const [showHeartMetrics, setShowHeartMetrics] = useState(initialAppState?.showHeartMetrics ?? true);
   const [showSepsisMetrics, setShowSepsisMetrics] = useState(initialAppState?.showSepsisMetrics ?? true);
+  const [showTooltips, setShowTooltips] = useState(initialAppState?.showTooltips ?? true);
   const benchmarkCacheRef = useRef<{ key: string; benchmark: OptimalFlowBenchmark } | undefined>(undefined);
 
   const selectedPatient = useMemo(
@@ -1187,7 +1384,10 @@ export function App() {
   const flowGuardrails = useMemo(() => createFlowGuardrails(run), [run]);
   const debrief = useMemo(() => createProviderDebrief(run), [run]);
   const shouldComputeComparisonRuns =
-    selectedMainViewTab === "benchmark" || selectedMainViewTab === "coach-comparison" || selectedRightRailTab === "activity";
+    selectedMainViewTab === "benchmark" ||
+    selectedMainViewTab === "coach-comparison" ||
+    selectedRightRailTab === "activity" ||
+    selectedRightRailTab === "export";
   const benchmarkCacheKey = [
     scenario.id,
     activeDeck.length,
@@ -1278,6 +1478,7 @@ export function App() {
       selectedSetupPanelTab,
       showHeartMetrics,
       showSepsisMetrics,
+      showTooltips,
     });
   }, [
     activeDeck,
@@ -1294,6 +1495,7 @@ export function App() {
     selectedSetupPanelTab,
     showHeartMetrics,
     showSepsisMetrics,
+    showTooltips,
   ]);
 
   if (!selectedCoreMetric) {
@@ -1449,7 +1651,7 @@ export function App() {
     draftTuning.minimumWaitBeforeLWBS !== activeTuning.minimumWaitBeforeLWBS;
 
   return (
-    <main className="appShell" data-theme={colorMode}>
+    <main className="appShell" data-theme={colorMode} data-tooltips={showTooltips ? "on" : "off"}>
       <header className="topBar">
         <div>
           <p className="eyebrow">Synthetic single-provider simulation</p>
@@ -1465,9 +1667,13 @@ export function App() {
       <section className="setupTabs" aria-label="Scenario and additional stats">
         <div className="setupTabList" role="tablist" aria-label="Scenario and additional stats">
           <button
+            aria-label="Live Operations: control the simulation clock, view status messages, and monitor live operational metrics."
             aria-controls="live-operations-panel"
             aria-selected={selectedSetupPanelTab === "live-operations"}
-            className={selectedSetupPanelTab === "live-operations" ? "active" : ""}
+            className={
+              selectedSetupPanelTab === "live-operations" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"
+            }
+            data-tooltip="Control the simulation clock, run the coach demo, toggle metric groups and tooltips, and monitor live ED operational status."
             id="live-operations-tab"
             onClick={() => setSelectedSetupPanelTab("live-operations")}
             role="tab"
@@ -1476,9 +1682,13 @@ export function App() {
             Live Operations
           </button>
           <button
+            aria-label="Additional Stats: review detailed live metrics, workflow measures, and performance indicators."
             aria-controls="additional-stats-panel"
             aria-selected={selectedSetupPanelTab === "additional-stats"}
-            className={selectedSetupPanelTab === "additional-stats" ? "active" : ""}
+            className={
+              selectedSetupPanelTab === "additional-stats" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"
+            }
+            data-tooltip="Review detailed live metrics, waiting-room risk, throughput, room use, boarding, LWBS, cardiac, and sepsis measures."
             id="additional-stats-tab"
             onClick={() => setSelectedSetupPanelTab("additional-stats")}
             role="tab"
@@ -1487,9 +1697,11 @@ export function App() {
             Additional Stats
           </button>
           <button
+            aria-label="Scenario Tuning: adjust simulation assumptions, staffing, room capacity, arrival patterns, and operational timing."
             aria-controls="scenario-setup-panel"
             aria-selected={selectedSetupPanelTab === "scenario"}
-            className={selectedSetupPanelTab === "scenario" ? "active" : ""}
+            className={selectedSetupPanelTab === "scenario" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Adjust simulation assumptions such as arrival volume, provider staffing, nurse and tech capacity, rooms, triage, fast track, boarding, LWBS, and timing."
             id="scenario-setup-tab"
             onClick={() => setSelectedSetupPanelTab("scenario")}
             role="tab"
@@ -1508,19 +1720,50 @@ export function App() {
           >
             <section className="controlStrip" aria-label="Simulation controls">
               <div className="controlPrimaryRow">
-                <button className="primaryButton" type="button" onClick={handleStartPause}>
+                <button
+                  aria-label={
+                    run.status === "running"
+                      ? "Pause the automatic simulation clock."
+                      : "Start the simulation clock so patient arrivals and ED work begin."
+                  }
+                  className="primaryButton statusTooltip"
+                  data-tooltip={
+                    run.status === "running"
+                      ? "Pause the automatic simulation clock. You can still review the board and make manual decisions."
+                      : "Start the simulation clock. Patient arrivals, rooming, provider work, and operational events will begin."
+                  }
+                  type="button"
+                  onClick={handleStartPause}
+                >
                   {run.status === "running" ? <Pause size={18} /> : <Play size={18} />}
                   {run.status === "running" ? "Pause" : "Start"}
                 </button>
-                <button type="button" onClick={() => handleAdvance(1)} disabled={run.status !== "running"}>
+                <button
+                  aria-label="Advance the running simulation by one simulated minute."
+                  className="statusTooltip"
+                  data-tooltip="Move the running simulation ahead by 1 simulated minute. This is useful for stepping through short events."
+                  type="button"
+                  onClick={() => handleAdvance(1)}
+                  disabled={run.status !== "running"}
+                >
                   <StepForward size={18} />
                   1 min
                 </button>
-                <button type="button" onClick={() => handleAdvance(5)} disabled={run.status !== "running"}>
+                <button
+                  aria-label="Advance the running simulation by five simulated minutes."
+                  className="statusTooltip"
+                  data-tooltip="Move the running simulation ahead by 5 simulated minutes. This is useful when you want to watch flow changes faster."
+                  type="button"
+                  onClick={() => handleAdvance(5)}
+                  disabled={run.status !== "running"}
+                >
                   <StepForward size={18} />
                   5 min
                 </button>
-                <label className="speedControl">
+                <label
+                  className="speedControl statusTooltip"
+                  data-tooltip="Set how quickly the automatic clock runs. Lower values make each simulated minute pass faster."
+                >
                   <span>Clock speed</span>
                   <input
                     aria-label="Auto clock seconds per simulated minute"
@@ -1533,12 +1776,30 @@ export function App() {
                   />
                   <strong>{autoAdvanceSeconds}s</strong>
                 </label>
-                <button type="button" onClick={handleReset}>
+                <button
+                  aria-label="Reset the simulation to its starting state."
+                  className="statusTooltip"
+                  data-tooltip="Reset the simulation back to the beginning and clear the current run state."
+                  type="button"
+                  onClick={handleReset}
+                >
                   <RotateCcw size={18} />
                   Reset
                 </button>
                 <button
-                  className={coachDemoEnabled ? "coachDemoButton active" : "coachDemoButton"}
+                  aria-label={
+                    coachDemoEnabled
+                      ? "Stop the coach demo automation."
+                      : "Run the coach demo automation."
+                  }
+                  className={
+                    coachDemoEnabled ? "coachDemoButton active statusTooltip" : "coachDemoButton statusTooltip"
+                  }
+                  data-tooltip={
+                    coachDemoEnabled
+                      ? "Stop the coach demo. Manual control remains available after the automated guidance stops."
+                      : "Run an automated coach demo that advances through recommended actions for comparison and teaching."
+                  }
                   type="button"
                   onClick={handleCoachDemoToggle}
                   disabled={run.status === "shift_ended" || run.status === "completed"}
@@ -1546,24 +1807,20 @@ export function App() {
                   {coachDemoEnabled ? <Pause size={18} /> : <Sparkles size={18} />}
                   {coachDemoEnabled ? "Stop Coach Demo" : "Run Coach Demo"}
                 </button>
-                <label className="themeToggle">
-                  <span>Dark Mode</span>
-                  <input
-                    checked={colorMode === "dark"}
-                    onChange={(event) => setColorMode(event.currentTarget.checked ? "dark" : "light")}
-                    type="checkbox"
-                  />
-                  <strong>{colorMode === "dark" ? "Dark" : "Light"}</strong>
-                </label>
-                <div className="metricVisibilityControl" role="group" aria-label="Show Metrics">
-                  <span>Show Metrics</span>
+                <div
+                  className="metricVisibilityControl statusTooltip"
+                  data-tooltip="Choose which optional display aids are visible. These settings change the interface only; they do not change the simulation run."
+                  role="group"
+                  aria-label="Display Options"
+                >
+                  <span>Display Options</span>
                   <label>
                     <input
                       checked={showHeartMetrics}
                       onChange={(event) => setShowHeartMetrics(event.currentTarget.checked)}
                       type="checkbox"
                     />
-                    <span>Heart</span>
+                    <span>Heart Metrics</span>
                   </label>
                   <label>
                     <input
@@ -1571,27 +1828,72 @@ export function App() {
                       onChange={(event) => setShowSepsisMetrics(event.currentTarget.checked)}
                       type="checkbox"
                     />
-                    <span>Sepsis</span>
+                    <span>Sepsis Metrics</span>
+                  </label>
+                  <label>
+                    <input
+                      checked={showTooltips}
+                      onChange={(event) => setShowTooltips(event.currentTarget.checked)}
+                      type="checkbox"
+                    />
+                    <span>Tooltips</span>
+                  </label>
+                  <label>
+                    <input
+                      checked={colorMode === "dark"}
+                      onChange={(event) => setColorMode(event.currentTarget.checked ? "dark" : "light")}
+                      type="checkbox"
+                    />
+                    <span>{colorMode === "dark" ? "Dark Mode" : "Light Mode"}</span>
                   </label>
                 </div>
               </div>
               <div className="statusMessageRow">
-                <div className="providerStatus">
-                  <UserRoundCheck size={18} />
+                <div
+                  aria-label="Automated front-end triage is managed separately from the ED provider. It can start protocol orders and move triaged patients into the waiting room."
+                  className="providerStatus statusTooltip"
+                  data-tooltip="Automated front-end triage is managed separately from the ED provider. It can start protocol orders and move triaged patients into the waiting room."
+                  tabIndex={0}
+                >
+                  <ClipboardCheck size={18} />
+                  <span>{triageProviderStatusText(run)}</span>
+                </div>
+                <div
+                  aria-label="Shows how many ED providers are currently busy and when the next provider is available for patient evaluation or disposition work."
+                  className="providerStatus statusTooltip"
+                  data-tooltip="Shows how many ED providers are currently busy and when the next provider is available for patient evaluation or disposition work."
+                  tabIndex={0}
+                >
+                  <Stethoscope size={18} />
                   <span>
                     Providers {run.providers.filter((provider) => provider.status === "busy").length}/{run.providers.length}{" "}
                     busy · {providerAvailabilityText(run)}
                   </span>
                 </div>
-                <div className="providerStatus">
-                  <UserRoundCheck size={18} />
-                  <span>{triageProviderStatusText(run)}</span>
-                </div>
-                <div className="providerStatus">
-                  <UserRoundCheck size={18} />
+                <div
+                  aria-label="Shows nurse and tech support capacity currently tied up by rooming, protocol orders, and operational tasks."
+                  className="providerStatus statusTooltip"
+                  data-tooltip="Shows nurse and tech support capacity currently tied up by rooming, protocol orders, and operational tasks."
+                  tabIndex={0}
+                >
+                  <Users size={18} />
                   <span>{supportResourceStatusText(run)}</span>
                 </div>
-                <div className="clockStatus">
+                <div
+                  aria-label="Shows hospitalist consult and admission acceptance status for admitted patients waiting on response."
+                  className="providerStatus statusTooltip"
+                  data-tooltip="Shows hospitalist consult and admission acceptance status for admitted patients. Pending consults can delay boarding and keep ED rooms occupied."
+                  tabIndex={0}
+                >
+                  <UserRoundCheck size={18} />
+                  <span>{hospitalistStatusText(run)}</span>
+                </div>
+                <div
+                  aria-label="Shows whether the automatic simulation clock is running or paused and how many real seconds equal one simulated minute."
+                  className="clockStatus statusTooltip"
+                  data-tooltip="Shows whether the automatic simulation clock is running or paused and how many real seconds equal one simulated minute."
+                  tabIndex={0}
+                >
                   <Clock size={18} />
                   <span>
                     {run.status === "running"
@@ -1938,7 +2240,7 @@ export function App() {
                   />
                 </label>
                 <label>
-                  <span>Admission accept typical</span>
+                  <span>Hospitalist response typical</span>
                   <input
                     min={1}
                     max={360}
@@ -2021,7 +2323,13 @@ export function App() {
                 style={tabMeasureGridStyle(selectedCoreMetric.measures.length)}
               >
                 {selectedCoreMetric.measures.map((measure) => (
-                  <div key={measure.label}>
+                  <div
+                    aria-label={`${measure.label}: ${metricTooltip(measure.label)}`}
+                    className="statusTooltip"
+                    data-tooltip={metricTooltip(measure.label)}
+                    key={measure.label}
+                    tabIndex={0}
+                  >
                     <dt>
                       {tabMeasureIcon(measure.label)}
                       <span>{measure.label}</span>
@@ -2081,9 +2389,11 @@ export function App() {
       <section className="mainViewShell" aria-label="Simulation views">
         <div className="mainViewTabs" role="tablist" aria-label="Simulation view">
           <button
+            aria-label="Workflow: View patient flow, room assignments, active patient cards, and operational actions."
             aria-controls="workflow-view-panel"
             aria-selected={selectedMainViewTab === "workflow"}
-            className={selectedMainViewTab === "workflow" ? "active" : ""}
+            className={selectedMainViewTab === "workflow" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="View the active ED workflow: waiting patients, rooms, patient cards, status, and operational actions."
             id="workflow-view-tab"
             onClick={() => setSelectedMainViewTab("workflow")}
             role="tab"
@@ -2092,9 +2402,11 @@ export function App() {
             Workflow
           </button>
           <button
+            aria-label="Facility Setup: View room capacity, room status, waiting room counts, triage, fast track, admissions, and boarding."
             aria-controls="facility-view-panel"
             aria-selected={selectedMainViewTab === "facility"}
-            className={selectedMainViewTab === "facility" ? "active" : ""}
+            className={selectedMainViewTab === "facility" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="View facility capacity and location status: available rooms, occupied rooms, blocked rooms, waiting room, triage, fast track, admissions, and boarding."
             id="facility-view-tab"
             onClick={() => setSelectedMainViewTab("facility")}
             role="tab"
@@ -2103,9 +2415,11 @@ export function App() {
             Facility Setup
           </button>
           <button
+            aria-label="Benchmark: Compare the current run against an optimal-flow benchmark. This may take a moment to calculate when opened."
             aria-controls="benchmark-view-panel"
             aria-selected={selectedMainViewTab === "benchmark"}
-            className={selectedMainViewTab === "benchmark" ? "active" : ""}
+            className={selectedMainViewTab === "benchmark" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Compare the current run against an optimal-flow benchmark. This may take a moment to calculate when the tab is opened, so results may appear after a short pause."
             id="benchmark-view-tab"
             onClick={() => setSelectedMainViewTab("benchmark")}
             role="tab"
@@ -2114,9 +2428,13 @@ export function App() {
             Benchmark
           </button>
           <button
+            aria-label="Coach Comparison: Compare coach strategies and recommendations. This may take a moment to calculate when opened."
             aria-controls="coach-comparison-view-panel"
             aria-selected={selectedMainViewTab === "coach-comparison"}
-            className={selectedMainViewTab === "coach-comparison" ? "active" : ""}
+            className={
+              selectedMainViewTab === "coach-comparison" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"
+            }
+            data-tooltip="Compare the provider run against coach strategy options and recommendations. This may take a moment to calculate when opened, especially after the run has many events."
             id="coach-comparison-view-tab"
             onClick={() => setSelectedMainViewTab("coach-comparison")}
             role="tab"
@@ -2125,9 +2443,11 @@ export function App() {
             Coach Comparison
           </button>
           <button
+            aria-label="Graphs: View trend charts for ED volume, waits, rooms, boarding, and throughput over time."
             aria-controls="graphs-view-panel"
             aria-selected={selectedMainViewTab === "graphs"}
-            className={selectedMainViewTab === "graphs" ? "active" : ""}
+            className={selectedMainViewTab === "graphs" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="View trend charts for ED volume, waits, room status, boarding, throughput, and LWBS over simulated time."
             id="graphs-view-tab"
             onClick={() => setSelectedMainViewTab("graphs")}
             role="tab"
@@ -2173,9 +2493,11 @@ export function App() {
             <aside className="sidePanel">
               <div className="rightRailTabs" role="tablist" aria-label="Provider tools">
                 <button
+                  aria-label="Actions: show provider actions available for the selected patient and current ED state."
                   aria-controls="right-rail-actions"
                   aria-selected={selectedRightRailTab === "actions"}
-                  className={selectedRightRailTab === "actions" ? "active" : ""}
+                  className={selectedRightRailTab === "actions" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+                  data-tooltip="Use Actions to see what the provider can do right now for the selected patient or current ED state."
                   id="right-rail-actions-tab"
                   onClick={() => setSelectedRightRailTab("actions")}
                   role="tab"
@@ -2184,9 +2506,11 @@ export function App() {
                   Actions
                 </button>
                 <button
+                  aria-label="Coach: show the recommended next action and the reason behind it."
                   aria-controls="right-rail-coach"
                   aria-selected={selectedRightRailTab === "coach"}
-                  className={selectedRightRailTab === "coach" ? "active" : ""}
+                  className={selectedRightRailTab === "coach" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+                  data-tooltip="Use Coach to see the recommended next move, why it matters, and buttons to jump to or apply that recommendation."
                   id="right-rail-coach-tab"
                   onClick={() => setSelectedRightRailTab("coach")}
                   role="tab"
@@ -2195,9 +2519,13 @@ export function App() {
                   Coach
                 </button>
                 <button
+                  aria-label="Guardrails: show operational risks and constraints that may slow flow or increase safety risk."
                   aria-controls="right-rail-guardrails"
                   aria-selected={selectedRightRailTab === "guardrails"}
-                  className={selectedRightRailTab === "guardrails" ? "active" : ""}
+                  className={
+                    selectedRightRailTab === "guardrails" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"
+                  }
+                  data-tooltip="Use Guardrails to spot operational risks such as long waits, blocked rooms, staff constraints, and safety-sensitive delays."
                   id="right-rail-guardrails-tab"
                   onClick={() => setSelectedRightRailTab("guardrails")}
                   role="tab"
@@ -2206,9 +2534,11 @@ export function App() {
                   Guardrails
                 </button>
                 <button
+                  aria-label="Debrief: summarize run performance, delays, decisions, and learning points."
                   aria-controls="right-rail-debrief"
                   aria-selected={selectedRightRailTab === "debrief"}
-                  className={selectedRightRailTab === "debrief" ? "active" : ""}
+                  className={selectedRightRailTab === "debrief" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+                  data-tooltip="Use Debrief after or during a run to review what happened, where flow slowed, and what decisions helped or hurt throughput."
                   id="right-rail-debrief-tab"
                   onClick={() => setSelectedRightRailTab("debrief")}
                   role="tab"
@@ -2217,15 +2547,30 @@ export function App() {
                   Debrief
                 </button>
                 <button
+                  aria-label="Activity: show the timeline of simulation events and compare provider actions with optimal timing."
                   aria-controls="right-rail-activity"
                   aria-selected={selectedRightRailTab === "activity"}
-                  className={selectedRightRailTab === "activity" ? "active" : ""}
+                  className={selectedRightRailTab === "activity" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+                  data-tooltip="Use Activity to review the recent event timeline, provider choices, optimal actions, matched actions, and timing variance."
                   id="right-rail-activity-tab"
                   onClick={() => setSelectedRightRailTab("activity")}
                   role="tab"
                   type="button"
                 >
                   Activity
+                </button>
+                <button
+                  aria-label="Export: download or copy CSV files for activity and comparison runs."
+                  aria-controls="right-rail-export"
+                  aria-selected={selectedRightRailTab === "export"}
+                  className={selectedRightRailTab === "export" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+                  data-tooltip="Use Export to download or copy Activity CSV and All Runs CSV data for analysis outside the simulator."
+                  id="right-rail-export-tab"
+                  onClick={() => setSelectedRightRailTab("export")}
+                  role="tab"
+                  type="button"
+                >
+                  Export
                 </button>
               </div>
 
@@ -2238,6 +2583,10 @@ export function App() {
                 {selectedRightRailTab === "actions" ? (
                   <>
                     <h2>Actions</h2>
+                    <p className="panelExplanation">
+                      Actions are the provider moves currently available from the selected patient and operational context. Disabled
+                      actions explain what must happen first.
+                    </p>
                     <div className="actionStatus">
                       <strong>{providerWorkText(run, selectedPatient?.id)}</strong>
                       <small>{triageProviderStatusText(run)}</small>
@@ -2274,6 +2623,10 @@ export function App() {
                 {selectedRightRailTab === "coach" ? (
                   <>
                     <h2>Coach</h2>
+                    <p className="panelExplanation">
+                      Coach recommends the next high-value action by looking at patient priority, waits, available rooms, results,
+                      and flow constraints.
+                    </p>
                     <CoachPanel
                       onApply={handleApplyCoachRecommendation}
                       onSelectPatient={handleSelectCoachPatient}
@@ -2300,7 +2653,14 @@ export function App() {
                 {selectedRightRailTab === "activity" ? (
                   <>
                     <h2>Activity</h2>
-                    <ActivityPanel exportRuns={activityExportRuns} timeline={activityTimeline} />
+                    <ActivityPanel timeline={activityTimeline} />
+                  </>
+                ) : null}
+
+                {selectedRightRailTab === "export" ? (
+                  <>
+                    <h2>Export</h2>
+                    <ExportPanel exportRuns={activityExportRuns} timeline={activityTimeline} />
                   </>
                 ) : null}
               </section>
@@ -2437,10 +2797,12 @@ function FacilitySetupView({
         <Metric icon={<DoorOpen size={18} />} label="Rooms Occupied" value={occupiedRooms} />
         <Metric icon={<CircleOff size={18} />} label="Rooms Blocked" value={blockedRooms} />
         <Metric icon={<BrushCleaning size={18} />} label="Rooms Cleaning" value={cleaningRooms} />
+        <Metric icon={<Clock size={18} />} label="Next Room Ready" value={formatRoomReadyStatus(rooms, currentMinute)} />
         <Metric icon={<Users size={18} />} label="Waiting Room" value={waitingPatients.length} />
         <Metric icon={<Stethoscope size={18} />} label="Front-End Triage" value={triagePatients.length} />
         <Metric icon={<StepForward size={18} />} label="Fast Track" value={fastTrackPatients.length} />
         <Metric icon={<Hourglass size={18} />} label="Admission Pending" value={admissionPendingPatients.length} />
+        <Metric icon={<UserRoundCheck size={18} />} label="Hospitalist Pending" value={admissionPendingPatients.length} />
         <Metric icon={<BedDouble size={18} />} label="Boarding" value={boardingPatients.length} />
       </section>
 
@@ -2675,7 +3037,10 @@ function FlowGuardrailsPanel({ summary }: { summary: FlowGuardrailSummary }) {
 
           return (
             <li className={guardrail.severity} key={guardrail.id}>
-              <span>{guardrail.title}</span>
+              <div className="guardrailItemHeader">
+                <span>{guardrail.title}</span>
+                {guardrail.metricValue ? <em>{guardrail.metricValue}</em> : null}
+              </div>
               <small>{guardrail.message}</small>
               {explanation ? (
                 <dl className="guardrailExplanation">
@@ -2689,7 +3054,6 @@ function FlowGuardrailsPanel({ summary }: { summary: FlowGuardrailSummary }) {
                   </div>
                 </dl>
               ) : null}
-              {guardrail.metricValue ? <em>{guardrail.metricValue}</em> : null}
             </li>
           );
         })}
@@ -2698,8 +3062,70 @@ function FlowGuardrailsPanel({ summary }: { summary: FlowGuardrailSummary }) {
   );
 }
 
-function ActivityPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; timeline: ActivityTimeline }) {
+function ActivityPanel({ timeline }: { timeline: ActivityTimeline }) {
   const recentRecords = timeline.records.slice(-18).reverse();
+
+  return (
+    <div className="activityPanel">
+      <p className="panelExplanation">
+        Activity is the running event log for the simulation. It shows arrivals, pauses, provider selections, and how provider
+        action timing compares with the optimal-flow benchmark when comparison data is available.
+      </p>
+      <div className="activityToolbar">
+        <span>{timeline.records.length} timeline records</span>
+      </div>
+      <dl className="activitySummary">
+        <div>
+          <dt>Provider selections</dt>
+          <dd>{timeline.actualDecisionCount}</dd>
+        </div>
+        <div>
+          <dt>Optimal actions</dt>
+          <dd>{timeline.benchmarkDecisionCount}</dd>
+        </div>
+        <div>
+          <dt>Matched actions</dt>
+          <dd>{timeline.matchedDecisionCount}</dd>
+        </div>
+        <div>
+          <dt>Avg variance</dt>
+          <dd>{timeline.averageDecisionDelayMinutes === null ? "-" : `${timeline.averageDecisionDelayMinutes.toFixed(0)} min`}</dd>
+        </div>
+      </dl>
+
+      <ol className="activityList">
+        {recentRecords.length === 0 ? (
+          <li>
+            <span>No activity recorded yet.</span>
+          </li>
+        ) : (
+          recentRecords.map((record) => (
+            <li className={record.kind} key={record.id}>
+              <time>{formatMinute(record.simulationMinute)}</time>
+              <div>
+                <strong>{record.label}</strong>
+                <span>{record.message}</span>
+                {record.benchmarkDeltaMinutes !== undefined ? (
+                  <small>
+                    Optimal {formatMinute(record.benchmarkMinute ?? record.simulationMinute)} ·{" "}
+                    {record.benchmarkDeltaMinutes === 0
+                      ? "on benchmark"
+                      : record.benchmarkDeltaMinutes > 0
+                        ? `${record.benchmarkDeltaMinutes} min after optimal`
+                        : `${Math.abs(record.benchmarkDeltaMinutes)} min before optimal`}
+                  </small>
+                ) : null}
+                {record.providerId ? <small>{record.providerId}</small> : null}
+              </div>
+            </li>
+          ))
+        )}
+      </ol>
+    </div>
+  );
+}
+
+function ExportPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; timeline: ActivityTimeline }) {
   const [exportStatus, setExportStatus] = useState<string | undefined>();
 
   function downloadCsv(csv: string, filenamePrefix: string) {
@@ -2758,71 +3184,48 @@ function ActivityPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[];
 
   return (
     <div className="activityPanel">
+      <p className="panelExplanation">
+        Export lets you take simulation data out of the app. Activity CSV includes the visible event timeline; All Runs CSV
+        includes the provider run plus benchmark and coach strategy comparison runs.
+      </p>
       <div className="activityToolbar">
         <span>{timeline.records.length} timeline records</span>
         <div className="activityToolbarActions">
-          <button type="button" onClick={handleDownloadTimelineCsv}>
+          <button
+            className="statusTooltip"
+            data-tooltip="Download the current activity timeline as a CSV file for spreadsheet review."
+            type="button"
+            onClick={handleDownloadTimelineCsv}
+          >
             Download Activity CSV
           </button>
-          <button type="button" onClick={handleDownloadAllRunsCsv}>
+          <button
+            className="statusTooltip"
+            data-tooltip="Download the provider run plus benchmark and coach strategy comparison runs as one CSV file."
+            type="button"
+            onClick={handleDownloadAllRunsCsv}
+          >
             Download All Runs CSV
           </button>
-          <button type="button" onClick={handleCopyTimelineCsv}>
+          <button
+            className="statusTooltip"
+            data-tooltip="Copy the current activity timeline CSV to the clipboard."
+            type="button"
+            onClick={handleCopyTimelineCsv}
+          >
             Copy Activity CSV
           </button>
-          <button type="button" onClick={handleCopyAllRunsCsv}>
+          <button
+            className="statusTooltip"
+            data-tooltip="Copy the provider, benchmark, and coach strategy comparison CSV to the clipboard."
+            type="button"
+            onClick={handleCopyAllRunsCsv}
+          >
             Copy All Runs CSV
           </button>
         </div>
       </div>
       {exportStatus ? <p className="activityExportStatus">{exportStatus}</p> : null}
-      <dl className="activitySummary">
-        <div>
-          <dt>Provider selections</dt>
-          <dd>{timeline.actualDecisionCount}</dd>
-        </div>
-        <div>
-          <dt>Optimal actions</dt>
-          <dd>{timeline.benchmarkDecisionCount}</dd>
-        </div>
-        <div>
-          <dt>Matched actions</dt>
-          <dd>{timeline.matchedDecisionCount}</dd>
-        </div>
-        <div>
-          <dt>Avg variance</dt>
-          <dd>{timeline.averageDecisionDelayMinutes === null ? "-" : `${timeline.averageDecisionDelayMinutes.toFixed(0)} min`}</dd>
-        </div>
-      </dl>
-
-      <ol className="activityList">
-        {recentRecords.length === 0 ? (
-          <li>
-            <span>No activity recorded yet.</span>
-          </li>
-        ) : (
-          recentRecords.map((record) => (
-            <li className={record.kind} key={record.id}>
-              <time>{formatMinute(record.simulationMinute)}</time>
-              <div>
-                <strong>{record.label}</strong>
-                <span>{record.message}</span>
-                {record.benchmarkDeltaMinutes !== undefined ? (
-                  <small>
-                    Optimal {formatMinute(record.benchmarkMinute ?? record.simulationMinute)} ·{" "}
-                    {record.benchmarkDeltaMinutes === 0
-                      ? "on benchmark"
-                      : record.benchmarkDeltaMinutes > 0
-                        ? `${record.benchmarkDeltaMinutes} min after optimal`
-                        : `${Math.abs(record.benchmarkDeltaMinutes)} min before optimal`}
-                  </small>
-                ) : null}
-                {record.providerId ? <small>{record.providerId}</small> : null}
-              </div>
-            </li>
-          ))
-        )}
-      </ol>
     </div>
   );
 }
@@ -3136,8 +3539,15 @@ function Metric({
   label: string;
   value: number | string;
 }) {
+  const tooltip = metricTooltip(label);
+
   return (
-    <div className={`metric ${className}`}>
+    <div
+      aria-label={`${label}: ${tooltip}`}
+      className={`metric statusTooltip ${className}`.trim()}
+      data-tooltip={tooltip}
+      tabIndex={0}
+    >
       <div className="metricLabel">
         {icon}
         <span>{label}</span>
@@ -3223,6 +3633,15 @@ function PatientDetails({ currentMinute, patient }: { currentMinute: number; pat
   const workup = getPatientWorkupSummary(patient);
   const riskDisplay = waitingRiskDisplay(patient);
   const showIdentifiedOrders = workup.protocolStatus === "identified";
+  const isAdmitPatient = patient.dispositionType === "admit_inpatient";
+  const hospitalistRequestAt = isAdmitPatient ? patient.dispositionDecisionAt : undefined;
+  const hospitalistAcceptedAt = patient.admissionAcceptedAt;
+  const inpatientBedItem = patient.pendingItems.find((item) => item.type === "boarding_bed");
+  const inpatientBedAssignedAt = isAdmitPatient && patient.departedAt !== undefined ? patient.departedAt : undefined;
+  const hospitalistResponseTime =
+    hospitalistRequestAt === undefined
+      ? "-"
+      : `${(hospitalistAcceptedAt ?? currentMinute) - hospitalistRequestAt} min${hospitalistAcceptedAt === undefined ? " pending" : ""}`;
 
   return (
     <dl className="detailGrid">
@@ -3343,13 +3762,56 @@ function PatientDetails({ currentMinute, patient }: { currentMinute: number; pat
         <dt>Disposition</dt>
         <dd>{patient.dispositionType?.replaceAll("_", " ") ?? "-"}</dd>
       </div>
-      <div>
-        <dt>Admission Requested</dt>
-        <dd>{patient.dispositionType === "admit_inpatient" && patient.dispositionDecisionAt !== undefined ? formatMinute(patient.dispositionDecisionAt) : "-"}</dd>
-      </div>
-      <div>
-        <dt>Admission Accepted</dt>
-        <dd>{patient.admissionAcceptedAt === undefined ? "-" : formatMinute(patient.admissionAcceptedAt)}</dd>
+      <div className="detailHospitalistWorkflow">
+        <dt>Hospitalist Workflow</dt>
+        <dd>
+          <dl className="hospitalistMilestones">
+            <div>
+              <dt>Hospitalist Consult / Admit Request</dt>
+              <dd>{hospitalistRequestAt === undefined ? "-" : formatMinute(hospitalistRequestAt)}</dd>
+            </div>
+            <div>
+              <dt>Hospitalist Response Time</dt>
+              <dd>{hospitalistResponseTime}</dd>
+            </div>
+            <div>
+              <dt>Acceptance / Request More Info</dt>
+              <dd>
+                {hospitalistRequestAt === undefined
+                  ? "-"
+                  : hospitalistAcceptedAt === undefined
+                    ? "Pending response / may request more info"
+                    : `Accepted ${formatMinute(hospitalistAcceptedAt)}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Admission Orders</dt>
+              <dd>{hospitalistAcceptedAt === undefined ? "-" : `Placed ${formatMinute(hospitalistAcceptedAt)}`}</dd>
+            </div>
+            <div>
+              <dt>Bed Request</dt>
+              <dd>{hospitalistAcceptedAt === undefined ? "-" : `Requested ${formatMinute(hospitalistAcceptedAt)}`}</dd>
+            </div>
+            <div>
+              <dt>Boarding</dt>
+              <dd>{hospitalistAcceptedAt === undefined ? "-" : `Started ${formatMinute(hospitalistAcceptedAt)}`}</dd>
+            </div>
+            <div>
+              <dt>Inpatient Bed Assigned</dt>
+              <dd>
+                {inpatientBedAssignedAt === undefined
+                  ? inpatientBedItem
+                    ? `Expected ${formatMinute(inpatientBedItem.readyAt)}`
+                    : "-"
+                  : formatMinute(inpatientBedAssignedAt)}
+              </dd>
+            </div>
+            <div>
+              <dt>ED Departure</dt>
+              <dd>{isAdmitPatient && patient.departedAt !== undefined ? formatMinute(patient.departedAt) : "-"}</dd>
+            </div>
+          </dl>
+        </dd>
       </div>
       <div className="detailWide detailImpact">
         <dt>Flow Impact</dt>
