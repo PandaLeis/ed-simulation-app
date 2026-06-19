@@ -22,6 +22,7 @@ Implemented capabilities:
 - Event logging for arrivals, triage, rooming, orders, results, disposition, boarding, room release, LWBS, and workflow changes.
 - Provider decision logging with run-scoped identifiers.
 - Room capacity enforcement.
+- Hospitalist consult / admission workflow after ED admit decision, including admit request, response time, acceptance or request-more-info status, admission orders, bed request, boarding, inpatient bed assignment, and ED departure.
 - Admit boarding behavior.
 - Shift-end behavior.
 - Metrics recalculation after state changes.
@@ -50,6 +51,7 @@ Implemented areas:
 - Facility Setup room map with available, occupied, and blocked room status.
 - Facility summary cards for room availability, waiting room, triage, and boarding.
 - Facility summary cards include room cleaning, next room ready, hospitalist pending, admission pending, and boarding status.
+- Patient details include a dedicated Hospitalist Workflow block with consult/admit request, response time, acceptance or request more info, admission orders, bed request, boarding, inpatient bed assigned, and ED departure.
 - Right rail with Actions, Coach, Guardrails, Debrief, Activity, and Export.
 - Display Options control for Heart Metrics, Sepsis Metrics, Tooltips, and Dark Mode / Light Mode.
 - Auto-run clock with configurable speed.
