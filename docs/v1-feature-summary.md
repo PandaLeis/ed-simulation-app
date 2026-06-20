@@ -43,16 +43,19 @@ The ED board provides a single-screen operational view of the simulation.
 
 Implemented areas:
 - Live Operations tab.
+- Files tab for run JSON files and CSV exports.
 - Scenario Tuning tab.
+- Model Assumptions tab.
 - Additional Stats tab.
 - Main view tabs for Workflow, Facility Setup, Benchmark, Coach Comparison, and Graphs.
+- Scenario Tuning and Model Assumptions open as focused configuration views, hiding live operational panels while selected.
 - Patient Status panel.
 - Process flow columns.
 - Facility Setup room map with available, occupied, and blocked room status.
 - Facility summary cards for room availability, waiting room, triage, and boarding.
 - Facility summary cards include room cleaning, next room ready, hospitalist pending, admission pending, and boarding status.
 - Patient details include a dedicated Hospitalist Workflow block with consult/admit request, response time, acceptance or request more info, admission orders, bed request, boarding, inpatient bed assigned, and ED departure.
-- Right rail with Actions, Coach, Guardrails, Debrief, Activity, and Export.
+- Right rail with Actions, Coach, Guardrails, Debrief, and Activity.
 - Display Options control for Heart Metrics, Sepsis Metrics, Tooltips, and Dark Mode / Light Mode.
 - Auto-run clock with configurable speed.
 - Hover/focus tooltips for major tabs, status cards, controls, metrics, right-rail tabs, and export actions.
@@ -83,11 +86,15 @@ Implemented controls:
 - Front-End Triage Provider mode: unavailable, manual, or automated.
 - ED room capacity.
 - Provider count.
+- Provider model: Team, Assigned, or Handoff.
 - Nurse count.
 - Tech count.
 - Fast Track enabled/disabled.
 - Simulation length: 2, 4, 8, 12, 24, or 48 hours.
 - Arrivals per hour.
+- Patient Mix v1: acuity pattern, complaint pattern, workup intensity, admission pressure, and deterministic deck seed.
+- Workflow Rules: STEMI ECG target, ACS ECG target, repeat troponin delay, lactate collection, blood culture collection, antibiotics, IV fluids, sepsis critical wait threshold, and waiting-room deterioration grace.
+- Coach Benchmark Rules: priority mode, ESI acuity weight, risk weight, and wait-minute weight.
 - Typical provider evaluation minutes from the local ED.
 - Typical front-end triage minutes from the local ED.
 - Typical lab turnaround minutes from the local ED.
@@ -97,6 +104,50 @@ Implemented controls:
 - Typical room cleaning / bed turnover minutes from the local ED.
 - LWBS enabled/disabled.
 - Minimum wait before LWBS.
+- The second Scenario Tuning value row marks each editable assumption as Default, Local value, or Draft change.
+
+Patient Mix v1 options:
+- Acuity mix: Standard, Higher, or Lower.
+- Complaint mix: Balanced, Cardiac-heavy, Infection-heavy, or Injury/minor-heavy.
+- Workup intensity: Standard, Higher, or Lower.
+- Admission pressure: Standard, Higher, or Lower.
+- Deck seed: changes the synthetic patient deck while preserving deterministic replay for the selected seed.
+
+Workflow Rules v1 options:
+- STEMI door-to-ECG target minutes.
+- Possible ACS door-to-ECG target minutes.
+- Repeat troponin delay minutes.
+- Sepsis lactate collection delay minutes.
+- Sepsis blood culture collection delay minutes.
+- Sepsis antibiotics delay minutes.
+- Sepsis IV fluids delay minutes.
+- Sepsis waiting-room critical-risk threshold minutes.
+- Deterioration grace minutes after overdue waiting-room reassessment.
+
+Coach Benchmark Rules v1 options:
+- Priority mode: Balanced, Safety first, Throughput, or Front-end.
+- ESI acuity weight: default 1000 points per ESI step.
+- Risk weight: default 150 points per risk level.
+- Wait-minute weight: default 1 point per waiting minute.
+- Scenario Tuning controls the live Coach and Optimal Flow Coach, and includes editable profiles for each Coach Comparison strategy.
+- Default Coach Rules are shown first. Comparison Coach Rules are hidden by default and can be expanded with Show All Coach Rules.
+- Benchmark and Coach Comparison runs can take a moment because the app simulates the same deck under the selected rules before comparing results.
+
+Coach rule meaning:
+- Priority mode chooses the coach's broad action strategy. Balanced uses general flow logic across safety, rooming, results, disposition, and waiting-room pressure. Safety first moves high-risk, deteriorating, overdue reassessment, cardiac, and sepsis-sensitive work earlier. Throughput favors actions that keep patients moving toward results, disposition, discharge/admit, and room release. Front-end favors triage, protocol starts, intake, and waiting-room movement.
+- ESI acuity weight controls how strongly the coach prioritizes lower ESI / higher acuity patients when several patients are competing for attention.
+- Risk weight controls how strongly the coach prioritizes operational risk level, from low through critical.
+- Wait-minute weight controls how much priority a patient gains for each minute waited; higher values make long-waiting patients climb the queue faster for LWBS prevention, waiting-room fairness, and crowding pressure.
+
+Coach strategy behavior:
+- Default / Optimal Flow Coach: chooses the broad action path from the selected mode, then uses ESI/risk/wait weights to rank patients inside that action bucket.
+- Front-End Focus Coach: clears triage and protocol starts before downstream roomed-patient work, then moves eligible waiting patients into rooms or Fast Track.
+- Middle Flow Focus Coach: prioritizes roomed unseen patients, provider evaluation, orders, and diagnostic result movement.
+- Disposition Focus Coach: prioritizes results review and discharge/admit decisions to clear rooms and define boarding.
+- Resource-Aware Coach: checks nurse, tech, room, and provider constraints before creating more support-resource work; clears disposition, results, and unseen roomed work first when support capacity is constrained.
+- Safety First Coach: moves deteriorating patients, overdue reassessments, critical waits, and cardiac/sepsis-sensitive work earlier.
+- Fast Track Coach: prioritizes eligible lower-acuity patients into Fast Track and keeps vertical-care patients moving.
+- Balanced Operations Coach: blends safety, throughput, disposition, Fast Track, and resource-aware priorities.
 
 Default v1 baseline:
 - Automated Front-End Triage Provider.
@@ -116,6 +167,33 @@ Implemented presets:
 
 Primary file:
 - `src/simulation/scenarioTuning.ts`
+
+## v1 Model Assumptions
+
+Model Assumptions makes the simulation assumptions visible before a provider uses a scenario. It separates local values from synthetic defaults and creates a provider-review step for operational training assumptions.
+
+Implemented behavior:
+- Adds a top-level Model Assumptions tab.
+- Shows counts for local values, draft changes, areas needing local data, and fixed v1 assumptions.
+- Lists each model area, assumption, current value, source, and status.
+- Flags applied Scenario Tuning values that differ from defaults as local values.
+- Flags edited but unapplied values as draft changes.
+- Shows patient mix assumptions from Scenario Tuning, including acuity, complaint, workup, admission pressure, and deck seed.
+- Shows cardiac/sepsis bundle timing and waiting-room safety rules from Scenario Tuning.
+- Shows Coach Benchmark Rules from Scenario Tuning, including priority mode and acuity/risk/wait scoring weights for the default coach and each comparison coach.
+- Scenario Tuning displays Default Coach Rules for the live Coach and Optimal Flow Coach first, with Show All Coach Rules available to reveal the independent comparison-coach profiles.
+- Provides a Use Local Baseline action that populates the draft scenario with the working baseline: 17 rooms, 3 ED providers, automated front-end triage, 3 nurses, 2 techs, 12-hour simulation, and current timing assumptions.
+- Provides an Edit Scenario action that sends the user back to Scenario Tuning.
+- Scenario Tuning shows Default, Local value, or Draft change badges on its second value row so providers can see assumption status while editing.
+
+Important boundary:
+- Model Assumptions does not import historical ED data.
+- Model Assumptions does not yet edit LWBS probability curves, lab queue, imaging queue, EVS staffing, or detailed coach sub-rule order.
+- Use Local Baseline changes draft tuning only; the user still applies the scenario from Scenario Tuning.
+
+Primary files:
+- `src/ui/App.tsx`
+- `src/ui/styles.css`
 
 ## v1 Front-End Triage Provider
 
@@ -470,6 +548,7 @@ The simulation supports multiple ED providers while preserving the separate Fron
 
 Implemented behavior:
 - Scenario-configurable provider count.
+- Scenario-configurable provider model: Team, Assigned, or Handoff.
 - Provider busy/idle tracking.
 - Provider availability status in Live Operations.
 - Per-provider Live Operations roster showing each provider's busy/idle status, current action, patient location, and next available time.
@@ -477,8 +556,19 @@ Implemented behavior:
 - Action buttons disabled when ED providers are unavailable.
 - Provider status shows when a provider is expected to become available.
 - Front-End Triage Provider can continue acting independently.
+- Team mode allows any idle ED provider to act on any eligible patient.
+- Assigned mode assigns ownership when an ED provider starts work with a patient; follow-up ED-provider actions must be done by that assigned provider.
+- Handoff mode prefers the assigned provider, but another idle ED provider can act when the owner is unavailable and ownership transfers.
+- Patient cards and patient details show the assigned ED provider when a patient has one.
+- Replay reconstructs provider ownership by minute so assignment appears only after the saved decision that created or transferred ownership.
+
+Important boundary:
+- Handoff is automatic in v1 when the assigned provider is unavailable and another ED provider acts; there is not yet a separate manual handoff action.
+- Provider assignment is an operational ownership model, not a clinical scope-of-practice model.
 
 Primary files:
+- `src/simulation/types.ts`
+- `src/simulation/scenarioTuning.ts`
 - `src/simulation/simulationEngine.ts`
 - `src/simulation/actionRules.ts`
 - `src/ui/App.tsx`
@@ -619,7 +709,7 @@ Implemented behavior:
 - Shows benchmark minute and actual-vs-benchmark variance for matched decisions.
 - Preserves benchmark-only actions so the user can see what optimal flow would have done even if the provider did not make that selection.
 - Exposes an Activity right-rail tab for recent activity and summary counts.
-- Exposes a separate Export right-rail tab for download and copy actions.
+- Exposes CSV download and copy actions in the top-level Files tab.
 - Exports or copies the activity timeline as CSV from the browser.
 - Exports or copies an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
 
@@ -627,6 +717,60 @@ Primary files:
 - `src/simulation/activityTimeline.ts`
 - `src/simulation/types.ts`
 - `src/ui/App.tsx`
+
+## v1 Files / Saved Runs
+
+Persistence v1 exports completed or in-progress simulation runs as user-controlled JSON files. It is designed to preserve enough state for review and replay work without introducing a database, authentication, PHI, or networked collaboration.
+
+Implemented behavior:
+- Adds a top-level Files tab.
+- Adds a Run Files section with Export Current Run and Import File.
+- Export Current Run writes the current scenario configuration, active synthetic patient deck, run state, events, decisions, metrics, and a current snapshot to a saved-run JSON file.
+- Import File brings a saved-run JSON file back into the app for load and replay.
+- Shows saved run status, simulation minute, event count, decision count, snapshot count, patient count, and last updated time.
+- Allows loading a saved run back into the simulator so the user can continue from the saved point.
+- Pauses a restored run when the saved run had been running, so loading does not immediately resume the clock.
+- Allows deleting saved run records.
+- Provides Export Current Run for saving the current run to a user-selected JSON file location when the browser supports file picking, with browser download fallback.
+- Imported and recently exported saved runs appear as cards in the Files tab and are cached in the browser profile only so the user can load, replay, or delete them during later app sessions.
+- Adds a separate CSV Export section for activity timeline CSV and all-runs CSV export/copy actions.
+
+Important boundary:
+- The primary save path is file export/import so the user chooses where saved-run JSON files live.
+- Browser local storage is a convenience cache for the visible saved-run cards, not the primary storage location.
+- The app does not automatically write to arbitrary folders without a user file-picker or browser download action.
+- Loaded saved runs resume from the saved point when the user chooses Load.
+- Saved runs can also be opened in Replay v1 for read-only playback from the beginning.
+- Export Current Run is a JSON save for reload/replay; Activity CSV and All Runs CSV are spreadsheet exports for review and are not reloadable saved-run files.
+- Saved runs use synthetic simulation state only and do not store PHI.
+
+Primary files:
+- `src/ui/App.tsx`
+- `src/ui/styles.css`
+
+## v1 Replay / Saved Run Playback
+
+Replay v1 lets the user play back a saved run from the beginning after saving it locally. It is a read-only timeline playback of the saved run rather than a new simulation branch.
+
+Implemented behavior:
+- Adds a Replay button to each Saved Runs card.
+- Starts replay at the saved run's shift start minute.
+- Shows a Replay control bar in Live Operations with Play Replay, Pause Replay, 1 min, 5 min, and Exit Replay controls.
+- Advances the board minute by minute through the saved run timeline.
+- Filters visible events and provider decisions to the current replay minute.
+- Projects patient states, rooms, provider busy state, metrics, graphs, activity, guardrails, and debrief to the replay minute.
+- Keeps replay read-only by disabling live provider actions, Start, manual advance, Reset, Coach Demo, scenario apply/default changes, and save-current-run while replay is active.
+- Exit Replay restores the live working run that was open before replay started.
+
+Important boundary:
+- Replay v1 does not allow branching from a replay minute.
+- Replay v1 does not re-run the simulation engine or create new decisions; it displays the saved run as it existed at each minute.
+- Historical room-cleaning display is reconstructed from saved state and patient departure timing.
+- Load and Replay are intentionally separate: Load resumes from the saved point, while Replay plays the saved run from the beginning.
+
+Primary files:
+- `src/ui/App.tsx`
+- `src/ui/styles.css`
 
 ## v1 Coach Mode / Guided Benchmark Playback
 
@@ -716,10 +860,12 @@ Current verification command set:
 Primary test file:
 - `src/simulation/__tests__/simulationCore.test.ts`
 
+Formula and timing validation:
+- `docs/v1-metric-formula-and-timing-validation.md`
+
 ## Intentional v1 Boundaries
 
 Not yet included:
-- Persistent saved runs.
 - Replay branching UI.
 - Multi-user networked collaboration.
 - Authentication.
@@ -734,8 +880,6 @@ Not yet included:
 ## Recommended Next Iterations
 
 Strong next candidates:
-- Persistence v1: save scenario, run, events, decisions, and snapshots locally.
-- Replay v1: replay a completed run minute-by-minute from saved events and snapshots.
 - Benchmark explanation v2: show why the benchmark chose a patient at a specific time.
 - Staffing model v1: separate ED provider, triage provider, nurse rooming, and ancillary capacity.
 - Lab/imaging bottleneck v1: model downstream capacity instead of only order ready times.

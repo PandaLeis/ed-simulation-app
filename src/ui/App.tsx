@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Ambulance,
@@ -39,7 +39,7 @@ import { activityRunsToCsv, activityTimelineToCsv, createActivityTimeline } from
 import type { ActivityCsvRun } from "../simulation/activityTimeline";
 import { generatePatientDeck } from "../simulation/arrivalGenerator";
 import { createFlowGuardrails } from "../simulation/flowGuardrails";
-import { emptyMetrics } from "../simulation/metricsEngine";
+import { calculateMetrics, emptyMetrics } from "../simulation/metricsEngine";
 import {
   createBenchmarkComparisonView,
   createOptimalFlowBenchmark,
@@ -48,6 +48,7 @@ import {
 } from "../simulation/optimalFlowBenchmark";
 import { createProviderDebrief } from "../simulation/providerDebrief";
 import {
+  coachComparisonStrategyIds,
   createScenarioFromTuning,
   getDefaultScenarioTuningConfig,
   getScenarioTuningPreset,
@@ -78,6 +79,8 @@ import type {
   EDRoom,
   RuntimePatient,
   ScenarioPatient,
+  CoachComparisonStrategyId,
+  CoachPriorityProfile,
   ScenarioPresetId,
   ScenarioTuningConfig,
   SimulationRun,
@@ -140,10 +143,61 @@ const baseBoardColumns: BoardColumn[] = [
 const defaultTuningConfig = getDefaultScenarioTuningConfig();
 const defaultScenarioConfig = createScenarioFromTuning(defaultTuningConfig);
 const DEFAULT_AUTO_ADVANCE_SECONDS = 2;
-type SetupPanelTab = "live-operations" | "scenario" | "additional-stats";
+type SetupPanelTab = "live-operations" | "files" | "scenario" | "calibration" | "additional-stats";
 type ColorMode = "light" | "dark";
 type MainViewTab = "workflow" | "facility" | "benchmark" | "coach-comparison" | "graphs";
-type RightRailTab = "actions" | "coach" | "guardrails" | "debrief" | "activity" | "export";
+type RightRailTab = "actions" | "coach" | "guardrails" | "debrief" | "activity";
+
+type CalibrationStatus = "local" | "draft" | "default" | "needs-data" | "fixed";
+
+interface CalibrationItem {
+  area: string;
+  assumption: string;
+  currentValue: string;
+  source: string;
+  status: CalibrationStatus;
+}
+
+const localBaselineTuningConfig: ScenarioTuningConfig = {
+  ...defaultTuningConfig,
+  triageProviderEnabled: true,
+  triageProviderMode: "automated",
+  roomCapacity: 17,
+  providerCount: 3,
+  providerAssignmentMode: "team",
+  nurseCount: 3,
+  techCount: 2,
+  fastTrackEnabled: true,
+  shiftDurationMinutes: 720,
+  expectedArrivalsPerHour: 12,
+  providerEvaluationTypicalMinutes: 12,
+  triageTypicalMinutes: 5,
+  labTurnaroundTypicalMinutes: 45,
+  imagingTurnaroundTypicalMinutes: 55,
+  admissionDecisionTypicalMinutes: 45,
+  boardingDurationTypicalMinutes: 63,
+  roomCleaningTypicalMinutes: 20,
+  lwbsEnabled: false,
+  minimumWaitBeforeLWBS: 90,
+  patientAcuityMix: "standard",
+  patientAdmissionMix: "standard",
+  patientComplaintMix: "balanced",
+  patientMixSeed: 1,
+  patientWorkupMix: "standard",
+  acsDoorToEcgTargetMinutes: 8,
+  deteriorationGraceMinutes: 30,
+  repeatTroponinDelayMinutes: 60,
+  sepsisAntibioticsMinutes: 35,
+  sepsisBloodCultureMinutes: 8,
+  sepsisCriticalWaitMinutes: 10,
+  sepsisFluidsMinutes: 20,
+  sepsisLactateCollectionMinutes: 5,
+  stemiDoorToEcgTargetMinutes: 5,
+  coachPriorityMode: "balanced",
+  coachAcuityWeight: 1000,
+  coachRiskWeight: 150,
+  coachWaitWeight: 1,
+};
 
 const GUARDRAIL_EXPLANATIONS: Record<string, { action: string; why: string }> = {
   "Hospitalist response delaying admission": {
@@ -217,6 +271,49 @@ const defaultVisibleCoachComparisonIds: WhatIfCoachStrategyId[] = [
 ];
 const defaultBenchmarkComparisonId: WhatIfCoachStrategyId = "optimal_flow";
 const SAVED_APP_STATE_KEY = "ed-simulation-app-state-v1";
+const SAVED_RUNS_KEY = "ed-simulation-saved-runs-v1";
+
+interface SavedRunSnapshot {
+  capturedAt: string;
+  decisionsCount: number;
+  eventsCount: number;
+  metrics: SimulationRun["metrics"];
+  patientStates: Record<PatientState, number>;
+  run: SimulationRun;
+  simulationMinute: number;
+  status: SimulationRun["status"];
+}
+
+interface SavedRunRecord {
+  activeDeck: ScenarioPatient[];
+  activeTuning: ScenarioTuningConfig;
+  createdAt: string;
+  draftTuning: ScenarioTuningConfig;
+  id: string;
+  name: string;
+  run: SimulationRun;
+  scenarioId: string;
+  selectedPresetId: ScenarioPresetId;
+  snapshots: SavedRunSnapshot[];
+  updatedAt: string;
+  version: 1;
+}
+
+interface ReplaySession {
+  activeDeck: ScenarioPatient[];
+  activeTuning: ScenarioTuningConfig;
+  draftTuning: ScenarioTuningConfig;
+  isPlaying: boolean;
+  minute: number;
+  previousActiveDeck: ScenarioPatient[];
+  previousActiveTuning: ScenarioTuningConfig;
+  previousDraftTuning: ScenarioTuningConfig;
+  previousRun: SimulationRun;
+  previousSelectedPresetId: ScenarioPresetId;
+  record: SavedRunRecord;
+  selectedPresetId: ScenarioPresetId;
+  sourceRun: SimulationRun;
+}
 
 interface SavedAppState {
   activeDeck: ScenarioPatient[];
@@ -268,6 +365,355 @@ function saveAppState(state: SavedAppState): void {
   } catch {
     // Browser storage can be unavailable or full; simulation should keep running in memory.
   }
+}
+
+function loadSavedRunRecords(): SavedRunRecord[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(SAVED_RUNS_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored) as SavedRunRecord[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRunRecords(records: SavedRunRecord[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(SAVED_RUNS_KEY, JSON.stringify(records));
+}
+
+function savedRunsExportFileName(): string {
+  return `ed-simulation-saved-runs-${new Date().toISOString().slice(0, 10)}.json`;
+}
+
+function savedRunsExportJson(records: SavedRunRecord[]): string {
+  return JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      key: SAVED_RUNS_KEY,
+      records,
+      version: 1,
+    },
+    null,
+    2,
+  );
+}
+
+function parseSavedRunsImport(text: string): SavedRunRecord[] {
+  const parsed = JSON.parse(text) as { records?: SavedRunRecord[] } | SavedRunRecord[];
+  const records = Array.isArray(parsed) ? parsed : parsed.records;
+
+  if (!Array.isArray(records)) {
+    return [];
+  }
+
+  return records.filter((record): record is SavedRunRecord => {
+    return (
+      record !== undefined &&
+      record.version === 1 &&
+      typeof record.id === "string" &&
+      typeof record.name === "string" &&
+      record.run !== undefined &&
+      Array.isArray(record.activeDeck) &&
+      Array.isArray(record.snapshots)
+    );
+  });
+}
+
+function createRunSnapshot(run: SimulationRun): SavedRunSnapshot {
+  const patientStates = run.patients.reduce(
+    (counts, patient) => ({
+      ...counts,
+      [patient.state]: (counts[patient.state] ?? 0) + 1,
+    }),
+    {
+      admission_pending: 0,
+      boarding: 0,
+      departed: 0,
+      disposition_decision_made: 0,
+      fast_track: 0,
+      lwbs: 0,
+      not_arrived: 0,
+      orders_placed: 0,
+      provider_seen: 0,
+      ready_for_disposition: 0,
+      results_pending: 0,
+      results_ready: 0,
+      results_reviewed: 0,
+      roomed: 0,
+      triage: 0,
+      waiting: 0,
+    } as Record<PatientState, number>,
+  );
+
+  return {
+    capturedAt: new Date().toISOString(),
+    decisionsCount: run.decisions.length,
+    eventsCount: run.events.length,
+    metrics: run.metrics,
+    patientStates,
+    run,
+    simulationMinute: run.currentMinute,
+    status: run.status,
+  };
+}
+
+function pruneFutureMinute(value: number | undefined, replayMinute: number): number | undefined {
+  return value !== undefined && value <= replayMinute ? value : undefined;
+}
+
+function replayPatientState(patient: RuntimePatient, replayMinute: number): PatientState {
+  if (patient.arrivedAt === undefined || patient.arrivedAt > replayMinute) {
+    return "not_arrived";
+  }
+
+  if (patient.lwbsAt !== undefined && patient.lwbsAt <= replayMinute) {
+    return "lwbs";
+  }
+
+  if (patient.departedAt !== undefined && patient.departedAt <= replayMinute) {
+    return "departed";
+  }
+
+  if (patient.admissionAcceptedAt !== undefined && patient.admissionAcceptedAt <= replayMinute) {
+    return "boarding";
+  }
+
+  if (patient.dispositionDecisionAt !== undefined && patient.dispositionDecisionAt <= replayMinute) {
+    return patient.dispositionType === "admit_inpatient" ? "admission_pending" : "disposition_decision_made";
+  }
+
+  if (patient.readyForDispositionAt !== undefined && patient.readyForDispositionAt <= replayMinute) {
+    return "ready_for_disposition";
+  }
+
+  if (patient.resultsReviewedAt !== undefined && patient.resultsReviewedAt <= replayMinute) {
+    return "ready_for_disposition";
+  }
+
+  if (patient.resultsReadyAt !== undefined && patient.resultsReadyAt <= replayMinute) {
+    return "results_ready";
+  }
+
+  if (patient.ordersPlacedAt !== undefined && patient.ordersPlacedAt <= replayMinute) {
+    return "results_pending";
+  }
+
+  if (patient.providerSeenAt !== undefined && patient.providerSeenAt <= replayMinute) {
+    return "provider_seen";
+  }
+
+  if (patient.roomedAt !== undefined && patient.roomedAt <= replayMinute) {
+    return "roomed";
+  }
+
+  if (patient.fastTrackedAt !== undefined && patient.fastTrackedAt <= replayMinute) {
+    return "fast_track";
+  }
+
+  if (patient.triagedAt !== undefined && patient.triagedAt <= replayMinute) {
+    return "waiting";
+  }
+
+  return patient.arrivalPath === "front_end_triage" ? "triage" : "waiting";
+}
+
+function createReplayPatient(patient: RuntimePatient, replayMinute: number): RuntimePatient {
+  const pendingItems = patient.pendingItems
+    .filter((item) => item.orderedAt <= replayMinute)
+    .map((item) => {
+      const status =
+        item.completedAt !== undefined && item.completedAt <= replayMinute
+          ? ("completed" as const)
+          : item.readyAt <= replayMinute
+            ? ("ready" as const)
+            : ("pending" as const);
+
+      return {
+        ...item,
+        collectedAt: pruneFutureMinute(item.collectedAt, replayMinute),
+        completedAt: pruneFutureMinute(item.completedAt, replayMinute),
+        status,
+      };
+    });
+
+  return {
+    ...patient,
+    state: replayPatientState(patient, replayMinute),
+    arrivedAt: pruneFutureMinute(patient.arrivedAt, replayMinute),
+    triagedAt: pruneFutureMinute(patient.triagedAt, replayMinute),
+    roomedAt: pruneFutureMinute(patient.roomedAt, replayMinute),
+    providerSeenAt: pruneFutureMinute(patient.providerSeenAt, replayMinute),
+    fastTrackedAt: pruneFutureMinute(patient.fastTrackedAt, replayMinute),
+    lastReassessedAt: pruneFutureMinute(patient.lastReassessedAt, replayMinute),
+    nextReassessmentDueAt:
+      patient.nextReassessmentDueAt !== undefined && (patient.arrivedAt ?? Number.POSITIVE_INFINITY) <= replayMinute
+        ? patient.nextReassessmentDueAt
+        : undefined,
+    deterioratedAt: pruneFutureMinute(patient.deterioratedAt, replayMinute),
+    ordersPlacedAt: pruneFutureMinute(patient.ordersPlacedAt, replayMinute),
+    resultsReadyAt: pruneFutureMinute(patient.resultsReadyAt, replayMinute),
+    resultsReviewedAt: pruneFutureMinute(patient.resultsReviewedAt, replayMinute),
+    readyForDispositionAt: pruneFutureMinute(patient.readyForDispositionAt, replayMinute),
+    dispositionDecisionAt: pruneFutureMinute(patient.dispositionDecisionAt, replayMinute),
+    admissionAcceptedAt: pruneFutureMinute(patient.admissionAcceptedAt, replayMinute),
+    departedAt: pruneFutureMinute(patient.departedAt, replayMinute),
+    lwbsAt: pruneFutureMinute(patient.lwbsAt, replayMinute),
+    ecgCompletedAt: pruneFutureMinute(patient.ecgCompletedAt, replayMinute),
+    ecgReviewedAt: pruneFutureMinute(patient.ecgReviewedAt, replayMinute),
+    stemiAlertActivatedAt: pruneFutureMinute(patient.stemiAlertActivatedAt, replayMinute),
+    sepsisRecognizedAt: pruneFutureMinute(patient.sepsisRecognizedAt, replayMinute),
+    pendingItems,
+  };
+}
+
+function createReplayRooms(sourceRun: SimulationRun, replayPatients: RuntimePatient[], replayMinute: number): EDRoom[] {
+  return sourceRun.rooms.map((room) => {
+    const activePatient = replayPatients.find(
+      (patient) =>
+        patient.roomId === room.id &&
+        !["not_arrived", "triage", "waiting", "fast_track", "departed", "lwbs"].includes(patient.state),
+    );
+
+    if (activePatient) {
+      return {
+        id: room.id,
+        patientId: activePatient.id,
+        status: activePatient.state === "admission_pending" || activePatient.state === "boarding" ? "blocked" : "occupied",
+      };
+    }
+
+    const cleaningPatient = replayPatients.find(
+      (patient) =>
+        patient.roomId === room.id &&
+        patient.departedAt !== undefined &&
+        patient.departedAt <= replayMinute &&
+        patient.departedAt + patient.expectedRoomCleaningMinutes > replayMinute,
+    );
+
+    if (cleaningPatient) {
+      const cleaningStartedAt = cleaningPatient.departedAt ?? replayMinute;
+
+      return {
+        id: room.id,
+        previousPatientId: cleaningPatient.id,
+        status: "cleaning",
+        cleaningStartedAt,
+        cleaningReadyAt: cleaningStartedAt + cleaningPatient.expectedRoomCleaningMinutes,
+      };
+    }
+
+    if (
+      room.cleaningStartedAt !== undefined &&
+      room.cleaningStartedAt <= replayMinute &&
+      (room.cleaningReadyAt === undefined || room.cleaningReadyAt > replayMinute)
+    ) {
+      return {
+        id: room.id,
+        previousPatientId: room.previousPatientId,
+        status: "cleaning",
+        cleaningStartedAt: room.cleaningStartedAt,
+        cleaningReadyAt: room.cleaningReadyAt,
+      };
+    }
+
+    return {
+      id: room.id,
+      status: "available",
+    };
+  });
+}
+
+function replayAssignedProviderId(sourceRun: SimulationRun, patientId: string, replayMinute: number): string | undefined {
+  if (sourceRun.providerAssignmentMode === "team") {
+    return undefined;
+  }
+
+  const providerDecisions = sourceRun.decisions.filter(
+    (decision) =>
+      decision.patientId === patientId &&
+      decision.providerId?.startsWith("provider-") &&
+      decision.simulationMinute <= replayMinute,
+  );
+
+  if (providerDecisions.length === 0) {
+    return undefined;
+  }
+
+  return sourceRun.providerAssignmentMode === "assigned_with_handoff"
+    ? providerDecisions[providerDecisions.length - 1]?.providerId
+    : providerDecisions[0]?.providerId;
+}
+
+function createReplayProviders(sourceRun: SimulationRun, replayMinute: number): ProviderState[] {
+  return sourceRun.providers.map((provider) => {
+    const activeDecision = sourceRun.decisions.find(
+      (decision) =>
+        decision.providerId === provider.id &&
+        decision.simulationMinute <= replayMinute &&
+        decision.simulationMinute + decision.timeCostMinutes > replayMinute,
+    );
+
+    return {
+      ...provider,
+      currentAction: activeDecision
+        ? {
+            completedAt: activeDecision.simulationMinute + activeDecision.timeCostMinutes,
+            decisionId: activeDecision.id,
+            patientId: activeDecision.patientId,
+            providerId: activeDecision.providerId,
+            startedAt: activeDecision.simulationMinute,
+            type: activeDecision.actionType,
+          }
+        : undefined,
+      status: activeDecision ? "busy" : "idle",
+    };
+  });
+}
+
+function createReplayRun(sourceRun: SimulationRun, replayMinute: number): SimulationRun {
+  const boundedMinute = Math.min(Math.max(sourceRun.shiftStartMinute, replayMinute), sourceRun.currentMinute);
+  const patients = sourceRun.patients.map((patient) => ({
+    ...createReplayPatient(patient, boundedMinute),
+    assignedProviderId: replayAssignedProviderId(sourceRun, patient.id, boundedMinute),
+  }));
+  const rooms = createReplayRooms(sourceRun, patients, boundedMinute);
+  const providers = createReplayProviders(sourceRun, boundedMinute);
+  const primaryProvider = providers[0] ?? sourceRun.provider;
+  const projectedRun: SimulationRun = {
+    ...sourceRun,
+    currentMinute: boundedMinute,
+    decisions: sourceRun.decisions.filter((decision) => decision.simulationMinute <= boundedMinute),
+    events: sourceRun.events.filter((event) => event.simulationMinute <= boundedMinute),
+    metrics: emptyMetrics(),
+    parentRunId: sourceRun.parentRunId ?? sourceRun.id,
+    patients,
+    provider: primaryProvider,
+    providers,
+    rooms,
+    runType: "replay",
+    status: boundedMinute >= sourceRun.currentMinute ? "completed" : "paused",
+    supportResources: sourceRun.supportResources.map((pool) => ({
+      ...pool,
+      busy: pool.busy.filter((assignment) => assignment.startedAt <= boundedMinute && assignment.completedAt > boundedMinute),
+    })),
+  };
+
+  return {
+    ...projectedRun,
+    metrics: calculateMetrics(projectedRun),
+  };
 }
 
 function createRunBundle(scenario: ReturnType<typeof createScenarioFromTuning>): {
@@ -343,6 +789,406 @@ function formatMinutesAndHours(minutes: number | null | undefined): string {
   const remainingMinutes = roundedMinutes % 60;
 
   return `${roundedMinutes} min / ${hours}h ${remainingMinutes}m`;
+}
+
+function calibrationStatusLabel(status: CalibrationStatus): string {
+  switch (status) {
+    case "local":
+      return "Local value";
+    case "draft":
+      return "Draft change";
+    case "default":
+      return "Default";
+    case "needs-data":
+      return "Needs data";
+    case "fixed":
+      return "Fixed v1";
+  }
+}
+
+function scenarioAssumptionStatusLabel(
+  field: keyof ScenarioTuningConfig,
+  draftTuning: ScenarioTuningConfig,
+  activeTuning: ScenarioTuningConfig,
+): string {
+  return calibrationStatusLabel(calibrationStatusFor(field, draftTuning, activeTuning));
+}
+
+function calibrationStatusFor(
+  field: keyof ScenarioTuningConfig,
+  draftTuning: ScenarioTuningConfig,
+  activeTuning: ScenarioTuningConfig,
+): CalibrationStatus {
+  if (draftTuning[field] !== activeTuning[field]) {
+    return "draft";
+  }
+
+  return activeTuning[field] === defaultTuningConfig[field] ? "default" : "local";
+}
+
+function coachPriorityModeLabel(mode: ScenarioTuningConfig["coachPriorityMode"]): string {
+  switch (mode) {
+    case "safety_first":
+      return "Safety first";
+    case "throughput":
+      return "Throughput";
+    case "front_end":
+      return "Front-end";
+    default:
+      return "Balanced";
+  }
+}
+
+function coachComparisonStrategyLabel(strategyId: CoachComparisonStrategyId): string {
+  switch (strategyId) {
+    case "front_end_focus":
+      return "Front-End Focus";
+    case "middle_flow_focus":
+      return "Middle Flow Focus";
+    case "disposition_focus":
+      return "Disposition Focus";
+    case "resource_aware":
+      return "Resource-Aware";
+    case "safety_first":
+      return "Safety First";
+    case "fast_track":
+      return "Fast Track";
+    case "balanced_operations":
+      return "Balanced Operations";
+  }
+}
+
+function coachPriorityProfileStatus(
+  strategyId: CoachComparisonStrategyId,
+  draftTuning: ScenarioTuningConfig,
+  activeTuning: ScenarioTuningConfig,
+): CalibrationStatus {
+  const draftProfile = draftTuning.coachStrategyPriorityProfiles[strategyId];
+  const activeProfile = activeTuning.coachStrategyPriorityProfiles[strategyId];
+  const defaultProfile = defaultTuningConfig.coachStrategyPriorityProfiles[strategyId];
+
+  if (JSON.stringify(draftProfile) !== JSON.stringify(activeProfile)) {
+    return "draft";
+  }
+
+  return JSON.stringify(activeProfile) === JSON.stringify(defaultProfile) ? "default" : "local";
+}
+
+function coachPriorityProfileSummary(profile: CoachPriorityProfile): string {
+  return `${coachPriorityModeLabel(profile.mode)}, ESI ${profile.acuityWeight}, Risk ${profile.riskWeight}, Wait ${profile.waitWeight}/min`;
+}
+
+function coachStrategyBehaviorDetails(strategyId: CoachComparisonStrategyId | "default"): string[] {
+  switch (strategyId) {
+    case "front_end_focus":
+      return [
+        "Clears triage and protocol starts before downstream roomed-patient work.",
+        "Moves eligible waiting patients into rooms or Fast Track once front-end work is clear.",
+      ];
+    case "middle_flow_focus":
+      return [
+        "Prioritizes roomed unseen patients, provider evaluation, orders, and diagnostic result movement.",
+        "Uses patient weights to choose among competing roomed or results-pending patients.",
+      ];
+    case "disposition_focus":
+      return [
+        "Prioritizes results review and discharge/admit decisions to clear rooms and define boarding.",
+        "Uses patient weights to choose among disposition-ready or results-ready patients.",
+      ];
+    case "resource_aware":
+      return [
+        "Checks nurse, tech, room, and provider constraints before creating more support-resource work.",
+        "Clears disposition, results, and unseen roomed work first when support capacity is constrained.",
+      ];
+    case "safety_first":
+      return [
+        "Moves deteriorating patients, overdue reassessments, critical waits, and cardiac/sepsis-sensitive work earlier.",
+        "Uses patient weights to choose among safety-sensitive patients in the same action bucket.",
+      ];
+    case "fast_track":
+      return [
+        "Prioritizes eligible lower-acuity patients into Fast Track and keeps vertical-care patients moving.",
+        "Uses patient weights after Fast Track eligibility and vertical-care status are considered.",
+      ];
+    case "balanced_operations":
+      return [
+        "Blends safety, throughput, disposition, Fast Track, and resource-aware priorities.",
+        "Uses patient weights as the tie-breaker inside the selected operational action bucket.",
+      ];
+    default:
+      return [
+        "Chooses the broad action path from the selected mode for the live Coach and Optimal Flow Coach.",
+        "Uses ESI, risk, and wait weights to rank patients within the selected action bucket.",
+      ];
+  }
+}
+
+function createCalibrationItems(
+  draftTuning: ScenarioTuningConfig,
+  activeTuning: ScenarioTuningConfig,
+): CalibrationItem[] {
+  return [
+    {
+      area: "Demand",
+      assumption: "Arrivals per hour",
+      currentValue: `${draftTuning.expectedArrivalsPerHour} patients/hr`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("expectedArrivalsPerHour", draftTuning, activeTuning),
+    },
+    {
+      area: "Capacity",
+      assumption: "ED treatment rooms",
+      currentValue: `${draftTuning.roomCapacity} rooms`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("roomCapacity", draftTuning, activeTuning),
+    },
+    {
+      area: "Staffing",
+      assumption: "ED providers",
+      currentValue: `${draftTuning.providerCount} provider${draftTuning.providerCount === 1 ? "" : "s"}`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("providerCount", draftTuning, activeTuning),
+    },
+    {
+      area: "Staffing",
+      assumption: "Nurse and tech capacity",
+      currentValue: `${draftTuning.nurseCount} nurses / ${draftTuning.techCount} techs`,
+      source: "Scenario Tuning",
+      status:
+        calibrationStatusFor("nurseCount", draftTuning, activeTuning) === "draft" ||
+        calibrationStatusFor("techCount", draftTuning, activeTuning) === "draft"
+          ? "draft"
+          : calibrationStatusFor("nurseCount", draftTuning, activeTuning) === "local" ||
+              calibrationStatusFor("techCount", draftTuning, activeTuning) === "local"
+            ? "local"
+            : "default",
+    },
+    {
+      area: "Timing",
+      assumption: "Provider evaluation typical",
+      currentValue: `${draftTuning.providerEvaluationTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("providerEvaluationTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Timing",
+      assumption: "Front-end triage typical",
+      currentValue: `${draftTuning.triageTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("triageTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Timing",
+      assumption: "Lab turnaround typical",
+      currentValue: `${draftTuning.labTurnaroundTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("labTurnaroundTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Timing",
+      assumption: "Imaging turnaround typical",
+      currentValue: `${draftTuning.imagingTurnaroundTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("imagingTurnaroundTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Hospitalist",
+      assumption: "Hospitalist response typical",
+      currentValue: `${draftTuning.admissionDecisionTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("admissionDecisionTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Boarding",
+      assumption: "Inpatient bed wait typical",
+      currentValue: `${draftTuning.boardingDurationTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("boardingDurationTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Rooms",
+      assumption: "Room cleaning typical",
+      currentValue: `${draftTuning.roomCleaningTypicalMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("roomCleaningTypicalMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "LWBS",
+      assumption: "Minimum wait before LWBS",
+      currentValue: `${draftTuning.minimumWaitBeforeLWBS} min / ${draftTuning.lwbsEnabled ? "enabled" : "disabled"}`,
+      source: "Scenario Tuning",
+      status:
+        calibrationStatusFor("minimumWaitBeforeLWBS", draftTuning, activeTuning) === "draft" ||
+        calibrationStatusFor("lwbsEnabled", draftTuning, activeTuning) === "draft"
+          ? "draft"
+          : calibrationStatusFor("minimumWaitBeforeLWBS", draftTuning, activeTuning) === "local" ||
+              calibrationStatusFor("lwbsEnabled", draftTuning, activeTuning) === "local"
+            ? "local"
+            : "default",
+    },
+    {
+      area: "Patient Mix",
+      assumption: "Acuity pattern",
+      currentValue:
+        draftTuning.patientAcuityMix === "higher_acuity"
+          ? "Higher acuity"
+          : draftTuning.patientAcuityMix === "lower_acuity"
+            ? "Lower acuity"
+            : "Standard",
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("patientAcuityMix", draftTuning, activeTuning),
+    },
+    {
+      area: "Patient Mix",
+      assumption: "Complaint pattern",
+      currentValue:
+        draftTuning.patientComplaintMix === "cardiac"
+          ? "Cardiac-heavy"
+          : draftTuning.patientComplaintMix === "infection"
+            ? "Infection-heavy"
+            : draftTuning.patientComplaintMix === "injury_minor"
+              ? "Injury/minor-heavy"
+              : "Balanced",
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("patientComplaintMix", draftTuning, activeTuning),
+    },
+    {
+      area: "Patient Mix",
+      assumption: "Workup intensity",
+      currentValue:
+        draftTuning.patientWorkupMix === "higher_workup"
+          ? "Higher workup"
+          : draftTuning.patientWorkupMix === "lower_workup"
+            ? "Lower workup"
+            : "Standard",
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("patientWorkupMix", draftTuning, activeTuning),
+    },
+    {
+      area: "Patient Mix",
+      assumption: "Admission pressure",
+      currentValue:
+        draftTuning.patientAdmissionMix === "higher_admit"
+          ? "Higher admit"
+          : draftTuning.patientAdmissionMix === "lower_admit"
+            ? "Lower admit"
+            : "Standard",
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("patientAdmissionMix", draftTuning, activeTuning),
+    },
+    {
+      area: "Patient Mix",
+      assumption: "Deck seed",
+      currentValue: `Seed ${draftTuning.patientMixSeed}`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("patientMixSeed", draftTuning, activeTuning),
+    },
+    {
+      area: "Clinical Bundles",
+      assumption: "STEMI door-to-ECG target",
+      currentValue: `${draftTuning.stemiDoorToEcgTargetMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("stemiDoorToEcgTargetMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Clinical Bundles",
+      assumption: "Possible ACS door-to-ECG target",
+      currentValue: `${draftTuning.acsDoorToEcgTargetMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("acsDoorToEcgTargetMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Clinical Bundles",
+      assumption: "Repeat troponin delay",
+      currentValue: `${draftTuning.repeatTroponinDelayMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("repeatTroponinDelayMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Clinical Bundles",
+      assumption: "Sepsis lactate / culture timing",
+      currentValue: `${draftTuning.sepsisLactateCollectionMinutes} / ${draftTuning.sepsisBloodCultureMinutes} min`,
+      source: "Scenario Tuning",
+      status:
+        calibrationStatusFor("sepsisLactateCollectionMinutes", draftTuning, activeTuning) === "draft" ||
+        calibrationStatusFor("sepsisBloodCultureMinutes", draftTuning, activeTuning) === "draft"
+          ? "draft"
+          : calibrationStatusFor("sepsisLactateCollectionMinutes", draftTuning, activeTuning) === "local" ||
+              calibrationStatusFor("sepsisBloodCultureMinutes", draftTuning, activeTuning) === "local"
+            ? "local"
+            : "default",
+    },
+    {
+      area: "Clinical Bundles",
+      assumption: "Sepsis antibiotics / fluids timing",
+      currentValue: `${draftTuning.sepsisAntibioticsMinutes} / ${draftTuning.sepsisFluidsMinutes} min`,
+      source: "Scenario Tuning",
+      status:
+        calibrationStatusFor("sepsisAntibioticsMinutes", draftTuning, activeTuning) === "draft" ||
+        calibrationStatusFor("sepsisFluidsMinutes", draftTuning, activeTuning) === "draft"
+          ? "draft"
+          : calibrationStatusFor("sepsisAntibioticsMinutes", draftTuning, activeTuning) === "local" ||
+              calibrationStatusFor("sepsisFluidsMinutes", draftTuning, activeTuning) === "local"
+            ? "local"
+            : "default",
+    },
+    {
+      area: "Safety Rules",
+      assumption: "Sepsis critical wait threshold",
+      currentValue: `${draftTuning.sepsisCriticalWaitMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("sepsisCriticalWaitMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Safety Rules",
+      assumption: "Deterioration grace after overdue reassessment",
+      currentValue: `${draftTuning.deteriorationGraceMinutes} min`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("deteriorationGraceMinutes", draftTuning, activeTuning),
+    },
+    {
+      area: "Coach",
+      assumption: "Coach priority mode",
+      currentValue: coachPriorityModeLabel(draftTuning.coachPriorityMode),
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("coachPriorityMode", draftTuning, activeTuning),
+    },
+    {
+      area: "Coach",
+      assumption: "Acuity priority weight",
+      currentValue: `${draftTuning.coachAcuityWeight} points per ESI step`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("coachAcuityWeight", draftTuning, activeTuning),
+    },
+    {
+      area: "Coach",
+      assumption: "Risk priority weight",
+      currentValue: `${draftTuning.coachRiskWeight} points per risk level`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("coachRiskWeight", draftTuning, activeTuning),
+    },
+    {
+      area: "Coach",
+      assumption: "Wait priority weight",
+      currentValue: `${draftTuning.coachWaitWeight} point${draftTuning.coachWaitWeight === 1 ? "" : "s"} per wait minute`,
+      source: "Scenario Tuning",
+      status: calibrationStatusFor("coachWaitWeight", draftTuning, activeTuning),
+    },
+    ...coachComparisonStrategyIds.map((strategyId): CalibrationItem => ({
+      area: "Coach",
+      assumption: `${coachComparisonStrategyLabel(strategyId)} Coach profile`,
+      currentValue: coachPriorityProfileSummary(draftTuning.coachStrategyPriorityProfiles[strategyId]),
+      source: "Scenario Tuning",
+      status: coachPriorityProfileStatus(strategyId, draftTuning, activeTuning),
+    })),
+    {
+      area: "Coach",
+      assumption: "Benchmark comparison runtime",
+      currentValue: "Calculated from same deck and scenario",
+      source: "Coach engine",
+      status: "fixed",
+    },
+  ];
 }
 
 function graphStepMinutes(currentMinute: number): number {
@@ -494,6 +1340,15 @@ function arrivalPathLabel(patient: RuntimePatient): string {
 
 function patientDisplayName(patientId?: string): string {
   return patientId ?? "another patient";
+}
+
+function providerAssignmentLabel(providerId?: string): string {
+  if (!providerId) {
+    return "Unassigned";
+  }
+
+  const providerNumber = providerId.match(/provider-(\d+)/)?.[1];
+  return providerNumber ? `Provider ${Number(providerNumber)}` : providerId;
 }
 
 function providerWorkText(run: SimulationRun, selectedPatientId?: string): string {
@@ -1323,6 +2178,7 @@ export function App() {
       const restoredRun = {
         ...initialAppState.run,
         fastTrackEnabled: initialAppState.run.fastTrackEnabled ?? defaultTuningConfig.fastTrackEnabled,
+        providerAssignmentMode: initialAppState.run.providerAssignmentMode ?? defaultTuningConfig.providerAssignmentMode,
         metrics: mergeDefined(emptyMetrics(), initialAppState.run.metrics),
         supportResources:
           initialAppState.run.supportResources ?? createSupportResourcePools(defaultTuningConfig.nurseCount, defaultTuningConfig.techCount),
@@ -1349,10 +2205,11 @@ export function App() {
     initialAppState?.selectedSetupPanelTab ?? "live-operations",
   );
   const [selectedMainViewTab, setSelectedMainViewTab] = useState<MainViewTab>(initialAppState?.selectedMainViewTab ?? "workflow");
-  const initialRightRailTab =
-    (initialAppState?.selectedRightRailTab as string | undefined) === "benchmark"
-      ? "actions"
-      : (initialAppState?.selectedRightRailTab ?? "actions");
+  const initialRightRailTab = ["benchmark", "export", "saved-runs"].includes(
+    initialAppState?.selectedRightRailTab as string,
+  )
+    ? "actions"
+    : (initialAppState?.selectedRightRailTab ?? "actions");
   const [selectedRightRailTab, setSelectedRightRailTab] = useState<RightRailTab>(initialRightRailTab);
   const [autoAdvanceSeconds, setAutoAdvanceSeconds] = useState(initialAppState?.autoAdvanceSeconds ?? DEFAULT_AUTO_ADVANCE_SECONDS);
   const [coachDemoEnabled, setCoachDemoEnabled] = useState(false);
@@ -1365,7 +2222,12 @@ export function App() {
   const [showHeartMetrics, setShowHeartMetrics] = useState(initialAppState?.showHeartMetrics ?? true);
   const [showSepsisMetrics, setShowSepsisMetrics] = useState(initialAppState?.showSepsisMetrics ?? true);
   const [showTooltips, setShowTooltips] = useState(initialAppState?.showTooltips ?? true);
+  const [showAllCoachRules, setShowAllCoachRules] = useState(false);
+  const [savedRunRecords, setSavedRunRecords] = useState<SavedRunRecord[]>(() => loadSavedRunRecords());
+  const [savedRunStatus, setSavedRunStatus] = useState<string | undefined>();
+  const [replaySession, setReplaySession] = useState<ReplaySession | undefined>();
   const benchmarkCacheRef = useRef<{ key: string; benchmark: OptimalFlowBenchmark } | undefined>(undefined);
+  const isReplayMode = replaySession !== undefined;
 
   const selectedPatient = useMemo(
     () => run.patients.find((patient) => patient.id === selectedPatientId),
@@ -1387,7 +2249,7 @@ export function App() {
     selectedMainViewTab === "benchmark" ||
     selectedMainViewTab === "coach-comparison" ||
     selectedRightRailTab === "activity" ||
-    selectedRightRailTab === "export";
+    selectedSetupPanelTab === "files";
   const benchmarkCacheKey = [
     scenario.id,
     activeDeck.length,
@@ -1442,9 +2304,16 @@ export function App() {
   const selectedCoreMetric =
     coreMetrics.find((metric) => metric.id === selectedCoreMetricId) ??
     coreMetrics.find((metric) => metric.id === "waiting-room-census");
+  const calibrationItems = useMemo(
+    () => createCalibrationItems(draftTuning, activeTuning),
+    [activeTuning, draftTuning],
+  );
+  const localCalibrationCount = calibrationItems.filter((item) => item.status === "local").length;
+  const draftCalibrationCount = calibrationItems.filter((item) => item.status === "draft").length;
+  const needsCalibrationDataCount = calibrationItems.filter((item) => item.status === "needs-data").length;
 
   useEffect(() => {
-    if (run.status !== "running") {
+    if (isReplayMode || run.status !== "running") {
       return undefined;
     }
 
@@ -1456,9 +2325,38 @@ export function App() {
     }, autoAdvanceSeconds * 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [autoAdvanceSeconds, coachDemoEnabled, run.status, scenario]);
+  }, [autoAdvanceSeconds, coachDemoEnabled, isReplayMode, run.status, scenario]);
 
   useEffect(() => {
+    if (!replaySession?.isPlaying) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setReplaySession((currentSession) => {
+        if (!currentSession) {
+          return undefined;
+        }
+
+        const nextMinute = Math.min(currentSession.minute + 1, currentSession.sourceRun.currentMinute);
+        setRun(createReplayRun(currentSession.sourceRun, nextMinute));
+
+        return {
+          ...currentSession,
+          isPlaying: nextMinute < currentSession.sourceRun.currentMinute,
+          minute: nextMinute,
+        };
+      });
+    }, autoAdvanceSeconds * 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [autoAdvanceSeconds, replaySession?.isPlaying]);
+
+  useEffect(() => {
+    if (isReplayMode) {
+      return;
+    }
+
     if (run.status === "running" && run.currentMinute % 5 !== 0) {
       return;
     }
@@ -1496,6 +2394,7 @@ export function App() {
     showHeartMetrics,
     showSepsisMetrics,
     showTooltips,
+    isReplayMode,
   ]);
 
   if (!selectedCoreMetric) {
@@ -1507,6 +2406,10 @@ export function App() {
   }
 
   function handleStartPause() {
+    if (isReplayMode) {
+      return;
+    }
+
     if (run.status === "running") {
       setCoachDemoEnabled(false);
       updateRun(pauseSimulation(run));
@@ -1519,6 +2422,10 @@ export function App() {
   }
 
   function handleAdvance(minutes: number) {
+    if (isReplayMode) {
+      return;
+    }
+
     let nextRun = run;
     for (let index = 0; index < minutes; index += 1) {
       nextRun = advanceOneMinute(nextRun, scenario);
@@ -1527,6 +2434,10 @@ export function App() {
   }
 
   function handleAction(actionType: ProviderActionType) {
+    if (isReplayMode) {
+      return;
+    }
+
     setCoachDemoEnabled(false);
     updateRun(applyProviderAction(run, actionType, selectedPatient?.id));
   }
@@ -1541,7 +2452,7 @@ export function App() {
   }
 
   function handleApplyCoachRecommendation() {
-    if (!coachRecommendation) {
+    if (!coachRecommendation || isReplayMode) {
       return;
     }
 
@@ -1563,12 +2474,20 @@ export function App() {
   }
 
   function handleReset() {
+    if (isReplayMode) {
+      return;
+    }
+
     setSelectedPatientId(undefined);
     setCoachDemoEnabled(false);
     setRun(createSimulationRun(scenario, activeDeck));
   }
 
   function handleCoachDemoToggle() {
+    if (isReplayMode) {
+      return;
+    }
+
     setSelectedSetupPanelTab("live-operations");
     setSelectedRightRailTab("coach");
 
@@ -1584,6 +2503,10 @@ export function App() {
   }
 
   function handleTriageProviderToggle(enabled: boolean) {
+    if (isReplayMode) {
+      return;
+    }
+
     const mode: TriageProviderMode = enabled ? "manual" : "unavailable";
     setDraftTuning((current) => ({ ...current, triageProviderEnabled: enabled, triageProviderMode: mode }));
     setActiveTuning((current) => ({ ...current, triageProviderEnabled: enabled, triageProviderMode: mode }));
@@ -1591,16 +2514,41 @@ export function App() {
   }
 
   function handleTriageProviderModeChange(mode: TriageProviderMode) {
+    if (isReplayMode) {
+      return;
+    }
+
     setDraftTuning((current) => ({ ...current, triageProviderEnabled: mode !== "unavailable", triageProviderMode: mode }));
     setActiveTuning((current) => ({ ...current, triageProviderEnabled: mode !== "unavailable", triageProviderMode: mode }));
     setRun((currentRun) => setFrontEndTriageProviderMode(currentRun, mode));
   }
 
-  function updateDraftTuning(field: keyof ScenarioTuningConfig, value: number | boolean | TriageProviderMode) {
+  function updateDraftTuning(
+    field: keyof ScenarioTuningConfig,
+    value: ScenarioTuningConfig[keyof ScenarioTuningConfig],
+  ) {
     setSelectedPresetId("default");
     setDraftTuning((current) => ({
       ...current,
       [field]: value,
+    }));
+  }
+
+  function updateDraftCoachStrategyProfile(
+    strategyId: CoachComparisonStrategyId,
+    field: keyof CoachPriorityProfile,
+    value: CoachPriorityProfile[keyof CoachPriorityProfile],
+  ) {
+    setSelectedPresetId("default");
+    setDraftTuning((current) => ({
+      ...current,
+      coachStrategyPriorityProfiles: {
+        ...current.coachStrategyPriorityProfiles,
+        [strategyId]: {
+          ...current.coachStrategyPriorityProfiles[strategyId],
+          [field]: value,
+        },
+      },
     }));
   }
 
@@ -1610,6 +2558,10 @@ export function App() {
   }
 
   function handleApplyScenario() {
+    if (isReplayMode) {
+      return;
+    }
+
     const nextScenario = createScenarioFromTuning(draftTuning);
     const nextBundle = createRunBundle(nextScenario);
     setSelectedPatientId(undefined);
@@ -1620,6 +2572,10 @@ export function App() {
   }
 
   function handleRestoreDefaultTuning() {
+    if (isReplayMode) {
+      return;
+    }
+
     const nextScenario = createScenarioFromTuning(defaultTuningConfig);
     const nextBundle = createRunBundle(nextScenario);
     setSelectedPatientId(undefined);
@@ -1631,10 +2587,210 @@ export function App() {
     setRun(nextBundle.run);
   }
 
+  function handleApplyLocalBaselineTuning() {
+    if (isReplayMode) {
+      return;
+    }
+
+    setSelectedPresetId("default");
+    setDraftTuning(localBaselineTuningConfig);
+  }
+
+  function createCurrentSavedRunRecord(): SavedRunRecord {
+    const now = new Date().toISOString();
+    const snapshot = createRunSnapshot(run);
+    const fallbackName = `${stateLabel(run.status)} run ${formatMinute(run.currentMinute)} · ${new Date().toLocaleString()}`;
+
+    return {
+      activeDeck,
+      activeTuning,
+      createdAt: now,
+      draftTuning,
+      id: `saved-run-${now}-${run.id}`,
+      name: fallbackName,
+      run,
+      scenarioId: scenario.id,
+      selectedPresetId,
+      snapshots: [snapshot],
+      updatedAt: now,
+      version: 1,
+    };
+  }
+
+  async function writeSavedRunsFile(records: SavedRunRecord[], fileName: string, successMessage: string) {
+    const json = savedRunsExportJson(records);
+
+    try {
+      if ("showSaveFilePicker" in window) {
+        const fileHandle = await (window as unknown as {
+          showSaveFilePicker: (options: {
+            suggestedName: string;
+            types: Array<{ accept: Record<string, string[]>; description: string }>;
+          }) => Promise<{ createWritable: () => Promise<{ close: () => Promise<void>; write: (contents: string) => Promise<void> }> }>;
+        }).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [
+            {
+              accept: { "application/json": [".json"] },
+              description: "Saved runs JSON",
+            },
+          ],
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        setSavedRunStatus(successMessage);
+        return;
+      }
+
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setSavedRunStatus(`${successMessage} Browser downloaded ${fileName}.`);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setSavedRunStatus("File export canceled.");
+        return;
+      }
+
+      setSavedRunStatus("File export failed. Browser file access may be unavailable.");
+    }
+  }
+
+  async function handleExportCurrentRunFile() {
+    if (isReplayMode) {
+      setSavedRunStatus("Exit replay before exporting a new run.");
+      return;
+    }
+
+    const record = createCurrentSavedRunRecord();
+    await writeSavedRunsFile([record], savedRunsExportFileName(), `Exported current run: ${record.name}.`);
+  }
+
+  function handleRestoreSavedRun(record: SavedRunRecord) {
+    if (isReplayMode) {
+      handleExitReplay();
+    }
+
+    const restoredRun = record.run.status === "running" ? pauseSimulation(record.run) : record.run;
+
+    setSelectedPatientId(undefined);
+    setCoachDemoEnabled(false);
+    setDraftTuning(record.draftTuning);
+    setActiveTuning(record.activeTuning);
+    setSelectedPresetId(record.selectedPresetId);
+    setActiveDeck(record.activeDeck);
+    setRun(restoredRun);
+    setSavedRunStatus(`Loaded ${record.name}.`);
+  }
+
+  function handleDeleteSavedRun(recordId: string) {
+    const nextRecords = savedRunRecords.filter((record) => record.id !== recordId);
+    saveRunRecords(nextRecords);
+    setSavedRunRecords(nextRecords);
+    setSavedRunStatus("Saved run deleted.");
+  }
+
+  function handleImportSavedRunsFile(text: string) {
+    try {
+      const importedRecords = parseSavedRunsImport(text);
+      if (importedRecords.length === 0) {
+        setSavedRunStatus("Import did not find any saved runs.");
+        return;
+      }
+
+      const mergedRecords = [...importedRecords, ...savedRunRecords].filter(
+        (record, index, allRecords) => allRecords.findIndex((candidate) => candidate.id === record.id) === index,
+      );
+
+      saveRunRecords(mergedRecords);
+      setSavedRunRecords(mergedRecords);
+      setSavedRunStatus(`Imported ${importedRecords.length} saved run${importedRecords.length === 1 ? "" : "s"}.`);
+    } catch {
+      setSavedRunStatus("Import failed. Choose a valid saved-runs JSON file.");
+    }
+  }
+
+  function handleStartReplay(record: SavedRunRecord) {
+    const replayMinute = record.run.shiftStartMinute;
+
+    setSelectedPatientId(undefined);
+    setCoachDemoEnabled(false);
+    setDraftTuning(record.draftTuning);
+    setActiveTuning(record.activeTuning);
+    setSelectedPresetId(record.selectedPresetId);
+    setActiveDeck(record.activeDeck);
+    setRun(createReplayRun(record.run, replayMinute));
+    setReplaySession({
+      activeDeck: record.activeDeck,
+      activeTuning: record.activeTuning,
+      draftTuning: record.draftTuning,
+      isPlaying: false,
+      minute: replayMinute,
+      previousActiveDeck: activeDeck,
+      previousActiveTuning: activeTuning,
+      previousDraftTuning: draftTuning,
+      previousRun: run,
+      previousSelectedPresetId: selectedPresetId,
+      record,
+      selectedPresetId: record.selectedPresetId,
+      sourceRun: record.run,
+    });
+    setSelectedSetupPanelTab("live-operations");
+    setSelectedRightRailTab("actions");
+    setSavedRunStatus(`Replay loaded from start for ${record.name}. Press Play Replay to begin.`);
+  }
+
+  function handleReplayPlayPause() {
+    setReplaySession((currentSession) =>
+      currentSession
+        ? {
+            ...currentSession,
+            isPlaying: currentSession.minute >= currentSession.sourceRun.currentMinute ? false : !currentSession.isPlaying,
+          }
+        : undefined,
+    );
+  }
+
+  function handleReplayStep(minutes: number) {
+    if (!replaySession) {
+      return;
+    }
+
+    const nextMinute = Math.min(replaySession.sourceRun.currentMinute, Math.max(replaySession.sourceRun.shiftStartMinute, replaySession.minute + minutes));
+    setRun(createReplayRun(replaySession.sourceRun, nextMinute));
+    setReplaySession({
+      ...replaySession,
+      isPlaying: false,
+      minute: nextMinute,
+    });
+  }
+
+  function handleExitReplay() {
+    if (!replaySession) {
+      return;
+    }
+
+    setSelectedPatientId(undefined);
+    setCoachDemoEnabled(false);
+    setDraftTuning(replaySession.previousDraftTuning);
+    setActiveTuning(replaySession.previousActiveTuning);
+    setSelectedPresetId(replaySession.previousSelectedPresetId);
+    setActiveDeck(replaySession.previousActiveDeck);
+    setRun(replaySession.previousRun);
+    setSavedRunStatus(`Exited replay for ${replaySession.record.name}.`);
+    setReplaySession(undefined);
+  }
+
   const hasPendingScenarioChanges =
     draftTuning.triageProviderMode !== activeTuning.triageProviderMode ||
     draftTuning.roomCapacity !== activeTuning.roomCapacity ||
     draftTuning.providerCount !== activeTuning.providerCount ||
+    draftTuning.providerAssignmentMode !== activeTuning.providerAssignmentMode ||
     draftTuning.nurseCount !== activeTuning.nurseCount ||
     draftTuning.techCount !== activeTuning.techCount ||
     draftTuning.fastTrackEnabled !== activeTuning.fastTrackEnabled ||
@@ -1648,7 +2804,27 @@ export function App() {
     draftTuning.boardingDurationTypicalMinutes !== activeTuning.boardingDurationTypicalMinutes ||
     draftTuning.roomCleaningTypicalMinutes !== activeTuning.roomCleaningTypicalMinutes ||
     draftTuning.lwbsEnabled !== activeTuning.lwbsEnabled ||
-    draftTuning.minimumWaitBeforeLWBS !== activeTuning.minimumWaitBeforeLWBS;
+    draftTuning.minimumWaitBeforeLWBS !== activeTuning.minimumWaitBeforeLWBS ||
+    draftTuning.patientAcuityMix !== activeTuning.patientAcuityMix ||
+    draftTuning.patientComplaintMix !== activeTuning.patientComplaintMix ||
+    draftTuning.patientWorkupMix !== activeTuning.patientWorkupMix ||
+    draftTuning.patientAdmissionMix !== activeTuning.patientAdmissionMix ||
+    draftTuning.patientMixSeed !== activeTuning.patientMixSeed ||
+    draftTuning.stemiDoorToEcgTargetMinutes !== activeTuning.stemiDoorToEcgTargetMinutes ||
+    draftTuning.acsDoorToEcgTargetMinutes !== activeTuning.acsDoorToEcgTargetMinutes ||
+    draftTuning.repeatTroponinDelayMinutes !== activeTuning.repeatTroponinDelayMinutes ||
+    draftTuning.sepsisLactateCollectionMinutes !== activeTuning.sepsisLactateCollectionMinutes ||
+    draftTuning.sepsisBloodCultureMinutes !== activeTuning.sepsisBloodCultureMinutes ||
+    draftTuning.sepsisAntibioticsMinutes !== activeTuning.sepsisAntibioticsMinutes ||
+    draftTuning.sepsisFluidsMinutes !== activeTuning.sepsisFluidsMinutes ||
+    draftTuning.sepsisCriticalWaitMinutes !== activeTuning.sepsisCriticalWaitMinutes ||
+    draftTuning.deteriorationGraceMinutes !== activeTuning.deteriorationGraceMinutes ||
+    draftTuning.coachPriorityMode !== activeTuning.coachPriorityMode ||
+    draftTuning.coachAcuityWeight !== activeTuning.coachAcuityWeight ||
+    draftTuning.coachRiskWeight !== activeTuning.coachRiskWeight ||
+    draftTuning.coachWaitWeight !== activeTuning.coachWaitWeight ||
+    JSON.stringify(draftTuning.coachStrategyPriorityProfiles) !== JSON.stringify(activeTuning.coachStrategyPriorityProfiles);
+  const isConfigurationReviewFocused = selectedSetupPanelTab === "scenario" || selectedSetupPanelTab === "calibration";
 
   return (
     <main className="appShell" data-theme={colorMode} data-tooltips={showTooltips ? "on" : "off"}>
@@ -1682,6 +2858,19 @@ export function App() {
             Live Operations
           </button>
           <button
+            aria-label="Files: export the current run, import saved run files, replay saved runs, and export activity CSV files."
+            aria-controls="files-panel"
+            aria-selected={selectedSetupPanelTab === "files"}
+            className={selectedSetupPanelTab === "files" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Manage files for this simulation: export the current run, import saved run JSON files, replay or load imported runs, and export activity CSV data."
+            id="files-tab"
+            onClick={() => setSelectedSetupPanelTab("files")}
+            role="tab"
+            type="button"
+          >
+            Files
+          </button>
+          <button
             aria-label="Additional Stats: review detailed live metrics, workflow measures, and performance indicators."
             aria-controls="additional-stats-panel"
             aria-selected={selectedSetupPanelTab === "additional-stats"}
@@ -1709,6 +2898,19 @@ export function App() {
           >
             Scenario Tuning
           </button>
+          <button
+            aria-label="Model Assumptions: review which simulation assumptions use local values and which still need local data."
+            aria-controls="calibration-panel"
+            aria-selected={selectedSetupPanelTab === "calibration"}
+            className={selectedSetupPanelTab === "calibration" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Review Model Assumptions before running a scenario: local baseline values, draft changes, synthetic defaults, fixed v1 assumptions, and assumptions that still need local data."
+            id="calibration-tab"
+            onClick={() => setSelectedSetupPanelTab("calibration")}
+            role="tab"
+            type="button"
+          >
+            Model Assumptions
+          </button>
         </div>
 
         {selectedSetupPanelTab === "live-operations" ? (
@@ -1734,6 +2936,7 @@ export function App() {
                   }
                   type="button"
                   onClick={handleStartPause}
+                  disabled={isReplayMode}
                 >
                   {run.status === "running" ? <Pause size={18} /> : <Play size={18} />}
                   {run.status === "running" ? "Pause" : "Start"}
@@ -1744,7 +2947,7 @@ export function App() {
                   data-tooltip="Move the running simulation ahead by 1 simulated minute. This is useful for stepping through short events."
                   type="button"
                   onClick={() => handleAdvance(1)}
-                  disabled={run.status !== "running"}
+                  disabled={isReplayMode || run.status !== "running"}
                 >
                   <StepForward size={18} />
                   1 min
@@ -1755,7 +2958,7 @@ export function App() {
                   data-tooltip="Move the running simulation ahead by 5 simulated minutes. This is useful when you want to watch flow changes faster."
                   type="button"
                   onClick={() => handleAdvance(5)}
-                  disabled={run.status !== "running"}
+                  disabled={isReplayMode || run.status !== "running"}
                 >
                   <StepForward size={18} />
                   5 min
@@ -1782,6 +2985,7 @@ export function App() {
                   data-tooltip="Reset the simulation back to the beginning and clear the current run state."
                   type="button"
                   onClick={handleReset}
+                  disabled={isReplayMode}
                 >
                   <RotateCcw size={18} />
                   Reset
@@ -1802,7 +3006,7 @@ export function App() {
                   }
                   type="button"
                   onClick={handleCoachDemoToggle}
-                  disabled={run.status === "shift_ended" || run.status === "completed"}
+                  disabled={isReplayMode || run.status === "shift_ended" || run.status === "completed"}
                 >
                   {coachDemoEnabled ? <Pause size={18} /> : <Sparkles size={18} />}
                   {coachDemoEnabled ? "Stop Coach Demo" : "Run Coach Demo"}
@@ -1848,6 +3052,61 @@ export function App() {
                   </label>
                 </div>
               </div>
+              {replaySession ? (
+                <div className="replayControlPanel" aria-label="Replay controls">
+                  <div>
+                    <strong>Replay: {replaySession.record.name}</strong>
+                    <span>
+                      {formatMinute(replaySession.minute)} of {formatMinute(replaySession.sourceRun.currentMinute)}
+                    </span>
+                  </div>
+                  <div className="replayActions">
+                    <button
+                      aria-label={replaySession.isPlaying ? "Pause replay playback." : "Play replay from the current minute."}
+                      className="statusTooltip"
+                      data-tooltip="Play or pause the saved run replay. Replay advances through the saved timeline without changing the saved run."
+                      disabled={replaySession.minute >= replaySession.sourceRun.currentMinute}
+                      onClick={handleReplayPlayPause}
+                      type="button"
+                    >
+                      {replaySession.isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                      {replaySession.isPlaying ? "Pause Replay" : "Play Replay"}
+                    </button>
+                    <button
+                      aria-label="Step replay forward by one simulated minute."
+                      className="statusTooltip"
+                      data-tooltip="Move the replay ahead by 1 saved simulated minute."
+                      disabled={replaySession.minute >= replaySession.sourceRun.currentMinute}
+                      onClick={() => handleReplayStep(1)}
+                      type="button"
+                    >
+                      <StepForward size={18} />
+                      1 min
+                    </button>
+                    <button
+                      aria-label="Step replay forward by five simulated minutes."
+                      className="statusTooltip"
+                      data-tooltip="Move the replay ahead by 5 saved simulated minutes."
+                      disabled={replaySession.minute >= replaySession.sourceRun.currentMinute}
+                      onClick={() => handleReplayStep(5)}
+                      type="button"
+                    >
+                      <StepForward size={18} />
+                      5 min
+                    </button>
+                    <button
+                      aria-label="Exit replay and return to the live working run."
+                      className="statusTooltip"
+                      data-tooltip="Exit replay and return to the run you were viewing before replay started."
+                      onClick={handleExitReplay}
+                      type="button"
+                    >
+                      <RotateCcw size={18} />
+                      Exit Replay
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="statusMessageRow">
                 <div
                   aria-label="Automated front-end triage is managed separately from the ED provider. It can start protocol orders and move triaged patients into the waiting room."
@@ -2011,6 +3270,28 @@ export function App() {
           </section>
         ) : null}
 
+        {selectedSetupPanelTab === "files" ? (
+          <section aria-labelledby="files-tab" className="filesPanel" id="files-panel" role="tabpanel">
+            <section className="filesPanelSection" aria-label="Run files">
+              <h2>Run Files</h2>
+              <SavedRunsPanel
+                activeReplayRecordId={replaySession?.record.id}
+                onDelete={handleDeleteSavedRun}
+                onExportCurrentRun={handleExportCurrentRunFile}
+                onImportFile={handleImportSavedRunsFile}
+                onReplay={handleStartReplay}
+                onRestore={handleRestoreSavedRun}
+                records={savedRunRecords}
+                status={savedRunStatus}
+              />
+            </section>
+            <section className="filesPanelSection" aria-label="CSV exports">
+              <h2>CSV Export</h2>
+              <ExportPanel exportRuns={activityExportRuns} timeline={activityTimeline} />
+            </section>
+          </section>
+        ) : null}
+
         {selectedSetupPanelTab === "scenario" ? (
           <section
             aria-labelledby="scenario-setup-tab"
@@ -2024,6 +3305,11 @@ export function App() {
                 <small>
                   {run.patients.length} synthetic patients, {activeTuning.roomCapacity} rooms,{" "}
                   {activeTuning.providerCount} provider{activeTuning.providerCount === 1 ? "" : "s"},{" "}
+                  {activeTuning.providerAssignmentMode === "team"
+                    ? "team model"
+                    : activeTuning.providerAssignmentMode === "assigned"
+                      ? "assigned model"
+                      : "handoff model"},{" "}
                   {activeTuning.nurseCount} nurse{activeTuning.nurseCount === 1 ? "" : "s"},{" "}
                   {activeTuning.techCount} tech{activeTuning.techCount === 1 ? "" : "s"},{" "}
                   {activeTuning.fastTrackEnabled ? "Fast Track open" : "Fast Track closed"},{" "}
@@ -2111,6 +3397,35 @@ export function App() {
                     ))}
                   </div>
                 </div>
+                <div className="providerModelControl">
+                  <span>Provider Model</span>
+                  <div className="providerModelButtonGroup" role="group" aria-label="Provider assignment model">
+                    {[
+                      { label: "Team", value: "team" as const },
+                      { label: "Assigned", value: "assigned" as const },
+                      { label: "Handoff", value: "assigned_with_handoff" as const },
+                    ].map((option) => (
+                      <button
+                        aria-pressed={draftTuning.providerAssignmentMode === option.value}
+                        className={`${draftTuning.providerAssignmentMode === option.value ? "active" : ""} ${
+                          option.value === "assigned_with_handoff" ? "wide" : ""
+                        }`.trim()}
+                        key={option.value}
+                        onClick={() => updateDraftTuning("providerAssignmentMode", option.value)}
+                        type="button"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <small>
+                    {draftTuning.providerAssignmentMode === "team"
+                      ? "Any provider may act"
+                      : draftTuning.providerAssignmentMode === "assigned"
+                        ? "Owner only"
+                        : "Owner preferred"}
+                  </small>
+                </div>
                 <div className="supportCountControl nurseCountControl">
                   <span>Nurses</span>
                   <div className="supportButtonGroup" role="group" aria-label="Nurse count">
@@ -2168,7 +3483,7 @@ export function App() {
                   </div>
                 </div>
                 <label className="toggleControl scenarioToggle fastTrackToggleControl">
-                  <span>Fast Track Enabled</span>
+                  <span>Fast Track</span>
                   <input
                     checked={draftTuning.fastTrackEnabled}
                     onChange={(event) => updateDraftTuning("fastTrackEnabled", event.currentTarget.checked)}
@@ -2177,7 +3492,7 @@ export function App() {
                   <small>{draftTuning.fastTrackEnabled ? "Open" : "Closed"}</small>
                 </label>
                 <label className="toggleControl scenarioToggle lwbsToggleControl">
-                  <span>LWBS Enabled</span>
+                  <span>LWBS</span>
                   <input
                     checked={draftTuning.lwbsEnabled}
                     onChange={(event) => updateDraftTuning("lwbsEnabled", event.currentTarget.checked)}
@@ -2196,6 +3511,9 @@ export function App() {
                     type="number"
                     value={draftTuning.expectedArrivalsPerHour}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("expectedArrivalsPerHour", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("expectedArrivalsPerHour", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Provider eval typical</span>
@@ -2206,6 +3524,9 @@ export function App() {
                     type="number"
                     value={draftTuning.providerEvaluationTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("providerEvaluationTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("providerEvaluationTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Triage typical</span>
@@ -2216,6 +3537,9 @@ export function App() {
                     type="number"
                     value={draftTuning.triageTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("triageTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("triageTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Lab TAT typical</span>
@@ -2227,6 +3551,9 @@ export function App() {
                     type="number"
                     value={draftTuning.labTurnaroundTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("labTurnaroundTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("labTurnaroundTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Imaging TAT typical</span>
@@ -2238,6 +3565,9 @@ export function App() {
                     type="number"
                     value={draftTuning.imagingTurnaroundTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("imagingTurnaroundTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("imagingTurnaroundTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Hospitalist response typical</span>
@@ -2249,6 +3579,9 @@ export function App() {
                     type="number"
                     value={draftTuning.admissionDecisionTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("admissionDecisionTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("admissionDecisionTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Boarding typical</span>
@@ -2260,6 +3593,9 @@ export function App() {
                     type="number"
                     value={draftTuning.boardingDurationTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("boardingDurationTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("boardingDurationTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Room clean typical</span>
@@ -2271,6 +3607,9 @@ export function App() {
                     type="number"
                     value={draftTuning.roomCleaningTypicalMinutes}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("roomCleaningTypicalMinutes", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("roomCleaningTypicalMinutes", draftTuning, activeTuning)}
+                  </small>
                 </label>
                 <label>
                   <span>Minimum wait before LWBS</span>
@@ -2282,8 +3621,387 @@ export function App() {
                     type="number"
                     value={draftTuning.minimumWaitBeforeLWBS}
                   />
+                  <small className={`scenarioAssumptionStatus ${calibrationStatusFor("minimumWaitBeforeLWBS", draftTuning, activeTuning)}`}>
+                    {scenarioAssumptionStatusLabel("minimumWaitBeforeLWBS", draftTuning, activeTuning)}
+                  </small>
                 </label>
               </div>
+              <section className="patientMixControls" aria-label="Patient Mix v1">
+                <div className="patientMixHeader coachRulesHeader">
+                  <div>
+                    <h3>Patient Mix</h3>
+                    <small>Adjust the synthetic deck while keeping each seed deterministic for replay and comparison.</small>
+                  </div>
+                  <label>
+                    <span>Deck seed</span>
+                    <input
+                      min={1}
+                      max={9999}
+                      onChange={(event) => updateDraftTuning("patientMixSeed", Number(event.currentTarget.value))}
+                      type="number"
+                      value={draftTuning.patientMixSeed}
+                    />
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientMixSeed", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientMixSeed", draftTuning, activeTuning)}
+                    </small>
+                  </label>
+                </div>
+                <div className="patientMixGrid">
+                  <div className="patientMixGroup">
+                    <span>Acuity mix</span>
+                    <div className="patientMixButtonGroup" role="group" aria-label="Acuity mix">
+                      {[
+                        { label: "Standard", value: "standard" as const },
+                        { label: "Higher", value: "higher_acuity" as const },
+                        { label: "Lower", value: "lower_acuity" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.patientAcuityMix === option.value}
+                          className={draftTuning.patientAcuityMix === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("patientAcuityMix", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientAcuityMix", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientAcuityMix", draftTuning, activeTuning)}
+                    </small>
+                  </div>
+                  <div className="patientMixGroup">
+                    <span>Complaint mix</span>
+                    <div className="patientMixButtonGroup four" role="group" aria-label="Complaint mix">
+                      {[
+                        { label: "Balanced", value: "balanced" as const },
+                        { label: "Cardiac", value: "cardiac" as const },
+                        { label: "Infection", value: "infection" as const },
+                        { label: "Injury/minor", value: "injury_minor" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.patientComplaintMix === option.value}
+                          className={draftTuning.patientComplaintMix === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("patientComplaintMix", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientComplaintMix", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientComplaintMix", draftTuning, activeTuning)}
+                    </small>
+                  </div>
+                  <div className="patientMixGroup">
+                    <span>Workup intensity</span>
+                    <div className="patientMixButtonGroup" role="group" aria-label="Workup intensity">
+                      {[
+                        { label: "Standard", value: "standard" as const },
+                        { label: "Higher", value: "higher_workup" as const },
+                        { label: "Lower", value: "lower_workup" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.patientWorkupMix === option.value}
+                          className={draftTuning.patientWorkupMix === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("patientWorkupMix", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientWorkupMix", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientWorkupMix", draftTuning, activeTuning)}
+                    </small>
+                  </div>
+                  <div className="patientMixGroup">
+                    <span>Admission pressure</span>
+                    <div className="patientMixButtonGroup" role="group" aria-label="Admission pressure">
+                      {[
+                        { label: "Standard", value: "standard" as const },
+                        { label: "Higher", value: "higher_admit" as const },
+                        { label: "Lower", value: "lower_admit" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.patientAdmissionMix === option.value}
+                          className={draftTuning.patientAdmissionMix === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("patientAdmissionMix", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientAdmissionMix", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientAdmissionMix", draftTuning, activeTuning)}
+                    </small>
+                  </div>
+                </div>
+              </section>
+              <section className="patientMixControls" aria-label="Workflow Rules">
+                <div className="patientMixHeader">
+                  <div>
+                    <h3>Workflow Rules</h3>
+                    <small>Tune built-in v1 cardiac, sepsis, and waiting-room safety timing assumptions.</small>
+                  </div>
+                </div>
+                <div className="scenarioBottomControls workflowRuleControls">
+                  {[
+                    { field: "stemiDoorToEcgTargetMinutes" as const, label: "STEMI ECG target", max: 30, min: 1, step: 1 },
+                    { field: "acsDoorToEcgTargetMinutes" as const, label: "ACS ECG target", max: 30, min: 1, step: 1 },
+                    { field: "repeatTroponinDelayMinutes" as const, label: "Repeat troponin delay", max: 240, min: 15, step: 5 },
+                    { field: "sepsisLactateCollectionMinutes" as const, label: "Lactate collection", max: 60, min: 1, step: 1 },
+                    { field: "sepsisBloodCultureMinutes" as const, label: "Blood cultures", max: 60, min: 1, step: 1 },
+                    { field: "sepsisAntibioticsMinutes" as const, label: "Antibiotics", max: 180, min: 1, step: 5 },
+                    { field: "sepsisFluidsMinutes" as const, label: "IV fluids", max: 180, min: 1, step: 5 },
+                    { field: "sepsisCriticalWaitMinutes" as const, label: "Sepsis critical wait", max: 120, min: 1, step: 5 },
+                    { field: "deteriorationGraceMinutes" as const, label: "Deterioration grace", max: 180, min: 1, step: 5 },
+                  ].map((item) => (
+                    <label key={item.field}>
+                      <span>{item.label}</span>
+                      <input
+                        min={item.min}
+                        max={item.max}
+                        onChange={(event) => updateDraftTuning(item.field, Number(event.currentTarget.value))}
+                        step={item.step}
+                        type="number"
+                        value={draftTuning[item.field]}
+                      />
+                      <small className={`scenarioAssumptionStatus ${calibrationStatusFor(item.field, draftTuning, activeTuning)}`}>
+                        {scenarioAssumptionStatusLabel(item.field, draftTuning, activeTuning)}
+                      </small>
+                    </label>
+                  ))}
+                </div>
+              </section>
+              <section className="patientMixControls" aria-label="Default Coach Benchmark Rules">
+                <div className="patientMixHeader">
+                  <div>
+                    <h3>Default Coach Rules</h3>
+                    <small>
+                      Tune the live Coach and Optimal Flow Coach. Use Comparison Coach Rules below for the other strategy coaches.
+                    </small>
+                  </div>
+                  <label className="coachRulesVisibilityToggle">
+                    <input
+                      checked={showAllCoachRules}
+                      onChange={(event) => setShowAllCoachRules(event.currentTarget.checked)}
+                      type="checkbox"
+                    />
+                    <span>{showAllCoachRules ? "Hide All Coach Rules" : "Show All Coach Rules"}</span>
+                  </label>
+                </div>
+                <div className="coachStrategyRuleGrid single">
+                  <div className="coachStrategyRuleRow">
+                    <div className="coachStrategyRuleTitle">
+                      <strong>Default / Optimal Flow</strong>
+                      <small className={`scenarioAssumptionStatus ${calibrationStatusFor("coachPriorityMode", draftTuning, activeTuning)}`}>
+                        {scenarioAssumptionStatusLabel("coachPriorityMode", draftTuning, activeTuning)}
+                      </small>
+                    </div>
+                    <div className="coachStrategyBehaviorPanel compact">
+                      <span>Strategy Behavior</span>
+                      <ul>
+                        {coachStrategyBehaviorDetails("default").map((detail) => (
+                          <li key={detail}>{detail}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="patientMixButtonGroup four" role="group" aria-label="Default Coach priority mode">
+                      {[
+                        { label: "Balanced", value: "balanced" as const },
+                        { label: "Safety", value: "safety_first" as const },
+                        { label: "Throughput", value: "throughput" as const },
+                        { label: "Front-end", value: "front_end" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.coachPriorityMode === option.value}
+                          className={draftTuning.coachPriorityMode === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("coachPriorityMode", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="coachStrategyWeightGrid">
+                    {[
+                      { field: "coachAcuityWeight" as const, label: "ESI Acuity Weight", max: 2000, min: 0, step: 50 },
+                      { field: "coachRiskWeight" as const, label: "Risk Weight", max: 500, min: 0, step: 25 },
+                      { field: "coachWaitWeight" as const, label: "Wait Minute Weight", max: 10, min: 0, step: 0.5 },
+                    ].map((item) => (
+                      <label key={item.field}>
+                        <span>{item.label}</span>
+                        <input
+                          min={item.min}
+                          max={item.max}
+                          onChange={(event) => updateDraftTuning(item.field, Number(event.currentTarget.value))}
+                          step={item.step}
+                          type="number"
+                          value={draftTuning[item.field]}
+                        />
+                      </label>
+                    ))}
+                    </div>
+                  </div>
+                </div>
+                {!showAllCoachRules ? (
+                  <div className="coachRulesCollapsedNotice">
+                    Comparison Coach Rules are hidden. Check Show All Coach Rules to edit the other coach profiles.
+                  </div>
+                ) : null}
+              </section>
+              {showAllCoachRules ? (
+              <section className="patientMixControls" aria-label="Comparison Coach Rules">
+                <div className="patientMixHeader">
+                  <div>
+                    <h3>Comparison Coach Rules</h3>
+                    <small>Tune each Coach Comparison strategy profile independently before running the scenario.</small>
+                  </div>
+                </div>
+                <div className="coachStrategyRuleGrid">
+                  {coachComparisonStrategyIds.map((strategyId) => {
+                    const profile = draftTuning.coachStrategyPriorityProfiles[strategyId];
+                    const status = coachPriorityProfileStatus(strategyId, draftTuning, activeTuning);
+
+                    return (
+                      <div className="coachStrategyRuleRow" key={strategyId}>
+                        <div className="coachStrategyRuleTitle">
+                          <strong>{coachComparisonStrategyLabel(strategyId)}</strong>
+                          <small className={`scenarioAssumptionStatus ${status}`}>{calibrationStatusLabel(status)}</small>
+                        </div>
+                        <div className="coachStrategyBehaviorPanel compact">
+                          <span>Strategy Behavior</span>
+                          <ul>
+                            {coachStrategyBehaviorDetails(strategyId).map((detail) => (
+                              <li key={detail}>{detail}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="patientMixButtonGroup four" role="group" aria-label={`${coachComparisonStrategyLabel(strategyId)} priority mode`}>
+                          {[
+                            { label: "Balanced", value: "balanced" as const },
+                            { label: "Safety", value: "safety_first" as const },
+                            { label: "Throughput", value: "throughput" as const },
+                            { label: "Front-end", value: "front_end" as const },
+                          ].map((option) => (
+                            <button
+                              aria-pressed={profile.mode === option.value}
+                              className={profile.mode === option.value ? "active" : ""}
+                              key={option.value}
+                              onClick={() => updateDraftCoachStrategyProfile(strategyId, "mode", option.value)}
+                              type="button"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="coachStrategyWeightGrid">
+                          {[
+                            { field: "acuityWeight" as const, label: "ESI Acuity Weight", max: 2000, min: 0, step: 50 },
+                            { field: "riskWeight" as const, label: "Risk Weight", max: 500, min: 0, step: 25 },
+                            { field: "waitWeight" as const, label: "Wait Minute Weight", max: 10, min: 0, step: 0.5 },
+                          ].map((item) => (
+                            <label key={item.field}>
+                              <span>{item.label}</span>
+                              <input
+                                min={item.min}
+                                max={item.max}
+                                onChange={(event) => updateDraftCoachStrategyProfile(strategyId, item.field, Number(event.currentTarget.value))}
+                                step={item.step}
+                                type="number"
+                                value={profile[item.field]}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {selectedSetupPanelTab === "calibration" ? (
+          <section aria-labelledby="calibration-tab" className="calibrationPanel" id="calibration-panel" role="tabpanel">
+            <div className="calibrationHeader">
+              <div>
+                <h2>Model Assumptions</h2>
+                <small>
+                  {localCalibrationCount} local value{localCalibrationCount === 1 ? "" : "s"},{" "}
+                  {draftCalibrationCount} draft change{draftCalibrationCount === 1 ? "" : "s"},{" "}
+                  {needsCalibrationDataCount} area{needsCalibrationDataCount === 1 ? "" : "s"} still needing local data
+                </small>
+              </div>
+              <div className="calibrationActions">
+                <button type="button" onClick={handleApplyLocalBaselineTuning} disabled={isReplayMode}>
+                  Use Local Baseline
+                </button>
+                <button type="button" onClick={() => setSelectedSetupPanelTab("scenario")}>
+                  Edit Scenario
+                </button>
+              </div>
+            </div>
+            <div className="calibrationSummary" aria-label="Model assumptions summary">
+              <div>
+                <span>Local Values</span>
+                <strong>{localCalibrationCount}</strong>
+                <small>Applied scenario values that differ from default assumptions.</small>
+              </div>
+              <div>
+                <span>Draft Changes</span>
+                <strong>{draftCalibrationCount}</strong>
+                <small>Edited values waiting for Apply scenario.</small>
+              </div>
+              <div>
+                <span>Needs Local Data</span>
+                <strong>{needsCalibrationDataCount}</strong>
+                <small>Model areas still driven by synthetic distributions.</small>
+              </div>
+              <div>
+                <span>Fixed v1</span>
+                <strong>{calibrationItems.filter((item) => item.status === "fixed").length}</strong>
+                <small>Assumptions documented but not yet editable.</small>
+              </div>
+            </div>
+            <div className="calibrationNotice">
+              <strong>Model assumptions scope</strong>
+              <p>
+                Providers should review these assumptions before using a scenario. This screen explains what is local,
+                what is synthetic, and what is fixed in v1; it does not claim clinical validation or benchmarking
+                against real ED outcomes.
+              </p>
+            </div>
+            <div className="calibrationTable" role="table" aria-label="Model assumptions">
+              <div className="calibrationTableHeader" role="row">
+                <span role="columnheader">Area</span>
+                <span role="columnheader">Assumption</span>
+                <span role="columnheader">Current value</span>
+                <span role="columnheader">Status</span>
+              </div>
+              {calibrationItems.map((item) => (
+                <div className="calibrationTableRow" role="row" key={`${item.area}-${item.assumption}`}>
+                  <span role="cell">{item.area}</span>
+                  <span role="cell">
+                    <strong>{item.assumption}</strong>
+                    <small>{item.source}</small>
+                  </span>
+                  <span role="cell">{item.currentValue}</span>
+                  <span role="cell">
+                    <mark className={`calibrationBadge ${item.status}`}>
+                      {calibrationStatusLabel(item.status)}
+                    </mark>
+                  </span>
+                </div>
+              ))}
             </div>
           </section>
         ) : null}
@@ -2343,50 +4061,52 @@ export function App() {
         ) : null}
       </section>
 
-      <section className="providerRoster" aria-label="Provider status">
-        {run.providers.map((provider) => {
-          const suggestion = providerSuggestions.get(provider.id);
-          const workLines = providerCurrentWorkLines(provider, suggestion);
-          const locationLines = providerLocationLines(provider, run, suggestion);
-          const availabilityLines = providerNextAvailableLines(provider);
-          return (
-            <article className="providerRosterCard" key={provider.id}>
-              <div className="providerRosterHeader">
-                <strong>{provider.displayName}</strong>
-                <span className={`providerRosterBadge ${provider.status}`}>{provider.status}</span>
-              </div>
-              <div className="providerRosterDetails">
-                <small>
-                  <span>{workLines.label}</span>
-                  {workLines.value ? <strong>{workLines.value}</strong> : null}
-                </small>
-                <small>
-                  <span>{locationLines.label}</span>
-                  {locationLines.value ? <strong>{locationLines.value}</strong> : null}
-                </small>
-                <small>
-                  <span>{availabilityLines.label}</span>
-                  <strong>{availabilityLines.value}</strong>
-                </small>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+      {!isConfigurationReviewFocused ? (
+        <>
+          <section className="providerRoster" aria-label="Provider status">
+            {run.providers.map((provider) => {
+              const suggestion = providerSuggestions.get(provider.id);
+              const workLines = providerCurrentWorkLines(provider, suggestion);
+              const locationLines = providerLocationLines(provider, run, suggestion);
+              const availabilityLines = providerNextAvailableLines(provider);
+              return (
+                <article className="providerRosterCard" key={provider.id}>
+                  <div className="providerRosterHeader">
+                    <strong>{provider.displayName}</strong>
+                    <span className={`providerRosterBadge ${provider.status}`}>{provider.status}</span>
+                  </div>
+                  <div className="providerRosterDetails">
+                    <small>
+                      <span>{workLines.label}</span>
+                      {workLines.value ? <strong>{workLines.value}</strong> : null}
+                    </small>
+                    <small>
+                      <span>{locationLines.label}</span>
+                      {locationLines.value ? <strong>{locationLines.value}</strong> : null}
+                    </small>
+                    <small>
+                      <span>{availabilityLines.label}</span>
+                      <strong>{availabilityLines.value}</strong>
+                    </small>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
 
-      <section className="patientStatusPanel" aria-label="Selected patient status">
-        <div className="patientStatusHeader">
-          <h2>Patient Status</h2>
-          <span>{selectedPatient ? selectedPatient.id : "No patient selected"}</span>
-        </div>
-        {selectedPatient ? (
-          <PatientDetails currentMinute={run.currentMinute} patient={selectedPatient} />
-        ) : (
-          <p className="emptyState">Select a patient card.</p>
-        )}
-      </section>
+          <section className="patientStatusPanel" aria-label="Selected patient status">
+            <div className="patientStatusHeader">
+              <h2>Patient Status</h2>
+              <span>{selectedPatient ? selectedPatient.id : "No patient selected"}</span>
+            </div>
+            {selectedPatient ? (
+              <PatientDetails currentMinute={run.currentMinute} patient={selectedPatient} />
+            ) : (
+              <p className="emptyState">Select a patient card.</p>
+            )}
+          </section>
 
-      <section className="mainViewShell" aria-label="Simulation views">
+          <section className="mainViewShell" aria-label="Simulation views">
         <div className="mainViewTabs" role="tablist" aria-label="Simulation view">
           <button
             aria-label="Workflow: View patient flow, room assignments, active patient cards, and operational actions."
@@ -2559,19 +4279,6 @@ export function App() {
                 >
                   Activity
                 </button>
-                <button
-                  aria-label="Export: download or copy CSV files for activity and comparison runs."
-                  aria-controls="right-rail-export"
-                  aria-selected={selectedRightRailTab === "export"}
-                  className={selectedRightRailTab === "export" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
-                  data-tooltip="Use Export to download or copy Activity CSV and All Runs CSV data for analysis outside the simulator."
-                  id="right-rail-export-tab"
-                  onClick={() => setSelectedRightRailTab("export")}
-                  role="tab"
-                  type="button"
-                >
-                  Export
-                </button>
               </div>
 
               <section
@@ -2584,8 +4291,9 @@ export function App() {
                   <>
                     <h2>Actions</h2>
                     <p className="panelExplanation">
-                      Actions are the provider moves currently available from the selected patient and operational context. Disabled
-                      actions explain what must happen first.
+                      {isReplayMode
+                        ? "Replay is read-only. Exit replay to make provider moves or continue a loaded saved run."
+                        : "Actions are the provider moves currently available from the selected patient and operational context. Disabled actions explain what must happen first."}
                     </p>
                     <div className="actionStatus">
                       <strong>{providerWorkText(run, selectedPatient?.id)}</strong>
@@ -2606,7 +4314,7 @@ export function App() {
                               ? "coachRecommendedAction"
                               : ""
                           }
-                          disabled={!action.enabled}
+                          disabled={isReplayMode || !action.enabled}
                           key={action.type}
                           onClick={() => handleAction(action.type)}
                           title={action.disabledReason}
@@ -2657,12 +4365,6 @@ export function App() {
                   </>
                 ) : null}
 
-                {selectedRightRailTab === "export" ? (
-                  <>
-                    <h2>Export</h2>
-                    <ExportPanel exportRuns={activityExportRuns} timeline={activityTimeline} />
-                  </>
-                ) : null}
               </section>
             </aside>
           </section>
@@ -2735,7 +4437,9 @@ export function App() {
             <GraphsPanel data={operationalGraphData} currentMinute={run.currentMinute} />
           </section>
         ) : null}
-      </section>
+          </section>
+        </>
+      ) : null}
     </main>
   );
 }
@@ -2967,6 +4671,21 @@ function CoachComparisonPanel({
           <article className={`whatIfCard ${summary.id}`} key={summary.id}>
             <strong>{summary.label}</strong>
             <small>{summary.description}</small>
+            {summary.priorityProfile ? (
+              <>
+                <p className="whatIfBehaviorSummary">
+                  {coachStrategyBehaviorDetails(
+                    summary.id === "optimal_flow" ? "default" : (summary.id as CoachComparisonStrategyId),
+                  )[0]}
+                </p>
+                <div className="whatIfRuleProfile" aria-label={`${summary.label} patient priority weights`}>
+                  <span>{coachPriorityModeLabel(summary.priorityProfile.mode)}</span>
+                  <span>ESI {summary.priorityProfile.acuityWeight}</span>
+                  <span>Risk {summary.priorityProfile.riskWeight}</span>
+                  <span>Wait {summary.priorityProfile.waitWeight}/min</span>
+                </div>
+              </>
+            ) : null}
             <dl>
               <div>
                 <dt>Departed</dt>
@@ -3226,6 +4945,115 @@ function ExportPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; t
         </div>
       </div>
       {exportStatus ? <p className="activityExportStatus">{exportStatus}</p> : null}
+    </div>
+  );
+}
+
+function SavedRunsPanel({
+  activeReplayRecordId,
+  onDelete,
+  onExportCurrentRun,
+  onImportFile,
+  onReplay,
+  onRestore,
+  records,
+  status,
+}: {
+  activeReplayRecordId?: string;
+  onDelete: (recordId: string) => void;
+  onExportCurrentRun: () => void;
+  onImportFile: (text: string) => void;
+  onReplay: (record: SavedRunRecord) => void;
+  onRestore: (record: SavedRunRecord) => void;
+  records: SavedRunRecord[];
+  status?: string;
+}) {
+  async function handleImportChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    onImportFile(await file.text());
+  }
+
+  return (
+    <div className="savedRunsPanel">
+      <p className="panelExplanation">
+        Export Current Run creates a JSON file the user can store in a chosen location. Import File brings a saved-run JSON
+        file back later for load and replay.
+      </p>
+      <div className="savedRunFileTools" aria-label="Saved run file storage">
+        <button className="primaryButton" type="button" onClick={onExportCurrentRun}>
+          Export Current Run
+        </button>
+        <label>
+          <span>Import File</span>
+          <input accept="application/json,.json" onChange={handleImportChange} type="file" />
+        </label>
+      </div>
+      {status ? <p className="activityExportStatus">{status}</p> : null}
+      <div className="savedRunList" aria-label="Saved runs">
+        {records.length === 0 ? (
+          <p className="emptyState">No saved runs yet.</p>
+        ) : (
+          records.map((record) => (
+            <article className="savedRunCard" key={record.id}>
+              <div className="savedRunCardHeader">
+                <strong>{record.name}</strong>
+                <small>{new Date(record.updatedAt).toLocaleString()}</small>
+              </div>
+              <dl>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{stateLabel(record.run.status)}</dd>
+                </div>
+                <div>
+                  <dt>Minute</dt>
+                  <dd>{formatMinute(record.run.currentMinute)}</dd>
+                </div>
+                <div>
+                  <dt>Events</dt>
+                  <dd>{record.run.events.length}</dd>
+                </div>
+                <div>
+                  <dt>Decisions</dt>
+                  <dd>{record.run.decisions.length}</dd>
+                </div>
+                <div>
+                  <dt>Snapshots</dt>
+                  <dd>{record.snapshots.length}</dd>
+                </div>
+                <div>
+                  <dt>Replay</dt>
+                  <dd>{formatMinute(record.run.shiftStartMinute)}-{formatMinute(record.run.currentMinute)}</dd>
+                </div>
+                <div>
+                  <dt>Patients</dt>
+                  <dd>{record.run.patients.length}</dd>
+                </div>
+              </dl>
+              <div className="savedRunActions">
+                <button
+                  className={activeReplayRecordId === record.id ? "active" : ""}
+                  type="button"
+                  onClick={() => onReplay(record)}
+                >
+                  Replay
+                </button>
+                <button type="button" onClick={() => onRestore(record)}>
+                  Load
+                </button>
+                <button type="button" onClick={() => onDelete(record.id)}>
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -3621,6 +5449,12 @@ function PatientCard({
         <span>{isTerminalPatient(patient) ? "Elapsed" : "Wait"} {waitMinutes(patient, currentMinute)}m</span>
         <span>{stateLabel(patient.state)}</span>
       </div>
+      {patient.assignedProviderId ? (
+        <div className="patientMeta providerAssignmentLine">
+          <span>Assigned</span>
+          <span>{providerAssignmentLabel(patient.assignedProviderId)}</span>
+        </div>
+      ) : null}
       <div className="protocolLine">
         <span className={`protocolBadge ${workup.protocolStatus}`}>{workup.protocolStatusLabel}</span>
         <small>{workup.label}</small>
@@ -3680,6 +5514,10 @@ function PatientDetails({ currentMinute, patient }: { currentMinute: number; pat
       <div>
         <dt>State</dt>
         <dd>{stateLabel(patient.state)}</dd>
+      </div>
+      <div>
+        <dt>Assigned Provider</dt>
+        <dd>{providerAssignmentLabel(patient.assignedProviderId)}</dd>
       </div>
       <div>
         <dt>Arrival Path</dt>

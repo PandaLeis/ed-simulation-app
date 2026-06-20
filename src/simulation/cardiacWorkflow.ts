@@ -1,4 +1,12 @@
-import type { CardiacPathway, ComplaintCategory, PendingItem, PendingItemType, RuntimePatient, WorkupType } from "./types";
+import type {
+  CardiacPathway,
+  ComplaintCategory,
+  PendingItem,
+  PendingItemType,
+  RuntimePatient,
+  WorkflowTimingProfile,
+  WorkupType,
+} from "./types";
 import type { SeededRandom } from "./seededRandom";
 
 const cardiacDiagnosticTypes = new Set<PendingItemType>(["ecg", "troponin", "repeat_troponin", "chest_xray"]);
@@ -43,12 +51,19 @@ export function chooseCardiacPathway(
   return "none";
 }
 
-export function buildCardiacPendingItems(patient: RuntimePatient, orderedAt: number): PendingItem[] {
-  const doorToEcgTargetMinutes = patient.cardiacPathway === "stemi_alert" ? 5 : 8;
+export function buildCardiacPendingItems(
+  patient: RuntimePatient,
+  orderedAt: number,
+  workflowTimingProfile: WorkflowTimingProfile,
+): PendingItem[] {
+  const doorToEcgTargetMinutes =
+    patient.cardiacPathway === "stemi_alert"
+      ? workflowTimingProfile.stemiDoorToEcgTargetMinutes
+      : workflowTimingProfile.acsDoorToEcgTargetMinutes;
   const ecgTargetMinute = patient.arrivedAt === undefined ? orderedAt + doorToEcgTargetMinutes : patient.arrivedAt + doorToEcgTargetMinutes;
   const ecgReadyAt = Math.max(orderedAt + 1, ecgTargetMinute);
   const firstTroponinMinutes = Math.max(15, patient.expectedLabMinutes);
-  const repeatTroponinMinutes = firstTroponinMinutes + 60;
+  const repeatTroponinMinutes = firstTroponinMinutes + workflowTimingProfile.repeatTroponinDelayMinutes;
   const chestXrayMinutes = Math.max(15, patient.expectedImagingMinutes);
 
   return [

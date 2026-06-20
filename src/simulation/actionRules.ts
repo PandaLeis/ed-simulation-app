@@ -1,4 +1,4 @@
-import type { ProviderActionOption, ProviderActionType, RuntimePatient, SimulationRun } from "./types";
+import type { ProviderActionOption, ProviderActionType, ProviderState, RuntimePatient, SimulationRun } from "./types";
 import { getProviderEvaluationTypicalMinutes } from "./providerEvaluation";
 import { getTriageDurationMinutes } from "./triageDuration";
 import { isCardiacWorkupPatient } from "./cardiacWorkflow";
@@ -67,11 +67,14 @@ export function getAvailableProviderActions(
     return triageActionsForPatient(run, patient);
   }
 
-  if (edProvidersBusy) {
+  const eligibleProvider = eligibleIdleProviderForPatient(run, patient);
+  if (edProvidersBusy || !eligibleProvider) {
+    const disabledReason = edProvidersBusy ? "ED provider is busy" : providerAssignmentUnavailableReason(run, patient);
+
     return actionsForPatient(run, patient).map((action) => ({
       ...action,
       enabled: false,
-      disabledReason: "ED provider is busy",
+      disabledReason,
     }));
   }
 
@@ -87,6 +90,34 @@ export function getAvailableProviderActions(
   }
 
   return actionsForPatient(run, patient);
+}
+
+export function eligibleIdleProviderForPatient(run: SimulationRun, patient?: RuntimePatient): ProviderState | undefined {
+  const idleProviders = run.providers.filter((provider) => provider.status === "idle");
+
+  if (!patient || run.providerAssignmentMode === "team" || !patient.assignedProviderId) {
+    return idleProviders[0];
+  }
+
+  const assignedProvider = idleProviders.find((provider) => provider.id === patient.assignedProviderId);
+  if (assignedProvider) {
+    return assignedProvider;
+  }
+
+  if (run.providerAssignmentMode === "assigned_with_handoff") {
+    return idleProviders[0];
+  }
+
+  return undefined;
+}
+
+function providerAssignmentUnavailableReason(run: SimulationRun, patient: RuntimePatient): string {
+  if (run.providerAssignmentMode === "assigned" && patient.assignedProviderId) {
+    const assignedProvider = run.providers.find((provider) => provider.id === patient.assignedProviderId);
+    return assignedProvider ? `${assignedProvider.displayName} owns this patient and is busy` : "Assigned provider is unavailable";
+  }
+
+  return "No eligible ED provider is available";
 }
 
 function canStartProtocolOrders(run: SimulationRun, patient: RuntimePatient): boolean {

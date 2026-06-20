@@ -312,8 +312,51 @@ function acuityForComplaint(baseEsi: ESILevel, complaint: ComplaintCategory, ran
   return baseEsi;
 }
 
-function workupDistributionForComplaint(complaint: ComplaintCategory): Scenario["workupDistribution"] {
-  return complaintWorkupDistribution[complaint];
+function workupDistributionForComplaint(
+  complaint: ComplaintCategory,
+  scenario: Scenario,
+): Scenario["workupDistribution"] {
+  const baseDistribution = complaintWorkupDistribution[complaint];
+
+  if (scenario.patientMix.workup === "standard") {
+    return baseDistribution;
+  }
+
+  return {
+    values: baseDistribution.values.map((item) => {
+      const highIntensity = item.value === "complex" || item.value === "cardiac" || item.value === "labs_imaging";
+      const lowIntensity = item.value === "none" || item.value === "basic_labs";
+
+      if (scenario.patientMix.workup === "higher_workup" && highIntensity) {
+        return { ...item, weight: Math.round(item.weight * 1.45) };
+      }
+
+      if (scenario.patientMix.workup === "higher_workup" && lowIntensity) {
+        return { ...item, weight: Math.max(1, Math.round(item.weight * 0.7)) };
+      }
+
+      if (scenario.patientMix.workup === "lower_workup" && lowIntensity) {
+        return { ...item, weight: Math.round(item.weight * 1.45) };
+      }
+
+      if (scenario.patientMix.workup === "lower_workup" && highIntensity) {
+        return { ...item, weight: Math.max(1, Math.round(item.weight * 0.65)) };
+      }
+
+      return item;
+    }),
+  };
+}
+
+function admissionPressureModifier(scenario: Scenario): number {
+  switch (scenario.patientMix.admission) {
+    case "higher_admit":
+      return 0.12;
+    case "lower_admit":
+      return -0.1;
+    default:
+      return 0;
+  }
 }
 
 function stemiPromotionScore(patient: ScenarioPatient): number {
@@ -431,14 +474,14 @@ export function generatePatientDeck(scenario: Scenario): ScenarioPatient[] {
       const baseEsi = random.weighted(scenario.esiDistribution);
       const complaintCategory = random.weighted(scenario.complaintDistribution);
       const esi = acuityForComplaint(baseEsi, complaintCategory, random);
-      const workupType = random.weighted(workupDistributionForComplaint(complaintCategory));
+      const workupType = random.weighted(workupDistributionForComplaint(complaintCategory, scenario));
       const cardiacPathway = chooseCardiacPathway(complaintCategory, workupType, random);
       const timing = workupTiming[workupType];
       const labScale = scenario.timingProfile.labTurnaround.typical / 45;
       const imagingScale = scenario.timingProfile.imagingTurnaround.typical / 55;
       const admitProbability = Math.min(
         0.95,
-        Math.max(0.01, admissionByEsi[esi] + complaintRiskModifier(complaintCategory)),
+        Math.max(0.01, admissionByEsi[esi] + complaintRiskModifier(complaintCategory) + admissionPressureModifier(scenario)),
       );
       const patientNumber = deck.length + 1;
       const roomCleaningRandom = createSeededRandom(`${scenario.randomSeed}:room-cleaning:${patientNumber}`);

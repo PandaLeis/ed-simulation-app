@@ -1,4 +1,4 @@
-import { ACTION_LABELS, DEFAULT_ACTION_COST_MINUTES, getAvailableProviderActions } from "./actionRules";
+import { ACTION_LABELS, DEFAULT_ACTION_COST_MINUTES, eligibleIdleProviderForPatient, getAvailableProviderActions } from "./actionRules";
 import { createRuntimePatients } from "./arrivalGenerator";
 import { buildCardiacPendingItems, isCardiacWorkupPatient, isDiagnosticPendingItem } from "./cardiacWorkflow";
 import { appendEvent, appendEventToList, createEvent } from "./eventLogger";
@@ -6,6 +6,7 @@ import { calculateMetrics, emptyMetrics } from "./metricsEngine";
 import { sampleProviderEvaluationMinutes } from "./providerEvaluation";
 import { buildSepsisPendingItems, isSepsisWorkupPatient } from "./sepsisWorkflow";
 import { createSeededRandom } from "./seededRandom";
+import { defaultScenario } from "./mockScenario";
 import {
   accrueSupportResourceTime,
   createSupportResourcePools,
@@ -24,7 +25,6 @@ import type {
   PatientState,
   ProviderActionType,
   ProviderDecision,
-  ProviderState,
   RuntimePatient,
   Scenario,
   ScenarioPatient,
@@ -117,6 +117,7 @@ export function createSimulationRun(scenario: Scenario, deck: ScenarioPatient[])
     rooms,
     provider: primaryProvider,
     providers,
+    providerAssignmentMode: scenario.providerAssignmentMode,
     triageProvider: {
       id: "front-end-triage-provider",
       displayName: "Front-End Triage Provider",
@@ -128,6 +129,8 @@ export function createSimulationRun(scenario: Scenario, deck: ScenarioPatient[])
     triageDurationProfile: scenario.triageDurationProfile,
     triageDurationMultiplier: scenario.triageDurationMultiplier,
     timingProfile: scenario.timingProfile,
+    workflowTimingProfile: scenario.workflowTimingProfile,
+    coachPriorityProfile: scenario.coachPriorityProfile,
     events: [],
     decisions: [],
     metrics: {
@@ -276,7 +279,8 @@ export function applyProviderAction(
   patientId?: string,
 ): SimulationRun {
   const triageProviderAction = actionType === "start_protocol_orders" || actionType === "complete_triage";
-  const idleProvider = findIdleProvider(run);
+  const patient = patientId ? run.patients.find((candidate) => candidate.id === patientId) : undefined;
+  const idleProvider = triageProviderAction ? undefined : eligibleIdleProviderForPatient(run, patient);
   if (
     run.status !== "running" ||
     (!idleProvider && !triageProviderAction) ||
@@ -290,7 +294,6 @@ export function applyProviderAction(
     return run;
   }
 
-  const patient = patientId ? run.patients.find((candidate) => candidate.id === patientId) : undefined;
   const timeCostMinutes =
     actionType === "complete_triage" && patient
       ? getTriageDurationMinutes(patient, run.triageDurationProfile, run.triageDurationMultiplier)
@@ -331,6 +334,7 @@ export function applyProviderAction(
 
   const providerRun = synchronizePrimaryProvider({
     ...run,
+    patients: assignPatientProvider(run, patientId, idleProvider?.id),
     providers: run.providers.map((provider) =>
       provider.id === idleProvider?.id
         ? {
@@ -363,8 +367,22 @@ export function applyProviderAction(
   );
 }
 
-function findIdleProvider(run: SimulationRun): ProviderState | undefined {
-  return run.providers.find((provider) => provider.status === "idle");
+function assignPatientProvider(run: SimulationRun, patientId: string | undefined, providerId: string | undefined): RuntimePatient[] {
+  if (!patientId || !providerId || run.providerAssignmentMode === "team") {
+    return run.patients;
+  }
+
+  return run.patients.map((patient) =>
+    patient.id === patientId
+      ? {
+          ...patient,
+          assignedProviderId:
+            patient.assignedProviderId === undefined || run.providerAssignmentMode === "assigned_with_handoff"
+              ? providerId
+              : patient.assignedProviderId,
+        }
+      : patient,
+  );
 }
 
 function synchronizePrimaryProvider(run: SimulationRun): SimulationRun {
@@ -769,10 +787,11 @@ function placeOrders(
   patient: RuntimePatient,
   options: { keepCurrentState?: boolean; message?: string } = {},
 ): SimulationRun {
+  const workflowTimingProfile = run.workflowTimingProfile ?? defaultScenario.workflowTimingProfile;
   let pendingItems = isSepsisWorkupPatient(patient)
-    ? buildSepsisPendingItems(patient, run.currentMinute)
+    ? buildSepsisPendingItems(patient, run.currentMinute, workflowTimingProfile)
     : isCardiacWorkupPatient(patient)
-      ? buildCardiacPendingItems(patient, run.currentMinute)
+      ? buildCardiacPendingItems(patient, run.currentMinute, workflowTimingProfile)
       : [];
 
   if (!isSepsisWorkupPatient(patient) && !isCardiacWorkupPatient(patient) && patient.expectedLabMinutes > 0) {
@@ -1150,6 +1169,7 @@ function processRoomCleaning(run: SimulationRun): SimulationRun {
 }
 
 function updateWaitingRisk(run: SimulationRun): SimulationRun {
+  const workflowTimingProfile = run.workflowTimingProfile ?? defaultScenario.workflowTimingProfile;
   const patients = run.patients.map((patient) => {
     if ((patient.state !== "waiting" && patient.state !== "triage") || patient.arrivedAt === undefined) {
       return patient;
@@ -1159,7 +1179,7 @@ function updateWaitingRisk(run: SimulationRun): SimulationRun {
     const riskLevel: RiskLevel =
       patient.cardiacPathway === "stemi_alert"
         ? "critical"
-        : isSepsisWorkupPatient(patient) && wait >= 10
+        : isSepsisWorkupPatient(patient) && wait >= workflowTimingProfile.sepsisCriticalWaitMinutes
           ? "critical"
         : patient.cardiacPathway === "possible_acs" && wait >= 30
           ? "high"
@@ -1195,6 +1215,7 @@ function escalatedRiskLevel(riskLevel: RiskLevel): RiskLevel {
 }
 
 function processWaitingRoomReassessmentAndDeterioration(run: SimulationRun): SimulationRun {
+  const workflowTimingProfile = run.workflowTimingProfile ?? defaultScenario.workflowTimingProfile;
   let events = run.events;
   const patients = run.patients.map((patient) => {
     if (patient.state !== "waiting" || patient.arrivedAt === undefined) {
@@ -1204,7 +1225,7 @@ function processWaitingRoomReassessmentAndDeterioration(run: SimulationRun): Sim
     const nextDueAt = patient.nextReassessmentDueAt ?? nextReassessmentDueAt(patient, patient.triagedAt ?? patient.arrivedAt);
     const overdueMinutes = reassessmentOverdueMinutes({ nextReassessmentDueAt: nextDueAt }, run.currentMinute);
 
-    if (patient.deterioratedAt !== undefined || overdueMinutes < 30) {
+    if (patient.deterioratedAt !== undefined || overdueMinutes < workflowTimingProfile.deteriorationGraceMinutes) {
       return {
         ...patient,
         nextReassessmentDueAt: nextDueAt,

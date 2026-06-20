@@ -1,6 +1,27 @@
 :root {
-  color: #18202a;
-  background: #f4f6f8;
+  --color-bg: #edf2f6;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-surface-shaded: #eef4f8;
+  --color-border: #c8d3de;
+  --color-border-strong: #9eb2c4;
+  --color-text: #162230;
+  --color-muted: #546575;
+  --color-accent: #176b86;
+  --color-accent-dark: #0f536a;
+  --color-accent-soft: #dceff5;
+  --color-green: #2f7650;
+  --color-green-soft: #dff1e7;
+  --color-amber: #8a6416;
+  --color-amber-soft: #fff1c7;
+  --color-red: #a9302a;
+  --color-red-soft: #ffe1df;
+  --color-blue: #2f5fa8;
+  --color-blue-soft: #e3ecfb;
+  --shadow-soft: 0 1px 2px rgb(15 35 55 / 0.08);
+  --shadow-panel: 0 10px 24px rgb(15 35 55 / 0.08);
+  color: var(--color-text);
+  background: var(--color-bg);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
@@ -22,8 +43,10 @@ button {
 }
 
 .appShell {
-  background: #f4f6f8;
-  color: #18202a;
+  background:
+    linear-gradient(180deg, #f7fafc 0, var(--color-bg) 220px),
+    var(--color-bg);
+  color: var(--color-text);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -44,7 +67,7 @@ button {
 }
 
 .eyebrow {
-  color: #516071;
+  color: var(--color-muted);
   font-size: 0.78rem;
   font-weight: 700;
   margin: 0 0 4px;
@@ -72,13 +95,13 @@ h2 {
 .metric,
 .patientCard,
 .sidePanel {
-  border: 1px solid #d7dde4;
-  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
 }
 
 .clockPanel {
   align-items: center;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
   display: grid;
   gap: 4px 10px;
@@ -93,7 +116,7 @@ h2 {
 }
 
 .clockPanel small {
-  color: #667586;
+  color: var(--color-muted);
   grid-column: 2;
 }
 
@@ -120,9 +143,9 @@ h2 {
 .controlStrip button,
 .actionList button {
   align-items: center;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
-  color: #1e2a36;
+  color: var(--color-text);
   cursor: pointer;
   display: inline-flex;
   gap: 8px;
@@ -134,7 +157,7 @@ h2 {
 .controlStrip button:hover:not(:disabled),
 .actionList button:hover:not(:disabled),
 .patientCard:hover {
-  border-color: #2b6f8a;
+  border-color: var(--color-accent);
 }
 
 .controlStrip button:disabled,
@@ -144,14 +167,14 @@ h2 {
 }
 
 .controlStrip .primaryButton {
-  background: #1f6f8b;
-  border-color: #1f6f8b;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
 }
 
 .controlStrip .coachDemoButton.active {
-  background: #7a5a13;
-  border-color: #7a5a13;
+  background: var(--color-amber);
+  border-color: var(--color-amber);
   color: #ffffff;
 }
 
@@ -451,23 +474,23 @@ h2 {
 }
 
 .toggleControl input {
-  accent-color: #1f6f8b;
+  accent-color: var(--color-accent);
   height: 18px;
   width: 18px;
 }
 
 .setupTabs {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  box-shadow: var(--shadow-panel);
   display: grid;
   overflow: visible;
 }
 
 .setupTabList {
-  background: #f5f8fa;
-  border-bottom: 1px solid #d7dde4;
+  background: #dfe8ef;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 6px;
   overflow: visible;
@@ -478,7 +501,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #526173;
+  color: #3d5061;
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.84rem;
@@ -489,9 +512,10 @@ h2 {
 
 .setupTabList button:hover,
 .setupTabList button.active {
-  background: #ffffff;
-  border-color: #b8d4de;
-  color: #1f6f8b;
+  background: var(--color-surface);
+  border-color: #7eb2c2;
+  color: var(--color-accent-dark);
+  box-shadow: 0 1px 0 rgb(15 35 55 / 0.05);
 }
 
 .liveOperationsPanel {
@@ -500,10 +524,33 @@ h2 {
   padding: 14px;
 }
 
-.scenarioPanel {
-  background: #ffffff;
+.filesPanel {
+  background: var(--color-surface);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 0.75fr);
+  padding: 14px;
+}
+
+.filesPanelSection {
+  align-content: start;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   display: grid;
   gap: 12px;
+  padding: 12px;
+}
+
+.filesPanelSection h2 {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.scenarioPanel {
+  background: var(--color-surface);
+  display: grid;
+  gap: 36px;
   padding: 14px;
 }
 
@@ -515,7 +562,7 @@ h2 {
 }
 
 .scenarioPanelHeader small {
-  color: #647383;
+  color: var(--color-muted);
   display: block;
   font-size: 0.78rem;
   font-weight: 700;
@@ -529,10 +576,10 @@ h2 {
 }
 
 .scenarioActions button {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #1e2a36;
+  color: var(--color-text);
   cursor: pointer;
   font-weight: 800;
   min-height: 38px;
@@ -544,21 +591,187 @@ h2 {
   cursor: not-allowed;
 }
 
+.calibrationPanel {
+  background: var(--color-surface);
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.calibrationHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.calibrationHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.calibrationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calibrationActions button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.calibrationActions button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.calibrationSummary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.calibrationSummary div,
+.calibrationNotice,
+.calibrationTable {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.calibrationSummary div {
+  display: grid;
+  gap: 4px;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.calibrationSummary span,
+.calibrationTableHeader {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.calibrationSummary strong {
+  color: var(--color-text);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.calibrationSummary small,
+.calibrationNotice p,
+.calibrationTableRow small {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.calibrationNotice {
+  padding: 12px;
+}
+
+.calibrationNotice strong {
+  display: block;
+  font-size: 0.86rem;
+  margin-bottom: 4px;
+}
+
+.calibrationNotice p {
+  margin: 0;
+}
+
+.calibrationTable {
+  overflow: hidden;
+}
+
+.calibrationTableHeader,
+.calibrationTableRow {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 0.7fr 1.5fr 1fr 0.7fr;
+  padding: 10px 12px;
+}
+
+.calibrationTableHeader {
+  background: var(--color-surface-shaded);
+}
+
+.calibrationTableRow {
+  border-top: 1px solid var(--color-border);
+  font-size: 0.84rem;
+}
+
+.calibrationTableRow strong {
+  display: block;
+  font-size: 0.84rem;
+}
+
+.calibrationBadge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  justify-content: center;
+  line-height: 1;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.calibrationBadge.local {
+  background: var(--color-green-soft);
+  color: var(--color-green);
+}
+
+.calibrationBadge.draft {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.calibrationBadge.default {
+  background: #e6edf3;
+  color: var(--color-muted);
+}
+
+.calibrationBadge.needs-data {
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.calibrationBadge.fixed {
+  background: #f0e7ff;
+  color: #5b3f90;
+}
+
 .scenarioControls {
   align-items: start;
   display: grid;
-  gap: 10px;
+  gap: 18px;
 }
 
 .scenarioTopControls {
   align-items: start;
   display: grid;
   gap: 10px;
-  grid-template-columns: 1.25fr 1.15fr 0.62fr 0.78fr 0.5fr 0.5fr 0.95fr 0.62fr 0.62fr;
+  grid-template-columns: 1.25fr 1.15fr 0.62fr 0.5fr 1.15fr 0.5fr 0.5fr 0.95fr 0.62fr 0.62fr;
   width: 100%;
 }
 
 .scenarioBottomControls {
+  align-items: start;
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(9, minmax(0, 1fr));
@@ -572,31 +785,312 @@ h2 {
   min-width: 0;
 }
 
+.scenarioBottomControls label {
+  grid-template-rows: 30px 40px 18px;
+}
+
 .scenarioControls label > span,
 .presetControl > span,
 .shiftLengthControl > span,
 .providerCountControl > span,
+.providerModelControl > span,
 .supportCountControl > span,
 .triageModeControl > span,
 .roomCapacityControl > span,
 .scenarioToggle span {
-  color: #647383;
+  color: var(--color-muted);
   font-size: 0.74rem;
   font-weight: 800;
 }
 
+.scenarioBottomControls label > span {
+  align-items: end;
+  display: flex;
+  line-height: 1.1;
+}
+
+.scenarioAssumptionStatus {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 900;
+  justify-content: center;
+  line-height: 1;
+  max-width: max-content;
+  min-height: 18px;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.scenarioAssumptionStatus.local {
+  background: var(--color-green-soft);
+  color: var(--color-green);
+}
+
+.scenarioAssumptionStatus.draft {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.scenarioAssumptionStatus.default {
+  background: #e6edf3;
+  color: var(--color-muted);
+}
+
 .scenarioControls input[type="number"],
 .scenarioControls select {
-  background: #f9fbfc;
-  border: 1px solid #ccd5de;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #18202a;
+  color: var(--color-text);
   font: inherit;
   font-weight: 800;
   height: 40px;
   min-width: 0;
   padding: 0 10px;
   width: 100%;
+}
+
+.patientMixControls {
+  background: #f7fafc;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.patientMixHeader {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 160px;
+}
+
+.patientMixHeader.coachRulesHeader {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 260px;
+}
+
+.patientMixHeader h3 {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.patientMixHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.patientMixHeader label {
+  display: grid;
+  gap: 5px;
+}
+
+.coachRulesVisibilityToggle {
+  align-items: center;
+  align-self: start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.74rem;
+  font-weight: 900;
+  gap: 8px;
+  justify-content: flex-start;
+  justify-self: end;
+  min-height: 36px;
+  min-width: max-content;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.patientMixHeader label.coachRulesVisibilityToggle {
+  display: inline-flex !important;
+  flex-direction: row;
+  width: auto;
+}
+
+.coachRulesVisibilityToggle input {
+  accent-color: var(--color-accent);
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  width: 16px;
+}
+
+.patientMixHeader label.coachRulesVisibilityToggle > span {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.coachRulesCollapsedNotice {
+  background: var(--color-accent-soft);
+  border: 1px solid #bdd8e2;
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 9px 10px;
+}
+
+.patientMixHeader label > span,
+.patientMixGroup > span {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.patientMixGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.patientMixGroup {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.patientMixButtonGroup {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.patientMixButtonGroup.four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.patientMixButtonGroup button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 900;
+  height: 38px;
+  overflow: hidden;
+  padding: 0 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patientMixButtonGroup button:hover,
+.patientMixButtonGroup button.active {
+  background: var(--color-accent-soft);
+  border-color: #73adbf;
+  color: var(--color-accent-dark);
+}
+
+.coachRuleWeightControls {
+  grid-column: span 3;
+}
+
+.coachStrategyBehaviorPanel {
+  background: #edf5f8;
+  border: 1px solid #c5d8e2;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+}
+
+.coachStrategyBehaviorPanel.compact {
+  background: #f2f7fa;
+}
+
+.coachStrategyBehaviorPanel > span {
+  color: var(--color-accent-dark);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coachStrategyBehaviorPanel ul {
+  color: #334555;
+  display: grid;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 4px;
+  line-height: 1.35;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.coachStrategyRuleGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.coachStrategyRuleGrid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.coachStrategyRuleRow {
+  background: #f4f8fb;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.coachStrategyRuleRow:focus-within {
+  border-color: #73adbf;
+  box-shadow: 0 0 0 3px rgb(23 107 134 / 0.1);
+}
+
+.coachStrategyRuleTitle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.coachStrategyRuleTitle strong {
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.coachStrategyWeightGrid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.coachStrategyWeightGrid label {
+  display: grid;
+  gap: 4px;
+}
+
+.coachStrategyWeightGrid span {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scenarioControls input[type="number"]:focus,
+.scenarioControls select:focus,
+.patientMixButtonGroup button:focus-visible,
+.setupTabList button:focus-visible,
+.mainViewTabs button:focus-visible,
+.rightRailTabs button:focus-visible {
+  outline: 3px solid rgb(23 107 134 / 0.18);
+  outline-offset: 2px;
 }
 
 .presetControl {
@@ -612,6 +1106,12 @@ h2 {
 }
 
 .providerCountControl {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.providerModelControl {
   display: grid;
   gap: 5px;
   min-width: 0;
@@ -643,6 +1143,7 @@ h2 {
 
 .presetButtonGroup,
 .providerButtonGroup,
+.providerModelButtonGroup,
 .supportButtonGroup,
 .shiftButtonGroup,
 .triageModeButtonGroup {
@@ -662,6 +1163,14 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.providerModelButtonGroup {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.providerModelButtonGroup button.wide {
+  grid-column: 1 / -1;
+}
+
 .supportButtonGroup {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -672,6 +1181,7 @@ h2 {
 
 .presetButtonGroup button,
 .providerButtonGroup button,
+.providerModelButtonGroup button,
 .supportButtonGroup button,
 .shiftButtonGroup button,
 .triageModeButtonGroup button {
@@ -697,6 +1207,8 @@ h2 {
 .presetButtonGroup button.active,
 .providerButtonGroup button:hover,
 .providerButtonGroup button.active,
+.providerModelButtonGroup button:hover,
+.providerModelButtonGroup button.active,
 .supportButtonGroup button:hover,
 .supportButtonGroup button.active,
 .shiftButtonGroup button:hover,
@@ -709,6 +1221,12 @@ h2 {
 }
 
 .triageModeControl small {
+  color: #647383;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.providerModelControl small {
   color: #647383;
   font-size: 0.74rem;
   line-height: 1.25;
@@ -798,25 +1316,25 @@ h2 {
 }
 
 .metric {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
   min-height: 74px;
   padding: 12px;
 }
 
 .metric.cardiacMetric {
-  background: #fff7f8;
-  border-color: #f0c7cf;
+  background: var(--color-red-soft);
+  border-color: #e9aaa6;
 }
 
 .metric.sepsisMetric {
-  background: #f5fbf6;
-  border-color: #bedec6;
+  background: var(--color-green-soft);
+  border-color: #a8d5bb;
 }
 
 .metricLabel {
   align-items: center;
-  color: #647383;
+  color: var(--color-muted);
   display: flex;
   font-size: 0.78rem;
   gap: 6px;
@@ -935,17 +1453,17 @@ h2 {
 }
 
 .mainViewShell {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
+  box-shadow: var(--shadow-panel);
   display: grid;
   overflow: hidden;
 }
 
 .mainViewTabs {
-  background: #f5f8fa;
-  border-bottom: 1px solid #d7dde4;
+  background: #dfe8ef;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 6px;
   overflow: visible;
@@ -956,7 +1474,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #526173;
+  color: #3d5061;
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.84rem;
@@ -967,9 +1485,10 @@ h2 {
 
 .mainViewTabs button:hover,
 .mainViewTabs button.active {
-  background: #ffffff;
-  border-color: #b8d4de;
-  color: #1f6f8b;
+  background: var(--color-surface);
+  border-color: #7eb2c2;
+  color: var(--color-accent-dark);
+  box-shadow: 0 1px 0 rgb(15 35 55 / 0.05);
 }
 
 .tabTooltip::after {
@@ -1161,8 +1680,8 @@ h2 {
 }
 
 .boardColumn {
-  background: #e9edf1;
-  border: 1px solid #d5dce3;
+  background: #dfe7ee;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   min-height: 440px;
   min-width: 150px;
@@ -1183,9 +1702,9 @@ h2 {
 }
 
 .columnHeader span {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 999px;
-  color: #516071;
+  color: var(--color-muted);
   flex-shrink: 0;
   font-size: 0.78rem;
   font-weight: 800;
@@ -1201,9 +1720,9 @@ h2 {
 }
 
 .patientCard {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
-  color: #1d2a37;
+  color: var(--color-text);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -1215,15 +1734,17 @@ h2 {
 }
 
 .patientCard.selected {
-  border-color: #1f6f8b;
-  box-shadow: inset 0 0 0 1px #1f6f8b;
+  border-color: var(--color-accent);
+  box-shadow:
+    inset 0 0 0 1px var(--color-accent),
+    0 0 0 3px rgb(23 107 134 / 0.12);
 }
 
 .patientCard.coachRecommendedPatient {
-  border-color: #c19a2e;
+  border-color: #b8891d;
   box-shadow:
-    inset 0 0 0 1px #c19a2e,
-    0 0 0 3px rgb(193 154 46 / 0.16);
+    inset 0 0 0 1px #b8891d,
+    0 0 0 3px rgb(184 137 29 / 0.18);
 }
 
 .cardTopline,
@@ -1235,7 +1756,7 @@ h2 {
 }
 
 .patientMeta {
-  color: #5e6b78;
+  color: var(--color-muted);
   font-size: 0.78rem;
 }
 
@@ -1393,12 +1914,11 @@ h2 {
 
 .sidePanel {
   align-self: start;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  height: calc(100vh - 196px);
-  max-height: 820px;
+  height: calc(100vh - 24px);
   min-height: 440px;
   overflow: hidden;
   position: sticky;
@@ -1406,8 +1926,8 @@ h2 {
 }
 
 .rightRailTabs {
-  background: #f5f8fa;
-  border-bottom: 1px solid #e3e8ed;
+  background: #dfe8ef;
+  border-bottom: 1px solid var(--color-border);
   display: grid;
   gap: 6px;
   grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
@@ -1418,7 +1938,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #526173;
+  color: #3d5061;
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 900;
@@ -1607,10 +2127,10 @@ h2 {
 }
 
 .actionList button.coachRecommendedAction {
-  border-color: #c19a2e;
+  border-color: #b8891d;
   box-shadow:
-    inset 0 0 0 1px #c19a2e,
-    0 0 0 3px rgb(193 154 46 / 0.16);
+    inset 0 0 0 1px #b8891d,
+    0 0 0 3px rgb(184 137 29 / 0.18);
 }
 
 .actionList small {
@@ -1628,12 +2148,12 @@ h2 {
 .benchmarkPanel > strong,
 .coachPanel > strong,
 .debriefPanel > strong {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 0.92rem;
 }
 
 .coachPanel p {
-  color: #455466;
+  color: var(--color-muted);
   font-size: 0.82rem;
   line-height: 1.4;
   margin: 0;
@@ -1647,8 +2167,8 @@ h2 {
 }
 
 .coachSummary div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 4px;
@@ -1656,14 +2176,14 @@ h2 {
 }
 
 .coachSummary dt {
-  color: #667586;
+  color: var(--color-muted);
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .coachSummary dd {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 900;
   margin: 0;
@@ -1675,10 +2195,10 @@ h2 {
 }
 
 .coachActions button {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #1e2a36;
+  color: var(--color-text);
   cursor: pointer;
   font-weight: 900;
   min-height: 42px;
@@ -1686,8 +2206,8 @@ h2 {
 }
 
 .whatIfComparison {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -1695,14 +2215,14 @@ h2 {
 }
 
 .whatIfComparison h3 {
-  color: #455466;
+  color: var(--color-muted);
   font-size: 0.76rem;
   margin: 0;
   text-transform: uppercase;
 }
 
 .whatIfComparison p {
-  color: #455466;
+  color: var(--color-muted);
   font-size: 0.82rem;
   line-height: 1.4;
   margin: 0;
@@ -1716,7 +2236,7 @@ h2 {
 }
 
 .benchmarkTargetControl label {
-  color: #667586;
+  color: var(--color-muted);
   font-size: 0.68rem;
   font-weight: 800;
   grid-column: 1 / 3;
@@ -1730,10 +2250,10 @@ h2 {
 
 .benchmarkTargetControl select {
   appearance: none;
-  background: #ffffff;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #283241;
+  color: var(--color-text);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 800;
@@ -1749,10 +2269,10 @@ h2 {
 
 .coachComparisonControls label {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #283241;
+  color: var(--color-text);
   display: flex;
   font-size: 0.74rem;
   font-weight: 800;
@@ -1762,7 +2282,7 @@ h2 {
 }
 
 .coachComparisonControls input {
-  accent-color: #1f6f8b;
+  accent-color: var(--color-accent);
   height: 18px;
   margin: 0;
   width: 18px;
@@ -1778,9 +2298,9 @@ h2 {
 }
 
 .whatIfCard {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
-  border-left: 3px solid #7f8a96;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid #7f8a96;
   border-radius: 8px;
   display: grid;
   gap: 8px;
@@ -1788,27 +2308,27 @@ h2 {
 }
 
 .whatIfCard.optimal_flow {
-  border-left-color: #3e8b5d;
+  border-left-color: var(--color-green);
 }
 
 .whatIfCard.front_end_focus {
-  border-left-color: #1f6f8b;
+  border-left-color: var(--color-accent);
 }
 
 .whatIfCard.middle_flow_focus {
-  border-left-color: #c19a2e;
+  border-left-color: var(--color-amber);
 }
 
 .whatIfCard.disposition_focus {
-  border-left-color: #c7603b;
+  border-left-color: #bf5638;
 }
 
 .whatIfCard.resource_aware {
-  border-left-color: #6c63b7;
+  border-left-color: var(--color-blue);
 }
 
 .whatIfCard.safety_first {
-  border-left-color: #b42318;
+  border-left-color: var(--color-red);
 }
 
 .whatIfCard.fast_track {
@@ -1816,18 +2336,44 @@ h2 {
 }
 
 .whatIfCard.balanced_operations {
-  border-left-color: #2f6bd1;
+  border-left-color: var(--color-blue);
 }
 
 .whatIfCard > strong {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 0.84rem;
 }
 
 .whatIfCard > small {
-  color: #647383;
+  color: var(--color-muted);
   font-size: 0.75rem;
   line-height: 1.35;
+}
+
+.whatIfRuleProfile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.whatIfBehaviorSummary {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.whatIfRuleProfile span {
+  background: var(--color-accent-soft);
+  border: 1px solid #bdd8e2;
+  border-radius: 999px;
+  color: var(--color-accent-dark);
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 6px;
+  white-space: nowrap;
 }
 
 .whatIfCard dl {
@@ -1868,8 +2414,8 @@ h2 {
 }
 
 .whatIfCard dl div {
-  background: #ffffff;
-  border: 1px solid #e3e8ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 2px;
@@ -1877,14 +2423,14 @@ h2 {
 }
 
 .whatIfCard dt {
-  color: #667586;
+  color: var(--color-muted);
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .whatIfCard dd {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 900;
   margin: 0;
@@ -2362,6 +2908,190 @@ h2 {
   margin: 0;
 }
 
+.replayControlPanel {
+  align-items: center;
+  background: #eef8fb;
+  border: 1px solid #b8d4de;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  padding: 10px;
+}
+
+.replayControlPanel > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.replayControlPanel strong {
+  color: #1f6f8b;
+  font-size: 0.86rem;
+}
+
+.replayControlPanel span {
+  color: #667586;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.replayActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.replayActions button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #b8d4de;
+  border-radius: 8px;
+  color: #1f6f8b;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.replayActions button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.savedRunsPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.savedRunActions button {
+  background: #ffffff;
+  border: 1px solid #b8d4de;
+  border-radius: 8px;
+  color: #1f6f8b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.savedRunFileTools {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 10px;
+}
+
+.savedRunFileTools button,
+.savedRunFileTools label {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #b8d4de;
+  border-radius: 8px;
+  color: #1f6f8b;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.savedRunFileTools button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.savedRunFileTools .primaryButton {
+  background: #1f6f8b;
+  border-color: #1f6f8b;
+  color: #ffffff;
+}
+
+.savedRunFileTools input {
+  display: none;
+}
+
+.savedRunList {
+  display: grid;
+  gap: 10px;
+}
+
+.savedRunCard {
+  background: #f9fbfc;
+  border: 1px solid #dfe6ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+}
+
+.savedRunCardHeader {
+  display: grid;
+  gap: 2px;
+}
+
+.savedRunCardHeader strong {
+  color: #18202a;
+  font-size: 0.9rem;
+}
+
+.savedRunCardHeader small {
+  color: #667586;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.savedRunCard dl {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.savedRunCard dl div {
+  background: #ffffff;
+  border: 1px solid #e3e8ed;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.savedRunCard dt {
+  color: #667586;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.savedRunCard dd {
+  color: #18202a;
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.savedRunActions {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.savedRunActions button.active {
+  background: #1f6f8b;
+  border-color: #1f6f8b;
+  color: #ffffff;
+}
+
 .activitySummary {
   display: grid;
   gap: 8px;
@@ -2473,6 +3203,8 @@ h2 {
 .appShell[data-theme="dark"] .mainViewShell,
 .appShell[data-theme="dark"] .mainViewTabs,
 .appShell[data-theme="dark"] .providerRosterCard,
+.appShell[data-theme="dark"] .filesPanel,
+.appShell[data-theme="dark"] .calibrationPanel,
 .appShell[data-theme="dark"] .scenarioPanel,
 .appShell[data-theme="dark"] .metric,
 .appShell[data-theme="dark"] .roomMapPanel,
@@ -2481,12 +3213,27 @@ h2 {
 .appShell[data-theme="dark"] .controlStrip button,
 .appShell[data-theme="dark"] .presetButtonGroup button,
 .appShell[data-theme="dark"] .providerButtonGroup button,
+.appShell[data-theme="dark"] .providerModelButtonGroup button,
 .appShell[data-theme="dark"] .supportButtonGroup button,
 .appShell[data-theme="dark"] .shiftButtonGroup button,
 .appShell[data-theme="dark"] .triageModeButtonGroup button,
+.appShell[data-theme="dark"] .patientMixControls,
+.appShell[data-theme="dark"] .patientMixButtonGroup button,
+.appShell[data-theme="dark"] .coachRulesVisibilityToggle,
+.appShell[data-theme="dark"] .coachRulesCollapsedNotice,
+.appShell[data-theme="dark"] .coachStrategyBehaviorPanel,
+.appShell[data-theme="dark"] .coachStrategyRuleRow,
 .appShell[data-theme="dark"] .coachActions button,
 .appShell[data-theme="dark"] .actionList button,
 .appShell[data-theme="dark"] .activityToolbar button,
+.appShell[data-theme="dark"] .replayControlPanel,
+.appShell[data-theme="dark"] .replayActions button,
+.appShell[data-theme="dark"] .savedRunFileTools,
+.appShell[data-theme="dark"] .savedRunFileTools button,
+.appShell[data-theme="dark"] .savedRunFileTools label,
+.appShell[data-theme="dark"] .calibrationActions button,
+.appShell[data-theme="dark"] .savedRunCard,
+.appShell[data-theme="dark"] .savedRunActions button,
 .appShell[data-theme="dark"] .roomTile,
 .appShell[data-theme="dark"] .patientCard {
   background: #161d27;
@@ -2504,6 +3251,11 @@ h2 {
 
 .appShell[data-theme="dark"] .mainViewPanel,
 .appShell[data-theme="dark"] .tabPanel,
+.appShell[data-theme="dark"] .filesPanelSection,
+.appShell[data-theme="dark"] .calibrationSummary div,
+.appShell[data-theme="dark"] .calibrationNotice,
+.appShell[data-theme="dark"] .calibrationTable,
+.appShell[data-theme="dark"] .calibrationTableHeader,
 .appShell[data-theme="dark"] .tabMeasures div,
 .appShell[data-theme="dark"] .actionStatus,
 .appShell[data-theme="dark"] .benchmarkMetricComparison,
@@ -2522,12 +3274,34 @@ h2 {
 .appShell[data-theme="dark"] .benchmarkGrid div,
 .appShell[data-theme="dark"] .activitySummary div,
 .appShell[data-theme="dark"] .coachSummary div,
+.appShell[data-theme="dark"] .savedRunCard dl div,
 .appShell[data-theme="dark"] .scenarioToggle::after,
 .appShell[data-theme="dark"] .scenarioControls input[type="number"],
 .appShell[data-theme="dark"] .scenarioControls select {
   background: #111821;
   border-color: #334253;
   color: #e6edf4;
+}
+
+.appShell[data-theme="dark"] .filesPanelSection h2 {
+  color: #e6edf4;
+}
+
+.appShell[data-theme="dark"] .calibrationHeader small,
+.appShell[data-theme="dark"] .calibrationSummary span,
+.appShell[data-theme="dark"] .calibrationSummary small,
+.appShell[data-theme="dark"] .calibrationNotice p,
+.appShell[data-theme="dark"] .calibrationTableHeader,
+.appShell[data-theme="dark"] .calibrationTableRow small {
+  color: #9aa8b6;
+}
+
+.appShell[data-theme="dark"] .calibrationSummary strong {
+  color: #e6edf4;
+}
+
+.appShell[data-theme="dark"] .calibrationTableRow {
+  border-color: #334253;
 }
 
 .appShell[data-theme="dark"] .boardColumn {
@@ -2556,12 +3330,16 @@ h2 {
 .appShell[data-theme="dark"] .presetButtonGroup button:hover,
 .appShell[data-theme="dark"] .providerButtonGroup button.active,
 .appShell[data-theme="dark"] .providerButtonGroup button:hover,
+.appShell[data-theme="dark"] .providerModelButtonGroup button.active,
+.appShell[data-theme="dark"] .providerModelButtonGroup button:hover,
 .appShell[data-theme="dark"] .supportButtonGroup button.active,
 .appShell[data-theme="dark"] .supportButtonGroup button:hover,
 .appShell[data-theme="dark"] .shiftButtonGroup button.active,
 .appShell[data-theme="dark"] .shiftButtonGroup button:hover,
 .appShell[data-theme="dark"] .triageModeButtonGroup button.active,
 .appShell[data-theme="dark"] .triageModeButtonGroup button:hover,
+.appShell[data-theme="dark"] .patientMixButtonGroup button.active,
+.appShell[data-theme="dark"] .patientMixButtonGroup button:hover,
 .appShell[data-theme="dark"] .setupTabList button.active,
 .appShell[data-theme="dark"] .setupTabList button:hover,
 .appShell[data-theme="dark"] .tabList button.active,
@@ -2607,6 +3385,9 @@ h2 {
 .appShell[data-theme="dark"] .triageModeControl > span,
 .appShell[data-theme="dark"] .roomCapacityControl > span,
 .appShell[data-theme="dark"] .supportCountControl > span,
+.appShell[data-theme="dark"] .patientMixHeader label > span,
+.appShell[data-theme="dark"] .patientMixGroup > span,
+.appShell[data-theme="dark"] .patientMixHeader small,
 .appShell[data-theme="dark"] .triageModeControl small,
 .appShell[data-theme="dark"] .scenarioToggle span,
 .appShell[data-theme="dark"] .metricLabel,
@@ -2628,18 +3409,26 @@ h2 {
 .appShell[data-theme="dark"] .benchmarkTargetControl label,
 .appShell[data-theme="dark"] .graphsHeader p,
 .appShell[data-theme="dark"] .chartHeader p,
+.appShell[data-theme="dark"] .providerModelControl small,
 .appShell[data-theme="dark"] .chartHeader > span,
 .appShell[data-theme="dark"] .chartLegend dt,
 .appShell[data-theme="dark"] .whatIfComparison h3,
 .appShell[data-theme="dark"] .whatIfComparison p,
 .appShell[data-theme="dark"] .whatIfCard > small,
+.appShell[data-theme="dark"] .whatIfBehaviorSummary,
 .appShell[data-theme="dark"] .whatIfCard dt,
+.appShell[data-theme="dark"] .coachStrategyBehaviorPanel ul,
+.appShell[data-theme="dark"] .coachStrategyBehaviorPanel > span,
+.appShell[data-theme="dark"] .coachStrategyWeightGrid span,
 .appShell[data-theme="dark"] .activitySummary dt,
 .appShell[data-theme="dark"] .activityToolbar span,
 .appShell[data-theme="dark"] .activityExportStatus,
 .appShell[data-theme="dark"] .activityList time,
 .appShell[data-theme="dark"] .activityList span,
 .appShell[data-theme="dark"] .activityList small,
+.appShell[data-theme="dark"] .replayControlPanel span,
+.appShell[data-theme="dark"] .savedRunCardHeader small,
+.appShell[data-theme="dark"] .savedRunCard dt,
 .appShell[data-theme="dark"] .coachPanel p,
 .appShell[data-theme="dark"] .coachSummary dt,
 .appShell[data-theme="dark"] .orderList small,
@@ -2677,16 +3466,26 @@ h2 {
 .appShell[data-theme="dark"] .chartHeader h3,
 .appShell[data-theme="dark"] .chartLegend dd,
 .appShell[data-theme="dark"] .whatIfCard > strong,
+.appShell[data-theme="dark"] .coachStrategyRuleTitle strong,
 .appShell[data-theme="dark"] .coachComparisonControls label,
 .appShell[data-theme="dark"] .whatIfCard dd,
 .appShell[data-theme="dark"] .activitySummary dd,
 .appShell[data-theme="dark"] .activityList strong,
+.appShell[data-theme="dark"] .replayControlPanel strong,
+.appShell[data-theme="dark"] .savedRunCardHeader strong,
+.appShell[data-theme="dark"] .savedRunCard dd,
 .appShell[data-theme="dark"] .coachPanel > strong,
 .appShell[data-theme="dark"] .coachSummary dd,
 .appShell[data-theme="dark"] .debriefPanel > strong,
 .appShell[data-theme="dark"] .feedbackList span,
 .appShell[data-theme="dark"] .hospitalistMilestones dd {
   color: #f2f6fa;
+}
+
+.appShell[data-theme="dark"] .whatIfRuleProfile span {
+  background: #1d2c37;
+  border-color: #334253;
+  color: #8ccce0;
 }
 
 .appShell[data-theme="dark"] .columnHeader span,
@@ -2758,8 +3557,45 @@ h2 {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
 
+  .patientMixGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coachRuleWeightControls {
+    grid-column: auto;
+  }
+
+  .coachStrategyRuleGrid {
+    grid-template-columns: 1fr;
+  }
+
   .metricSectionRow {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  .filesPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .calibrationSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calibrationTableHeader,
+  .calibrationTableRow {
+    grid-template-columns: 0.7fr 1.3fr 1fr 0.8fr;
+  }
+
+  .replayControlPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .replayActions {
+    justify-content: stretch;
+  }
+
+  .replayActions button {
+    justify-content: center;
   }
 
   .tabMeasures {
@@ -2834,7 +3670,8 @@ h2 {
     justify-content: flex-start;
   }
 
-  .scenarioPanelHeader {
+  .scenarioPanelHeader,
+  .calibrationHeader {
     align-items: stretch;
     flex-direction: column;
   }
@@ -2844,12 +3681,46 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .patientMixHeader,
+  .patientMixGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .coachRuleWeightControls {
+    grid-column: auto;
+  }
+
+  .coachStrategyWeightGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .calibrationSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .calibrationTableHeader {
+    display: none;
+  }
+
+  .calibrationTableRow {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
   .scenarioToggle {
     margin-top: 0;
   }
 
   .tabMeasures {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .savedRunActions {
+    grid-template-columns: 1fr;
+  }
+
+  .savedRunFileTools {
+    grid-template-columns: 1fr;
   }
 
   .chartHeader {

@@ -1,6 +1,34 @@
 import { defaultScenario } from "./mockScenario";
 import { timingRangeFromTypical } from "./timingProfile";
-import type { HourlyArrivalProfile, Scenario, ScenarioPreset, ScenarioPresetId, ScenarioTuningConfig } from "./types";
+import type {
+  CoachComparisonStrategyId,
+  CoachPriorityMode,
+  CoachPriorityProfile,
+  CoachStrategyPriorityProfiles,
+  ComplaintCategory,
+  ESILevel,
+  HourlyArrivalProfile,
+  PatientAcuityMix,
+  PatientAdmissionMix,
+  PatientComplaintMix,
+  PatientWorkupMix,
+  ProviderAssignmentMode,
+  Scenario,
+  ScenarioPreset,
+  ScenarioPresetId,
+  ScenarioTuningConfig,
+  WeightedDistribution,
+} from "./types";
+
+export const coachComparisonStrategyIds: CoachComparisonStrategyId[] = [
+  "front_end_focus",
+  "middle_flow_focus",
+  "disposition_focus",
+  "resource_aware",
+  "safety_first",
+  "fast_track",
+  "balanced_operations",
+];
 
 export const scenarioPresets: ScenarioPreset[] = [
   {
@@ -33,6 +61,129 @@ function boundedDecimal(value: number, minimum: number, maximum: number): number
   return Math.min(maximum, Math.max(minimum, Math.round(value * 100) / 100));
 }
 
+function validProviderAssignmentMode(value: ProviderAssignmentMode | undefined): ProviderAssignmentMode {
+  return value === "assigned" || value === "assigned_with_handoff" ? value : "team";
+}
+
+function validPatientAcuityMix(value: PatientAcuityMix | undefined): PatientAcuityMix {
+  return value === "higher_acuity" || value === "lower_acuity" ? value : "standard";
+}
+
+function validPatientComplaintMix(value: PatientComplaintMix | undefined): PatientComplaintMix {
+  return value === "cardiac" || value === "infection" || value === "injury_minor" ? value : "balanced";
+}
+
+function validPatientWorkupMix(value: PatientWorkupMix | undefined): PatientWorkupMix {
+  return value === "higher_workup" || value === "lower_workup" ? value : "standard";
+}
+
+function validPatientAdmissionMix(value: PatientAdmissionMix | undefined): PatientAdmissionMix {
+  return value === "higher_admit" || value === "lower_admit" ? value : "standard";
+}
+
+function validCoachPriorityMode(value: CoachPriorityMode | undefined): CoachPriorityMode {
+  return value === "safety_first" || value === "throughput" || value === "front_end" ? value : "balanced";
+}
+
+function validCoachPriorityProfile(
+  profile: CoachPriorityProfile | undefined,
+  fallback: CoachPriorityProfile,
+): CoachPriorityProfile {
+  return {
+    mode: validCoachPriorityMode(profile?.mode ?? fallback.mode),
+    acuityWeight: boundedInteger(profile?.acuityWeight ?? fallback.acuityWeight, 0, 2000),
+    riskWeight: boundedInteger(profile?.riskWeight ?? fallback.riskWeight, 0, 500),
+    waitWeight: boundedDecimal(profile?.waitWeight ?? fallback.waitWeight, 0, 10),
+  };
+}
+
+function validCoachStrategyPriorityProfiles(
+  profiles: Partial<CoachStrategyPriorityProfiles> | undefined,
+  fallbackProfiles = defaultScenario.coachStrategyPriorityProfiles,
+): CoachStrategyPriorityProfiles {
+  return Object.fromEntries(
+    coachComparisonStrategyIds.map((strategyId) => [
+      strategyId,
+      validCoachPriorityProfile(profiles?.[strategyId], fallbackProfiles[strategyId]),
+    ]),
+  ) as CoachStrategyPriorityProfiles;
+}
+
+function esiDistributionForMix(mix: PatientAcuityMix): WeightedDistribution<ESILevel> {
+  switch (mix) {
+    case "higher_acuity":
+      return {
+        values: [
+          { value: 1, weight: 5 },
+          { value: 2, weight: 25 },
+          { value: 3, weight: 45 },
+          { value: 4, weight: 20 },
+          { value: 5, weight: 5 },
+        ],
+      };
+    case "lower_acuity":
+      return {
+        values: [
+          { value: 2, weight: 8 },
+          { value: 3, weight: 32 },
+          { value: 4, weight: 40 },
+          { value: 5, weight: 20 },
+        ],
+      };
+    default:
+      return defaultScenario.esiDistribution;
+  }
+}
+
+function complaintDistributionForMix(mix: PatientComplaintMix): WeightedDistribution<ComplaintCategory> {
+  switch (mix) {
+    case "cardiac":
+      return {
+        values: [
+          { value: "suspected_acs", weight: 12 },
+          { value: "chest_pain", weight: 32 },
+          { value: "shortness_of_breath", weight: 18 },
+          { value: "syncope", weight: 8 },
+          { value: "abdominal_pain", weight: 8 },
+          { value: "weakness_dizziness", weight: 8 },
+          { value: "fever_infection", weight: 5 },
+          { value: "injury", weight: 5 },
+          { value: "minor_complaint", weight: 4 },
+        ],
+      };
+    case "infection":
+      return {
+        values: [
+          { value: "fever_infection", weight: 28 },
+          { value: "sepsis_concern", weight: 14 },
+          { value: "shortness_of_breath", weight: 14 },
+          { value: "weakness_dizziness", weight: 10 },
+          { value: "abdominal_pain", weight: 10 },
+          { value: "renal_urinary", weight: 8 },
+          { value: "altered_mental_status", weight: 6 },
+          { value: "chest_pain", weight: 5 },
+          { value: "minor_complaint", weight: 5 },
+        ],
+      };
+    case "injury_minor":
+      return {
+        values: [
+          { value: "injury", weight: 28 },
+          { value: "minor_complaint", weight: 20 },
+          { value: "back_pain", weight: 12 },
+          { value: "eye_ent", weight: 10 },
+          { value: "burn", weight: 6 },
+          { value: "allergic_reaction", weight: 6 },
+          { value: "abdominal_pain", weight: 6 },
+          { value: "chest_pain", weight: 6 },
+          { value: "fever_infection", weight: 6 },
+        ],
+      };
+    default:
+      return defaultScenario.complaintDistribution;
+  }
+}
+
 function buildArrivalProfile(shiftDurationMinutes: number, expectedArrivalsPerHour: number): HourlyArrivalProfile[] {
   const hourCount = Math.max(1, Math.ceil(shiftDurationMinutes / 60));
   return Array.from({ length: hourCount }, (_, hourOffset) => ({
@@ -56,6 +207,7 @@ export function getDefaultScenarioTuningConfig(baseScenario = defaultScenario): 
       baseScenario.triageProviderMode ?? (baseScenario.triageProviderEnabled ? "manual" : "unavailable"),
     roomCapacity: baseScenario.roomCapacity,
     providerCount: baseScenario.providerCount,
+    providerAssignmentMode: validProviderAssignmentMode(baseScenario.providerAssignmentMode),
     nurseCount: baseScenario.nurseCount,
     techCount: baseScenario.techCount,
     fastTrackEnabled: baseScenario.fastTrackEnabled,
@@ -72,6 +224,25 @@ export function getDefaultScenarioTuningConfig(baseScenario = defaultScenario): 
     admitBoardingDelayMinutes: Math.round(averageBoardingDelay),
     lwbsEnabled: baseScenario.lwbsProfile.enabled,
     minimumWaitBeforeLWBS: baseScenario.lwbsProfile.minimumWaitBeforeLWBS,
+    patientAcuityMix: validPatientAcuityMix(baseScenario.patientMix?.acuity),
+    patientComplaintMix: validPatientComplaintMix(baseScenario.patientMix?.complaint),
+    patientWorkupMix: validPatientWorkupMix(baseScenario.patientMix?.workup),
+    patientAdmissionMix: validPatientAdmissionMix(baseScenario.patientMix?.admission),
+    patientMixSeed: baseScenario.patientMix?.seed ?? 1,
+    stemiDoorToEcgTargetMinutes: baseScenario.workflowTimingProfile.stemiDoorToEcgTargetMinutes,
+    acsDoorToEcgTargetMinutes: baseScenario.workflowTimingProfile.acsDoorToEcgTargetMinutes,
+    repeatTroponinDelayMinutes: baseScenario.workflowTimingProfile.repeatTroponinDelayMinutes,
+    sepsisLactateCollectionMinutes: baseScenario.workflowTimingProfile.sepsisLactateCollectionMinutes,
+    sepsisBloodCultureMinutes: baseScenario.workflowTimingProfile.sepsisBloodCultureMinutes,
+    sepsisAntibioticsMinutes: baseScenario.workflowTimingProfile.sepsisAntibioticsMinutes,
+    sepsisFluidsMinutes: baseScenario.workflowTimingProfile.sepsisFluidsMinutes,
+    sepsisCriticalWaitMinutes: baseScenario.workflowTimingProfile.sepsisCriticalWaitMinutes,
+    deteriorationGraceMinutes: baseScenario.workflowTimingProfile.deteriorationGraceMinutes,
+    coachPriorityMode: validCoachPriorityMode(baseScenario.coachPriorityProfile?.mode),
+    coachAcuityWeight: baseScenario.coachPriorityProfile?.acuityWeight ?? 1000,
+    coachRiskWeight: baseScenario.coachPriorityProfile?.riskWeight ?? 150,
+    coachWaitWeight: baseScenario.coachPriorityProfile?.waitWeight ?? 1,
+    coachStrategyPriorityProfiles: validCoachStrategyPriorityProfiles(baseScenario.coachStrategyPriorityProfiles),
   };
 }
 
@@ -93,6 +264,28 @@ export function createScenarioFromTuning(
   const boardingDurationTypicalMinutes = boundedInteger(tuning.boardingDurationTypicalMinutes, 0, 720);
   const roomCleaningTypicalMinutes = boundedInteger(tuning.roomCleaningTypicalMinutes, 0, 180);
   const minimumWaitBeforeLWBS = boundedInteger(tuning.minimumWaitBeforeLWBS, 0, 360);
+  const patientAcuityMix = validPatientAcuityMix(tuning.patientAcuityMix);
+  const patientComplaintMix = validPatientComplaintMix(tuning.patientComplaintMix);
+  const patientWorkupMix = validPatientWorkupMix(tuning.patientWorkupMix);
+  const patientAdmissionMix = validPatientAdmissionMix(tuning.patientAdmissionMix);
+  const patientMixSeed = boundedInteger(tuning.patientMixSeed, 1, 9999);
+  const stemiDoorToEcgTargetMinutes = boundedInteger(tuning.stemiDoorToEcgTargetMinutes, 1, 30);
+  const acsDoorToEcgTargetMinutes = boundedInteger(tuning.acsDoorToEcgTargetMinutes, 1, 30);
+  const repeatTroponinDelayMinutes = boundedInteger(tuning.repeatTroponinDelayMinutes, 15, 240);
+  const sepsisLactateCollectionMinutes = boundedInteger(tuning.sepsisLactateCollectionMinutes, 1, 60);
+  const sepsisBloodCultureMinutes = boundedInteger(tuning.sepsisBloodCultureMinutes, 1, 60);
+  const sepsisAntibioticsMinutes = boundedInteger(tuning.sepsisAntibioticsMinutes, 1, 180);
+  const sepsisFluidsMinutes = boundedInteger(tuning.sepsisFluidsMinutes, 1, 180);
+  const sepsisCriticalWaitMinutes = boundedInteger(tuning.sepsisCriticalWaitMinutes, 1, 120);
+  const deteriorationGraceMinutes = boundedInteger(tuning.deteriorationGraceMinutes, 1, 180);
+  const coachPriorityMode = validCoachPriorityMode(tuning.coachPriorityMode);
+  const coachAcuityWeight = boundedInteger(tuning.coachAcuityWeight, 0, 2000);
+  const coachRiskWeight = boundedInteger(tuning.coachRiskWeight, 0, 500);
+  const coachWaitWeight = boundedDecimal(tuning.coachWaitWeight, 0, 10);
+  const coachStrategyPriorityProfiles = validCoachStrategyPriorityProfiles(
+    tuning.coachStrategyPriorityProfiles,
+    baseScenario.coachStrategyPriorityProfiles,
+  );
   const boardingRange = timingRangeFromTypical(boardingDurationTypicalMinutes, 0.55, 2.4);
   const roomCleaningRange =
     roomCleaningTypicalMinutes === 0
@@ -105,6 +298,8 @@ export function createScenarioFromTuning(
     triageProviderMode: tuning.triageProviderMode,
     roomCapacity,
     providerCount,
+    providerAssignmentMode: validProviderAssignmentMode(tuning.providerAssignmentMode),
+    randomSeed: `${baseScenario.randomSeed}:patient-mix-${patientMixSeed}`,
     nurseCount,
     techCount,
     fastTrackEnabled: tuning.fastTrackEnabled,
@@ -121,6 +316,33 @@ export function createScenarioFromTuning(
       roomCleaning: roomCleaningRange,
     },
     arrivalProfile: buildArrivalProfile(shiftDurationMinutes, expectedArrivalsPerHour),
+    esiDistribution: esiDistributionForMix(patientAcuityMix),
+    complaintDistribution: complaintDistributionForMix(patientComplaintMix),
+    patientMix: {
+      acuity: patientAcuityMix,
+      admission: patientAdmissionMix,
+      complaint: patientComplaintMix,
+      seed: patientMixSeed,
+      workup: patientWorkupMix,
+    },
+    workflowTimingProfile: {
+      acsDoorToEcgTargetMinutes,
+      deteriorationGraceMinutes,
+      repeatTroponinDelayMinutes,
+      sepsisAntibioticsMinutes,
+      sepsisBloodCultureMinutes,
+      sepsisCriticalWaitMinutes,
+      sepsisFluidsMinutes,
+      sepsisLactateCollectionMinutes,
+      stemiDoorToEcgTargetMinutes,
+    },
+    coachPriorityProfile: {
+      mode: coachPriorityMode,
+      acuityWeight: coachAcuityWeight,
+      riskWeight: coachRiskWeight,
+      waitWeight: coachWaitWeight,
+    },
+    coachStrategyPriorityProfiles,
     boardingProfile: {
       ...baseScenario.boardingProfile,
       admitBoardingDelayMin: boardingRange.min,

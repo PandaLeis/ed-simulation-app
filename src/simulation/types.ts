@@ -68,6 +68,13 @@ export type PendingItemType =
 export type CardiacPathway = "none" | "possible_acs" | "stemi_alert";
 
 export type TriageProviderMode = "unavailable" | "manual" | "automated";
+export type ProviderAssignmentMode = "team" | "assigned" | "assigned_with_handoff";
+export type PatientAcuityMix = "standard" | "higher_acuity" | "lower_acuity";
+export type PatientComplaintMix = "balanced" | "cardiac" | "infection" | "injury_minor";
+export type PatientWorkupMix = "standard" | "higher_workup" | "lower_workup";
+export type PatientAdmissionMix = "standard" | "higher_admit" | "lower_admit";
+export type CoachPriorityMode = "balanced" | "safety_first" | "throughput" | "front_end";
+export type CoachComparisonStrategyId = Exclude<WhatIfCoachStrategyId, "provider_run" | "optimal_flow">;
 
 export type SupportResourceRole = "nurse" | "tech";
 
@@ -129,6 +136,35 @@ export interface TimingProfile {
   roomCleaning: PertTimingRange;
 }
 
+export interface WorkflowTimingProfile {
+  stemiDoorToEcgTargetMinutes: number;
+  acsDoorToEcgTargetMinutes: number;
+  repeatTroponinDelayMinutes: number;
+  sepsisLactateCollectionMinutes: number;
+  sepsisBloodCultureMinutes: number;
+  sepsisAntibioticsMinutes: number;
+  sepsisFluidsMinutes: number;
+  sepsisCriticalWaitMinutes: number;
+  deteriorationGraceMinutes: number;
+}
+
+export interface PatientMixConfig {
+  acuity: PatientAcuityMix;
+  complaint: PatientComplaintMix;
+  workup: PatientWorkupMix;
+  admission: PatientAdmissionMix;
+  seed: number;
+}
+
+export interface CoachPriorityProfile {
+  mode: CoachPriorityMode;
+  acuityWeight: number;
+  riskWeight: number;
+  waitWeight: number;
+}
+
+export type CoachStrategyPriorityProfiles = Record<CoachComparisonStrategyId, CoachPriorityProfile>;
+
 export interface Scenario {
   id: string;
   name: string;
@@ -137,6 +173,7 @@ export interface Scenario {
   randomSeed: string;
   roomCapacity: number;
   providerCount: number;
+  providerAssignmentMode: ProviderAssignmentMode;
   nurseCount: number;
   techCount: number;
   fastTrackEnabled: boolean;
@@ -146,6 +183,10 @@ export interface Scenario {
   esiDistribution: WeightedDistribution<ESILevel>;
   complaintDistribution: WeightedDistribution<ComplaintCategory>;
   workupDistribution: WeightedDistribution<WorkupType>;
+  patientMix: PatientMixConfig;
+  workflowTimingProfile: WorkflowTimingProfile;
+  coachPriorityProfile: CoachPriorityProfile;
+  coachStrategyPriorityProfiles: CoachStrategyPriorityProfiles;
   triageDurationProfile: TriageDurationProfile;
   triageDurationMultiplier: number;
   timingProfile: TimingProfile;
@@ -159,6 +200,7 @@ export interface ScenarioTuningConfig {
   triageProviderMode: TriageProviderMode;
   roomCapacity: number;
   providerCount: number;
+  providerAssignmentMode: ProviderAssignmentMode;
   nurseCount: number;
   techCount: number;
   fastTrackEnabled: boolean;
@@ -175,6 +217,25 @@ export interface ScenarioTuningConfig {
   admitBoardingDelayMinutes: number;
   lwbsEnabled: boolean;
   minimumWaitBeforeLWBS: number;
+  patientAcuityMix: PatientAcuityMix;
+  patientComplaintMix: PatientComplaintMix;
+  patientWorkupMix: PatientWorkupMix;
+  patientAdmissionMix: PatientAdmissionMix;
+  patientMixSeed: number;
+  stemiDoorToEcgTargetMinutes: number;
+  acsDoorToEcgTargetMinutes: number;
+  repeatTroponinDelayMinutes: number;
+  sepsisLactateCollectionMinutes: number;
+  sepsisBloodCultureMinutes: number;
+  sepsisAntibioticsMinutes: number;
+  sepsisFluidsMinutes: number;
+  sepsisCriticalWaitMinutes: number;
+  deteriorationGraceMinutes: number;
+  coachPriorityMode: CoachPriorityMode;
+  coachAcuityWeight: number;
+  coachRiskWeight: number;
+  coachWaitWeight: number;
+  coachStrategyPriorityProfiles: CoachStrategyPriorityProfiles;
 }
 
 export type ScenarioPresetId = "default" | "boarding_surge" | "high_arrivals" | "low_room_capacity";
@@ -221,6 +282,7 @@ export interface RuntimePatient extends ScenarioPatient {
   state: PatientState;
   arrivalPath?: "front_end_triage" | "direct_waiting_room";
   roomId?: string;
+  assignedProviderId?: string;
   arrivedAt?: number;
   triagedAt?: number;
   roomedAt?: number;
@@ -451,11 +513,14 @@ export interface SimulationRun {
   rooms: EDRoom[];
   provider: ProviderState;
   providers: ProviderState[];
+  providerAssignmentMode: ProviderAssignmentMode;
   triageProvider: ProviderState;
   supportResources: SupportResourcePool[];
   triageDurationProfile: TriageDurationProfile;
   triageDurationMultiplier: number;
   timingProfile: TimingProfile;
+  workflowTimingProfile: WorkflowTimingProfile;
+  coachPriorityProfile: CoachPriorityProfile;
   events: SimulationEvent[];
   decisions: ProviderDecision[];
   metrics: SimulationMetrics;
@@ -569,6 +634,7 @@ export interface WhatIfCoachStrategySummary {
   id: WhatIfCoachStrategyId;
   label: string;
   description: string;
+  priorityProfile?: CoachPriorityProfile;
   patientsDeparted: number;
   patientsLWBS: number;
   longestWaitMinutes: number;
