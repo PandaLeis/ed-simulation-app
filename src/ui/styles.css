@@ -44,7 +44,7 @@ button {
 
 .appShell {
   background:
-    linear-gradient(180deg, #f7fafc 0, var(--color-bg) 220px),
+    linear-gradient(180deg, var(--color-surface-raised) 0, var(--color-bg) 220px),
     var(--color-bg);
   color: var(--color-text);
   display: flex;
@@ -54,9 +54,254 @@ button {
   padding: 20px;
 }
 
-.appShell[data-theme="dark"] {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) {
+  --color-bg: #0f141b;
+  --color-surface: #161d27;
+  --color-surface-raised: #111821;
+  --color-surface-shaded: #1b2430;
+  --color-border: #2c3948;
+  --color-border-strong: #334253;
+  --color-text: #e6edf4;
+  --color-muted: #9aa8b7;
+  --color-accent: #5eb3d1;
+  --color-accent-dark: #9bd3e6;
+  --color-accent-soft: #1f2d3a;
+  --color-green: #8fcfa8;
+  --color-green-soft: #153322;
+  --color-amber: #d3aa3d;
+  --color-amber-soft: #35280c;
+  --color-red: #f09a95;
+  --color-red-soft: #3c1918;
+  --color-blue: #9ebcff;
+  --color-blue-soft: #172a4a;
   background: #0f141b;
   color: #e6edf4;
+}
+
+.appShell[data-theme="coastal"] {
+  --color-bg: #eaf4f5;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f6fbfb;
+  --color-surface-shaded: #dcebed;
+  --color-border: #bed0d5;
+  --color-border-strong: #8aaeb7;
+  --color-text: #142a31;
+  --color-muted: #526a71;
+  --color-accent: #247a91;
+  --color-accent-dark: #15596b;
+  --color-accent-soft: #d7eef3;
+  --color-green: #3d7650;
+  --color-green-soft: #dff0e4;
+  --color-amber: #8b671c;
+  --color-amber-soft: #fff1c9;
+  --color-red: #a5473d;
+  --color-red-soft: #ffe4df;
+  --color-blue: #315f9d;
+  --color-blue-soft: #e1ebf8;
+}
+
+.appShell[data-theme="forest"] {
+  --color-bg: #eef4ef;
+  --color-surface: #fbfdfb;
+  --color-surface-raised: #f4f9f4;
+  --color-surface-shaded: #e4eee5;
+  --color-border: #c2d1c4;
+  --color-border-strong: #90aa96;
+  --color-text: #17281d;
+  --color-muted: #56695b;
+  --color-accent: #2f7354;
+  --color-accent-dark: #20593f;
+  --color-accent-soft: #dcefe4;
+  --color-green: #2f7354;
+  --color-green-soft: #dcefe4;
+  --color-amber: #7d6a32;
+  --color-amber-soft: #f6edce;
+  --color-red: #9f4337;
+  --color-red-soft: #f9e2df;
+  --color-blue: #396b8c;
+  --color-blue-soft: #e0edf3;
+}
+
+.appShell[data-theme="ember"] {
+  --color-bg: #f5f0e8;
+  --color-surface: #fffdf8;
+  --color-surface-raised: #fbf6ed;
+  --color-surface-shaded: #efe4d4;
+  --color-border: #d7c5ad;
+  --color-border-strong: #b79b75;
+  --color-text: #2b2119;
+  --color-muted: #716150;
+  --color-accent: #a35f22;
+  --color-accent-dark: #7c4617;
+  --color-accent-soft: #f5e2ce;
+  --color-green: #4f7650;
+  --color-green-soft: #e1efdf;
+  --color-amber: #a35f22;
+  --color-amber-soft: #f8e9c8;
+  --color-red: #8f4d45;
+  --color-red-soft: #f4dfdc;
+  --color-blue: #496d98;
+  --color-blue-soft: #e3ebf4;
+}
+
+.appShell[data-theme="orchid"] {
+  --color-bg: #f0f2f8;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7f8fc;
+  --color-surface-shaded: #e5e8f4;
+  --color-border: #c9d0e1;
+  --color-border-strong: #9aa6c6;
+  --color-text: #182033;
+  --color-muted: #596278;
+  --color-accent: #5f6ead;
+  --color-accent-dark: #45538d;
+  --color-accent-soft: #e3e7f7;
+  --color-green: #2f7f7a;
+  --color-green-soft: #dff1ef;
+  --color-amber: #8b6922;
+  --color-amber-soft: #f8edce;
+  --color-red: #994a68;
+  --color-red-soft: #f4e1e8;
+  --color-blue: #4e68a8;
+  --color-blue-soft: #e3e9f8;
+}
+
+.appShell[data-theme="rose"] {
+  --color-bg: #f7eef2;
+  --color-surface: #fffafd;
+  --color-surface-raised: #fbf3f6;
+  --color-surface-shaded: #eedde5;
+  --color-border: #d7bdc8;
+  --color-border-strong: #b98fa2;
+  --color-text: #2b1d25;
+  --color-muted: #715c66;
+  --color-accent: #9a5272;
+  --color-accent-dark: #773954;
+  --color-accent-soft: #f1dce5;
+  --color-green: #5d7461;
+  --color-green-soft: #e5eee7;
+  --color-amber: #916a2f;
+  --color-amber-soft: #f5e9cf;
+  --color-red: #9b4b4f;
+  --color-red-soft: #f2dcde;
+  --color-blue: #586c9d;
+  --color-blue-soft: #e5e9f5;
+}
+
+.appShell[data-theme="sky"] {
+  --color-bg: #eef5fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7fbff;
+  --color-surface-shaded: #dfeaf4;
+  --color-border: #c5d5e3;
+  --color-border-strong: #91aec5;
+  --color-text: #172635;
+  --color-muted: #586b7c;
+  --color-accent: #3f7fa8;
+  --color-accent-dark: #2b6387;
+  --color-accent-soft: #deedf6;
+  --color-green: #527b68;
+  --color-green-soft: #e3f0eb;
+  --color-amber: #876830;
+  --color-amber-soft: #f5eacb;
+  --color-red: #9b4c48;
+  --color-red-soft: #f3dfdd;
+  --color-blue: #3f7fa8;
+  --color-blue-soft: #deedf6;
+}
+
+.appShell[data-theme="sage"] {
+  --color-bg: #f1f3ea;
+  --color-surface: #fffefa;
+  --color-surface-raised: #f8f8ef;
+  --color-surface-shaded: #e6ead8;
+  --color-border: #ccd4ba;
+  --color-border-strong: #9dac7d;
+  --color-text: #24291c;
+  --color-muted: #636d55;
+  --color-accent: #687a46;
+  --color-accent-dark: #4f6130;
+  --color-accent-soft: #e6ecd7;
+  --color-green: #55754c;
+  --color-green-soft: #e2eedf;
+  --color-amber: #8b6b35;
+  --color-amber-soft: #f2e8ca;
+  --color-red: #944d42;
+  --color-red-soft: #f0ded9;
+  --color-blue: #50778c;
+  --color-blue-soft: #dfeaf0;
+}
+
+.appShell[data-theme="graphite"] {
+  --color-bg: #121417;
+  --color-surface: #1d2228;
+  --color-surface-raised: #171b20;
+  --color-surface-shaded: #242a31;
+  --color-border: #36414c;
+  --color-border-strong: #4b5967;
+  --color-text: #edf1f5;
+  --color-muted: #a7b1bd;
+  --color-accent: #8bb8c7;
+  --color-accent-dark: #c3e1ea;
+  --color-accent-soft: #20333c;
+  --color-green: #95c7a2;
+  --color-green-soft: #183426;
+  --color-amber: #d6a85c;
+  --color-amber-soft: #382812;
+  --color-red: #e28d8b;
+  --color-red-soft: #3b1c1d;
+  --color-blue: #a8c2f0;
+  --color-blue-soft: #1b2a45;
+  background: #121417;
+  color: #edf1f5;
+}
+
+.appShell[data-theme="midnight"] {
+  --color-bg: #101827;
+  --color-surface: #182235;
+  --color-surface-raised: #121d2f;
+  --color-surface-shaded: #202c42;
+  --color-border: #32435d;
+  --color-border-strong: #465c7b;
+  --color-text: #edf3fb;
+  --color-muted: #aab7c8;
+  --color-accent: #7ea0d6;
+  --color-accent-dark: #c5d8f5;
+  --color-accent-soft: #21324f;
+  --color-green: #98c8aa;
+  --color-green-soft: #173427;
+  --color-amber: #d2a95b;
+  --color-amber-soft: #382a13;
+  --color-red: #e0918f;
+  --color-red-soft: #3b1c1d;
+  --color-blue: #9dbcf0;
+  --color-blue-soft: #1b2d50;
+  background: #101827;
+  color: #edf3fb;
+}
+
+.appShell[data-theme="harbor"] {
+  --color-bg: #062021;
+  --color-surface: #0f3331;
+  --color-surface-raised: #0a2929;
+  --color-surface-shaded: #17413e;
+  --color-border: #28605a;
+  --color-border-strong: #3e8178;
+  --color-text: #ecfff8;
+  --color-muted: #a6c9c2;
+  --color-accent: #4fd1bd;
+  --color-accent-dark: #9af0e0;
+  --color-accent-soft: #123f3d;
+  --color-green: #8bd7a9;
+  --color-green-soft: #123a2c;
+  --color-amber: #e0b15a;
+  --color-amber-soft: #3d2f12;
+  --color-red: #f28b7f;
+  --color-red-soft: #431f1d;
+  --color-blue: #7bb7e8;
+  --color-blue-soft: #12334d;
+  background: #062021;
+  color: #ecfff8;
 }
 
 .topBar {
@@ -75,7 +320,9 @@ button {
 }
 
 h1,
-h2 {
+h2,
+h3 {
+  color: var(--color-text);
   margin: 0;
 }
 
@@ -178,6 +425,32 @@ h2 {
   color: #ffffff;
 }
 
+.controlStrip .replayLoadedButton {
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  min-width: 150px;
+}
+
+.replayLoadedButton > span {
+  align-items: flex-start;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.05;
+  min-width: 0;
+}
+
+.replayLoadedButton small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .providerStatus {
   align-items: center;
   background: #ffffff;
@@ -248,7 +521,7 @@ h2 {
 .speedControl.statusTooltip:focus-within,
 .themeToggle.statusTooltip:focus-within,
 .metricVisibilityControl.statusTooltip:focus-within {
-  border-color: #2b6f8a;
+  border-color: var(--color-accent);
 }
 
 .statusTooltip:hover::after,
@@ -292,8 +565,8 @@ h2 {
 }
 
 .providerRosterCard {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   display: grid;
@@ -370,7 +643,7 @@ h2 {
 
 .clockStatus {
   align-items: center;
-  background: #f9fbfc;
+  background: var(--color-surface-raised);
   border-radius: 8px;
   color: #455466;
   display: flex;
@@ -383,8 +656,8 @@ h2 {
 .themeToggle,
 .metricVisibilityControl {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   box-sizing: border-box;
@@ -423,7 +696,7 @@ h2 {
 }
 
 .speedControl input {
-  accent-color: #1f6f8b;
+  accent-color: var(--color-accent);
   grid-column: 1 / 3;
   width: 100%;
 }
@@ -437,7 +710,7 @@ h2 {
 
 .themeToggle input,
 .metricVisibilityControl input {
-  accent-color: #1f6f8b;
+  accent-color: var(--color-accent);
   height: 18px;
   margin: 0;
   width: 18px;
@@ -463,8 +736,8 @@ h2 {
 
 .toggleControl {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   color: #1e2a36;
   display: inline-flex;
@@ -489,7 +762,7 @@ h2 {
 }
 
 .setupTabList {
-  background: #dfe8ef;
+  background: var(--color-surface-shaded);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 6px;
@@ -501,7 +774,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #3d5061;
+  color: var(--color-muted);
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.84rem;
@@ -513,7 +786,7 @@ h2 {
 .setupTabList button:hover,
 .setupTabList button.active {
   background: var(--color-surface);
-  border-color: #7eb2c2;
+  border-color: var(--color-accent);
   color: var(--color-accent-dark);
   box-shadow: 0 1px 0 rgb(15 35 55 / 0.05);
 }
@@ -528,7 +801,7 @@ h2 {
   background: var(--color-surface);
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(320px, 1fr) minmax(280px, 0.75fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 14px;
 }
 
@@ -569,6 +842,59 @@ h2 {
   margin-top: 4px;
 }
 
+.scenarioProfileEditBanner {
+  align-items: center;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr minmax(220px, 0.35fr) auto;
+  padding: 10px 12px;
+}
+
+.scenarioProfileEditBanner div,
+.scenarioProfileEditBanner label {
+  display: grid;
+  gap: 4px;
+}
+
+.scenarioProfileEditBanner strong,
+.scenarioProfileEditBanner label span {
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scenarioProfileEditBanner span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.scenarioProfileEditBanner input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.scenarioProfileEditBanner button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
 .scenarioActions {
   display: flex;
   flex-wrap: wrap;
@@ -598,10 +924,24 @@ h2 {
   padding: 14px;
 }
 
+.configurationPanel {
+  background: var(--color-surface);
+  display: grid;
+  gap: 16px;
+  padding: 14px;
+}
+
 .calibrationHeader {
   align-items: center;
   display: flex;
   gap: 12px;
+  justify-content: space-between;
+}
+
+.configurationHeader {
+  align-items: center;
+  display: flex;
+  gap: 16px;
   justify-content: space-between;
 }
 
@@ -611,6 +951,201 @@ h2 {
   font-size: 0.78rem;
   font-weight: 700;
   margin-top: 4px;
+}
+
+.configurationHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.configurationSummary {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  padding: 10px 12px;
+  text-align: right;
+}
+
+.configurationSummary span {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.configurationSummary strong {
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.configurationSection {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 12px;
+}
+
+.configurationSectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.configurationSectionHeader h3 {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.configurationSectionHeader small {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.paletteGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.darkPaletteSection {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+
+.paletteCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  min-height: 150px;
+  overflow: hidden;
+  position: relative;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.paletteCard:hover,
+.paletteCard.active {
+  border-color: var(--palette-accent, var(--color-accent));
+  box-shadow:
+    inset 0 0 0 1px var(--palette-accent, var(--color-accent)),
+    0 10px 24px rgb(15 35 55 / 0.08);
+}
+
+.paletteCard:hover {
+  transform: translateY(-1px);
+}
+
+.paletteCardSelect {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  min-height: 150px;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.paletteCard:has(.paletteDefaultCheck) .paletteCardSelect {
+  padding-bottom: 44px;
+}
+
+.palettePreview {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr;
+  height: 42px;
+  overflow: hidden;
+}
+
+.palettePreview span {
+  min-width: 0;
+}
+
+.paletteCardBody {
+  display: grid;
+  gap: 4px;
+}
+
+.paletteCardBody strong {
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.paletteCardBody small {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.paletteSelectedBadge {
+  align-items: center;
+  background: var(--color-surface-shaded);
+  border-radius: 999px;
+  color: var(--color-muted);
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 900;
+  justify-self: start;
+  min-height: 20px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.paletteCard.active .paletteSelectedBadge {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.paletteDefaultCheck {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  bottom: 10px;
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 900;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 8px;
+  position: absolute;
+  right: 10px;
+  text-transform: uppercase;
+}
+
+.paletteDefaultCheck:has(input:checked) {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
+.paletteDefaultCheck input {
+  accent-color: var(--color-accent);
+  height: 14px;
+  margin: 0;
+  width: 14px;
 }
 
 .calibrationActions {
@@ -639,6 +1174,178 @@ h2 {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.assumptionProfilesPanel {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.assumptionProfilesHeader {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr minmax(360px, 0.65fr);
+}
+
+.assumptionProfilesHeader h3 {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.assumptionProfilesHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.assumptionProfileSave {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr auto;
+}
+
+.assumptionProfileSave label {
+  display: grid;
+  gap: 4px;
+}
+
+.assumptionProfileSave span {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.assumptionProfileSave input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.assumptionProfileSave button,
+.assumptionProfileActions button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.assumptionProfileSave button:hover:not(:disabled),
+.assumptionProfileActions button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.assumptionProfileSave button:disabled,
+.assumptionProfileActions button:disabled {
+  color: #98a4af;
+  cursor: not-allowed;
+}
+
+.assumptionProfileStatus {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.assumptionProfileGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.assumptionProfileCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.assumptionProfileCardHeader {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.assumptionProfileCardHeader strong {
+  color: var(--color-text);
+  display: block;
+  font-size: 0.92rem;
+}
+
+.assumptionProfileCardHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 3px;
+}
+
+.assumptionProfileFacts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.assumptionProfileFacts div {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+}
+
+.assumptionProfileFacts dt {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.assumptionProfileFacts dd {
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.assumptionProfileActions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.assumptionProfileActions button:only-child {
+  grid-column: 1 / -1;
 }
 
 .calibrationSummary div,
@@ -758,8 +1465,175 @@ h2 {
 
 .scenarioControls {
   align-items: start;
+  --section-description-gap: 4px;
+  --section-content-gap: 24px;
   display: grid;
   gap: 18px;
+}
+
+.scenarioControlBlock {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: var(--section-content-gap, 12px);
+  padding: 12px;
+}
+
+.scenarioSectionHeader,
+.patientMixHeader > div {
+  display: grid;
+  gap: var(--section-description-gap, 4px);
+}
+
+.scenarioControlBlock h3,
+.patientMixHeader h3 {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.scenarioSectionHeader small,
+.patientMixHeader small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.scenarioValidationHeader {
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.scenarioValidationSummary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.scenarioValidationSummary span {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+  min-height: 22px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.scenarioValidationSummary .ready {
+  background: var(--color-green-soft);
+  color: var(--color-green);
+}
+
+.scenarioValidationSummary .caution {
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.scenarioValidationSummary .risk {
+  background: var(--color-red-soft);
+  color: var(--color-red);
+}
+
+.scenarioValidationGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scenarioValidationItem,
+.scenarioValidationReady {
+  align-items: start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 10px;
+}
+
+.scenarioValidationItem > span,
+.scenarioValidationReady svg {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.scenarioValidationItem.caution > span {
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.scenarioValidationItem.risk > span {
+  background: var(--color-red-soft);
+  color: var(--color-red);
+}
+
+.scenarioValidationItem strong {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 3px;
+}
+
+.scenarioValidationItem small,
+.scenarioValidationReady span {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.scenarioValidationGuidance {
+  display: grid;
+  gap: 6px;
+  margin: 9px 0 0;
+}
+
+.scenarioValidationGuidance div {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+}
+
+.scenarioValidationGuidance dt {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scenarioValidationGuidance dd {
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.scenarioValidationReady {
+  align-items: center;
+}
+
+.scenarioValidationReady svg {
+  background: var(--color-green-soft);
+  color: var(--color-green);
 }
 
 .scenarioTopControls {
@@ -787,6 +1661,10 @@ h2 {
 
 .scenarioBottomControls label {
   grid-template-rows: 30px 40px 18px;
+}
+
+.workflowRuleControls label {
+  grid-template-rows: 18px 40px 18px;
 }
 
 .scenarioControls label > span,
@@ -853,38 +1731,33 @@ h2 {
 }
 
 .patientMixControls {
-  background: #f7fafc;
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
+  gap: var(--section-content-gap, 12px);
   padding: 12px;
+}
+
+.scenarioControlBlock.compactSectionSpacing,
+.patientMixControls.compactSectionSpacing {
+  gap: 12px;
 }
 
 .patientMixHeader {
   align-items: start;
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr 160px;
+  grid-template-columns: 1fr;
 }
 
 .patientMixHeader.coachRulesHeader {
-  align-items: center;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr) 260px;
 }
 
-.patientMixHeader h3 {
-  color: var(--color-text);
-  font-size: 0.95rem;
-  margin: 0;
-}
-
-.patientMixHeader small {
-  color: var(--color-muted);
-  display: block;
-  font-size: 0.76rem;
-  font-weight: 700;
-  margin-top: 4px;
+.patientMixHeader.coachRulesHeader .coachRulesVisibilityToggle {
+  align-self: start;
 }
 
 .patientMixHeader label {
@@ -894,7 +1767,7 @@ h2 {
 
 .coachRulesVisibilityToggle {
   align-items: center;
-  align-self: start;
+  align-self: center;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -912,7 +1785,8 @@ h2 {
   white-space: nowrap;
 }
 
-.patientMixHeader label.coachRulesVisibilityToggle {
+.patientMixHeader label.coachRulesVisibilityToggle,
+label.coachRulesVisibilityToggle {
   display: inline-flex !important;
   flex-direction: row;
   width: auto;
@@ -926,20 +1800,29 @@ h2 {
   width: 16px;
 }
 
-.patientMixHeader label.coachRulesVisibilityToggle > span {
+.patientMixHeader label.coachRulesVisibilityToggle > span,
+label.coachRulesVisibilityToggle > span {
   display: inline-block;
   line-height: 1;
   white-space: nowrap;
 }
 
 .coachRulesCollapsedNotice {
+  align-items: center;
   background: var(--color-accent-soft);
-  border: 1px solid #bdd8e2;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   color: var(--color-accent-dark);
+  display: grid;
   font-size: 0.76rem;
   font-weight: 800;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: 9px 10px;
+}
+
+.coachRulesCollapsedNotice > span {
+  min-width: 0;
 }
 
 .patientMixHeader label > span,
@@ -952,16 +1835,38 @@ h2 {
 .patientMixGrid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(150px, 0.65fr);
 }
 
 .patientMixGroup {
   display: grid;
   gap: 6px;
+  grid-template-rows: 18px 82px 18px;
   min-width: 0;
 }
 
+.scenarioControls .patientMixGroup,
+.scenarioControls label.patientMixGroup {
+  gap: 6px;
+  grid-template-rows: 18px 82px 18px;
+}
+
+.patientMixGroup .scenarioAssumptionStatus {
+  align-self: start;
+  font-size: 0.62rem;
+  justify-self: start;
+  margin-top: 2px;
+  min-height: 18px;
+  padding: 3px 7px;
+}
+
+.scenarioControls .patientMixSeedGroup input[type="number"] {
+  align-self: start;
+  height: 38px;
+}
+
 .patientMixButtonGroup {
+  align-self: start;
   display: grid;
   gap: 6px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -989,7 +1894,7 @@ h2 {
 .patientMixButtonGroup button:hover,
 .patientMixButtonGroup button.active {
   background: var(--color-accent-soft);
-  border-color: #73adbf;
+  border-color: var(--color-accent);
   color: var(--color-accent-dark);
 }
 
@@ -998,8 +1903,8 @@ h2 {
 }
 
 .coachStrategyBehaviorPanel {
-  background: #edf5f8;
-  border: 1px solid #c5d8e2;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   display: grid;
   gap: 6px;
@@ -1007,7 +1912,7 @@ h2 {
 }
 
 .coachStrategyBehaviorPanel.compact {
-  background: #f2f7fa;
+  background: var(--color-surface-raised);
 }
 
 .coachStrategyBehaviorPanel > span {
@@ -1039,7 +1944,7 @@ h2 {
 }
 
 .coachStrategyRuleRow {
-  background: #f4f8fb;
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
@@ -1048,7 +1953,7 @@ h2 {
 }
 
 .coachStrategyRuleRow:focus-within {
-  border-color: #73adbf;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgb(23 107 134 / 0.1);
 }
 
@@ -1185,8 +2090,8 @@ h2 {
 .supportButtonGroup button,
 .shiftButtonGroup button,
 .triageModeButtonGroup button {
-  background: #f9fbfc;
-  border: 1px solid #ccd5de;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   color: #1e2a36;
   cursor: pointer;
@@ -1215,33 +2120,24 @@ h2 {
 .shiftButtonGroup button.active,
 .triageModeButtonGroup button:hover,
 .triageModeButtonGroup button.active {
-  background: #eaf4f7;
-  border-color: #78b9ce;
-  color: #1f6f8b;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
 }
 
+.presetControl small,
+.providerModelControl small,
 .triageModeControl small {
   color: #647383;
   font-size: 0.74rem;
-  line-height: 1.25;
-}
-
-.providerModelControl small {
-  color: #647383;
-  font-size: 0.74rem;
-  line-height: 1.25;
-}
-
-.presetControl small {
-  color: #647383;
-  font-size: 0.74rem;
+  font-weight: 700;
   line-height: 1.25;
 }
 
 .scenarioToggle {
   align-content: start;
   align-items: start;
-  align-self: stretch;
+  align-self: start;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -1258,42 +2154,50 @@ h2 {
   min-width: 0;
 }
 
-.scenarioToggle::after {
-  background: #f9fbfc;
-  border: 1px solid #ccd5de;
+.scenarioToggleBody {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  content: "";
-  grid-column: 1;
-  grid-row: 2;
+  display: flex;
+  gap: 10px;
   height: 40px;
+  padding: 0 12px;
   width: 100%;
 }
 
 .scenarioToggle input {
-  accent-color: #1f6f8b;
-  align-self: center;
-  grid-column: 1;
-  grid-row: 2;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-surface);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 13px 13px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 4px;
+  flex: 0 0 auto;
   height: 18px;
-  justify-self: start;
-  margin: 0 0 0 12px;
-  position: relative;
+  margin: 0;
   width: 18px;
-  z-index: 1;
+}
+
+.scenarioToggle input:checked {
+  background-color: var(--color-accent);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.25 8.25L6.5 11.5L12.75 4.5' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  border-color: var(--color-accent);
+}
+
+.scenarioToggle input:focus-visible {
+  outline: 3px solid rgb(23 107 134 / 0.2);
+  outline-offset: 2px;
 }
 
 .scenarioToggle small {
-  align-self: center;
   color: #1e2a36;
   font-size: 0.82rem;
   font-weight: 800;
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: start;
   line-height: 1.2;
-  margin-left: 40px;
-  position: relative;
-  z-index: 1;
+  margin: 0;
 }
 
 .scenarioToggle span {
@@ -1328,8 +2232,8 @@ h2 {
 }
 
 .metric.sepsisMetric {
-  background: var(--color-green-soft);
-  border-color: #a8d5bb;
+  background: #fff1e2;
+  border-color: #dfa46e;
 }
 
 .metricLabel {
@@ -1348,13 +2252,14 @@ h2 {
 }
 
 .coreMetricTabs {
-  background: #ffffff;
+  background: var(--color-surface);
   display: grid;
   overflow: hidden;
 }
 
 .tabList {
-  border-bottom: 1px solid #e3e8ed;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 4px;
   overflow-x: auto;
@@ -1365,7 +2270,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #526173;
+  color: var(--color-muted);
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.82rem;
@@ -1376,9 +2281,9 @@ h2 {
 
 .tabList button:hover,
 .tabList button.active {
-  background: #eaf3f6;
-  border-color: #b8d4de;
-  color: #1f6f8b;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
 }
 
 .tabPanel {
@@ -1390,13 +2295,13 @@ h2 {
 
 .tabPanel span,
 .tabPanel small {
-  color: #647383;
+  color: var(--color-muted);
   font-size: 0.76rem;
   font-weight: 800;
 }
 
 .tabPanel strong {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 1.35rem;
 }
 
@@ -1408,8 +2313,8 @@ h2 {
 }
 
 .tabMeasures div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 4px;
@@ -1420,7 +2325,7 @@ h2 {
 
 .tabMeasures dt {
   align-items: center;
-  color: #647383;
+  color: var(--color-muted);
   display: flex;
   font-size: 0.7rem;
   font-weight: 800;
@@ -1443,7 +2348,7 @@ h2 {
 }
 
 .tabMeasures dd {
-  color: #18202a;
+  color: var(--color-text);
   font-size: 0.86rem;
   font-weight: 900;
   margin: 0;
@@ -1462,7 +2367,7 @@ h2 {
 }
 
 .mainViewTabs {
-  background: #dfe8ef;
+  background: var(--color-surface-shaded);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 6px;
@@ -1474,7 +2379,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #3d5061;
+  color: var(--color-muted);
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.84rem;
@@ -1486,7 +2391,7 @@ h2 {
 .mainViewTabs button:hover,
 .mainViewTabs button.active {
   background: var(--color-surface);
-  border-color: #7eb2c2;
+  border-color: var(--color-accent);
   color: var(--color-accent-dark);
   box-shadow: 0 1px 0 rgb(15 35 55 / 0.05);
 }
@@ -1546,8 +2451,8 @@ h2 {
 }
 
 .roomMapPanel {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   display: grid;
@@ -1592,8 +2497,8 @@ h2 {
 }
 
 .roomLegend .occupied {
-  background: #e2eff3;
-  color: #1f6f8b;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
 }
 
 .roomLegend .cleaning {
@@ -1613,8 +2518,8 @@ h2 {
 }
 
 .roomTile {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-left-width: 8px;
   border-radius: 8px;
   color: #1d2a37;
@@ -1631,7 +2536,7 @@ h2 {
 }
 
 .roomTile:hover:not(:disabled) {
-  border-color: #78b9ce;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgb(31 111 139 / 0.1);
 }
 
@@ -1640,7 +2545,7 @@ h2 {
 }
 
 .roomTile.occupied {
-  border-left-color: #1f6f8b;
+  border-left-color: var(--color-accent);
 }
 
 .roomTile.cleaning {
@@ -1680,7 +2585,7 @@ h2 {
 }
 
 .boardColumn {
-  background: #dfe7ee;
+  background: var(--color-surface-shaded);
   border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   min-height: 440px;
@@ -1838,8 +2743,8 @@ h2 {
 }
 
 .patientStatusPanel {
-  background: #ffffff;
-  border: 1px solid #d7dde4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(18 32 47 / 0.06);
   display: grid;
@@ -1860,9 +2765,21 @@ h2 {
   font-weight: 900;
 }
 
+.patientReplayNotice {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+  padding: 8px 10px;
+}
+
 .protocolLine {
   align-items: center;
-  border-top: 1px solid #eef2f5;
+  border-top: 1px solid var(--color-border);
   display: flex;
   gap: 6px;
   justify-content: space-between;
@@ -1888,13 +2805,13 @@ h2 {
 }
 
 .protocolBadge.none {
-  background: #eef2f5;
-  color: #647383;
+  background: var(--color-surface-shaded);
+  color: var(--color-muted);
 }
 
 .protocolBadge.identified {
-  background: #e8edf8;
-  color: #365f9e;
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
 }
 
 .protocolBadge.pending {
@@ -1908,8 +2825,8 @@ h2 {
 }
 
 .protocolBadge.complete {
-  background: #e2eff3;
-  color: #1f6f8b;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
 }
 
 .sidePanel {
@@ -1926,7 +2843,7 @@ h2 {
 }
 
 .rightRailTabs {
-  background: #dfe8ef;
+  background: var(--color-surface-shaded);
   border-bottom: 1px solid var(--color-border);
   display: grid;
   gap: 6px;
@@ -1938,7 +2855,7 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #3d5061;
+  color: var(--color-muted);
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 900;
@@ -1948,9 +2865,9 @@ h2 {
 
 .rightRailTabs button:hover,
 .rightRailTabs button.active {
-  background: #ffffff;
-  border-color: #b8d4de;
-  color: #1f6f8b;
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
 }
 
 .rightRailPanel {
@@ -1977,6 +2894,14 @@ h2 {
   font-weight: 700;
   line-height: 1.45;
   margin: 0;
+}
+
+.replayRailNotice {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  padding: 8px 10px;
 }
 
 .detailGrid {
@@ -2038,8 +2963,8 @@ h2 {
 }
 
 .hospitalistMilestones div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 3px;
@@ -2101,8 +3026,8 @@ h2 {
 }
 
 .actionStatus {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 4px;
@@ -2186,6 +3111,122 @@ h2 {
   color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 900;
+  margin: 0;
+}
+
+.coachExplanation {
+  display: grid;
+  gap: 10px;
+}
+
+.coachExplanation section {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.coachExplanation h3 {
+  color: var(--color-text);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.coachExplanation p {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.coachPriorityMath {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.coachPriorityMath div,
+.coachSignalGrid article {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+}
+
+.coachPriorityMath dt,
+.coachSignalGrid span {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coachPriorityMath dd,
+.coachSignalGrid strong {
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.coachPriorityMath span,
+.coachSignalGrid small {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.coachSignalGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.coachAlternativeList {
+  display: grid;
+  gap: 7px;
+}
+
+.coachAlternativeList article {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+}
+
+.coachAlternativeList span {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coachAlternativeList strong {
+  color: var(--color-text);
+  font-size: 0.8rem;
+}
+
+.coachAlternativeList small {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.coachAlternativeList p {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
   margin: 0;
 }
 
@@ -2366,7 +3407,7 @@ h2 {
 
 .whatIfRuleProfile span {
   background: var(--color-accent-soft);
-  border: 1px solid #bdd8e2;
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   color: var(--color-accent-dark);
   font-size: 0.58rem;
@@ -2444,8 +3485,8 @@ h2 {
 
 .benchmarkMetricComparison {
   --benchmark-comparison-columns: minmax(120px, 1fr) minmax(105px, 1fr) minmax(130px, 1fr) minmax(84px, auto);
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -2464,8 +3505,8 @@ h2 {
 }
 
 .benchmarkGrid div {
-  background: #ffffff;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-left-width: 3px;
   border-radius: 8px;
   display: grid;
@@ -2475,8 +3516,8 @@ h2 {
 }
 
 .benchmarkPanel > .debriefBlock {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 12px;
 }
@@ -2545,8 +3586,8 @@ h2 {
 }
 
 .chartCard {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -2586,8 +3627,8 @@ h2 {
 }
 
 .lineChart {
-  background: #ffffff;
-  border: 1px solid #e3e8ed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: block;
   height: auto;
@@ -2631,8 +3672,8 @@ h2 {
 
 .chartLegend div {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #e3e8ed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: flex;
   gap: 8px;
@@ -2687,8 +3728,8 @@ h2 {
 }
 
 .debriefLegend div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 2px;
@@ -2742,7 +3783,7 @@ h2 {
 }
 
 .debriefBlock h3 {
-  color: #455466;
+  color: var(--color-text);
   font-size: 0.76rem;
   margin: 0;
   text-transform: uppercase;
@@ -2772,8 +3813,8 @@ h2 {
 
 .guardrailLegend div,
 .guardrailExplanation div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 2px;
@@ -2849,7 +3890,7 @@ h2 {
 }
 
 .feedbackList em {
-  color: #1f6f8b;
+  color: var(--color-accent-dark);
   flex: 0 0 auto;
   font-size: 0.76rem;
   font-style: normal;
@@ -2863,6 +3904,161 @@ h2 {
   gap: 12px;
 }
 
+.exportFormatControl {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.exportFormatControl > span {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.exportFormatControl > div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.exportFormatControl button {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 6px;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 9px;
+}
+
+.exportFormatControl button.active,
+.exportFormatControl button:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
+.exportFormatNote {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.exportDatasetSummary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.exportDatasetSummary div {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  min-height: 70px;
+  padding: 10px;
+}
+
+.exportDatasetSummary span {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.exportDatasetSummary strong {
+  color: var(--color-text);
+  font-size: 1.3rem;
+  line-height: 1.1;
+}
+
+.exportDatasetSummary small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.exportDataDictionary {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.exportDataDictionary summary {
+  color: var(--color-accent-dark);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.exportDictionaryGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  margin-top: 10px;
+}
+
+.exportDictionaryGrid > div {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.exportDictionaryGrid strong {
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.exportDictionaryGrid dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.exportDictionaryGrid dl > div {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 2px;
+  padding-top: 7px;
+}
+
+.exportDictionaryGrid dl > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.exportDictionaryGrid dt {
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.exportDictionaryGrid dd {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0;
+}
+
 .activityToolbar {
   align-items: center;
   display: flex;
@@ -2870,9 +4066,16 @@ h2 {
   justify-content: space-between;
 }
 
+.exportToolbar {
+  align-items: stretch;
+  display: grid;
+  justify-content: stretch;
+}
+
 .activityToolbarActions {
   display: grid;
   gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   justify-content: stretch;
   width: 100%;
 }
@@ -2884,13 +4087,17 @@ h2 {
 }
 
 .activityToolbar button {
-  background: #ffffff;
-  border: 1px solid #b8d4de;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
-  color: #1f6f8b;
+  color: var(--color-accent-dark);
   cursor: pointer;
+  display: inline-flex;
   font-size: 0.78rem;
   font-weight: 900;
+  gap: 6px;
+  justify-content: center;
   min-height: 34px;
   padding: 0 9px;
   width: 100%;
@@ -2909,29 +4116,89 @@ h2 {
 }
 
 .replayControlPanel {
-  align-items: center;
-  background: #eef8fb;
-  border: 1px solid #b8d4de;
+  align-items: stretch;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 12px;
   padding: 10px;
 }
 
-.replayControlPanel > div:first-child {
+.replayControlHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.replayControlHeader > div {
   display: grid;
   gap: 2px;
 }
 
+.replayControlHeader label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .replayControlPanel strong {
-  color: #1f6f8b;
+  color: var(--color-accent-dark);
   font-size: 0.86rem;
 }
 
-.replayControlPanel span {
+.replayControlPanel span,
+.replayChangePanel p {
   color: #667586;
   font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.replayControlHeader select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  height: 34px;
+  padding: 0 8px;
+}
+
+.replayOverviewGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.replayOverviewGrid div {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  min-height: 66px;
+  padding: 9px 10px;
+}
+
+.replayOverviewGrid span {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.replayOverviewGrid strong {
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.replayOverviewGrid small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
@@ -2939,15 +4206,15 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .replayActions button {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #b8d4de;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
-  color: #1f6f8b;
+  color: var(--color-accent-dark);
   cursor: pointer;
   display: inline-flex;
   font-size: 0.78rem;
@@ -2955,6 +4222,118 @@ h2 {
   gap: 6px;
   min-height: 34px;
   padding: 0 9px;
+}
+
+.replayActions button:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.replayTimeline {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(160px, 1fr) auto;
+}
+
+.replayTimeline input[type="range"] {
+  accent-color: var(--color-accent);
+  width: 100%;
+}
+
+.replayActivityJumps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.replayActivityJumps button {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 6px;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 9px;
+}
+
+.replayActivityJumps button span {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.replayActivityJumps button:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.replayChangePanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.replayChangePanel > div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.replayChangePanel ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.replayChangePanel li {
+  align-items: start;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 70px minmax(0, 1fr);
+  padding-top: 6px;
+}
+
+.replayChangePanel li > span {
+  align-items: center;
+  background: var(--color-accent-soft);
+  border-radius: 999px;
+  color: var(--color-accent-dark);
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 20px;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.replayChangePanel li strong {
+  color: var(--color-text);
+  display: block;
+}
+
+.replayChangePanel li small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
 .replayActions button:disabled {
@@ -2967,11 +4346,49 @@ h2 {
   gap: 12px;
 }
 
-.savedRunActions button {
-  background: #ffffff;
-  border: 1px solid #b8d4de;
+.savedRunHelpGrid,
+.exportHelpGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.savedRunHelpGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.exportHelpGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.savedRunHelpGrid div,
+.exportHelpGrid div {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #1f6f8b;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+}
+
+.savedRunHelpGrid strong,
+.exportHelpGrid strong {
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.savedRunHelpGrid span,
+.exportHelpGrid span {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.savedRunActions button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-dark);
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 900;
@@ -2980,8 +4397,8 @@ h2 {
 }
 
 .savedRunFileTools {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 8px;
@@ -2992,10 +4409,10 @@ h2 {
 .savedRunFileTools button,
 .savedRunFileTools label {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #b8d4de;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
-  color: #1f6f8b;
+  color: var(--color-accent-dark);
   cursor: pointer;
   display: flex;
   font-size: 0.78rem;
@@ -3011,8 +4428,8 @@ h2 {
 }
 
 .savedRunFileTools .primaryButton {
-  background: #1f6f8b;
-  border-color: #1f6f8b;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
 }
 
@@ -3026,8 +4443,8 @@ h2 {
 }
 
 .savedRunCard {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 9px;
@@ -3035,8 +4452,10 @@ h2 {
 }
 
 .savedRunCardHeader {
-  display: grid;
-  gap: 2px;
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
 }
 
 .savedRunCardHeader strong {
@@ -3048,6 +4467,18 @@ h2 {
   color: #667586;
   font-size: 0.72rem;
   font-weight: 800;
+}
+
+.savedRunCardHeader > span {
+  background: var(--color-accent-soft);
+  border-radius: 999px;
+  color: var(--color-accent-dark);
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
+  text-transform: uppercase;
 }
 
 .savedRunCard dl {
@@ -3087,8 +4518,8 @@ h2 {
 }
 
 .savedRunActions button.active {
-  background: #1f6f8b;
-  border-color: #1f6f8b;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
 }
 
@@ -3100,8 +4531,8 @@ h2 {
 }
 
 .activitySummary div {
-  background: #f9fbfc;
-  border: 1px solid #dfe6ed;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: grid;
   gap: 4px;
@@ -3138,7 +4569,7 @@ h2 {
 }
 
 .activityList li.decision {
-  border-left-color: #1f6f8b;
+  border-left-color: var(--color-accent);
 }
 
 .activityList li.benchmark {
@@ -3192,354 +4623,415 @@ h2 {
   font-weight: 800;
 }
 
-.appShell[data-theme="dark"] .clockPanel,
-.appShell[data-theme="dark"] .providerStatus,
-.appShell[data-theme="dark"] .clockStatus,
-.appShell[data-theme="dark"] .speedControl,
-.appShell[data-theme="dark"] .themeToggle,
-.appShell[data-theme="dark"] .metricVisibilityControl,
-.appShell[data-theme="dark"] .toggleControl,
-.appShell[data-theme="dark"] .setupTabs,
-.appShell[data-theme="dark"] .mainViewShell,
-.appShell[data-theme="dark"] .mainViewTabs,
-.appShell[data-theme="dark"] .providerRosterCard,
-.appShell[data-theme="dark"] .filesPanel,
-.appShell[data-theme="dark"] .calibrationPanel,
-.appShell[data-theme="dark"] .scenarioPanel,
-.appShell[data-theme="dark"] .metric,
-.appShell[data-theme="dark"] .roomMapPanel,
-.appShell[data-theme="dark"] .patientStatusPanel,
-.appShell[data-theme="dark"] .sidePanel,
-.appShell[data-theme="dark"] .controlStrip button,
-.appShell[data-theme="dark"] .presetButtonGroup button,
-.appShell[data-theme="dark"] .providerButtonGroup button,
-.appShell[data-theme="dark"] .providerModelButtonGroup button,
-.appShell[data-theme="dark"] .supportButtonGroup button,
-.appShell[data-theme="dark"] .shiftButtonGroup button,
-.appShell[data-theme="dark"] .triageModeButtonGroup button,
-.appShell[data-theme="dark"] .patientMixControls,
-.appShell[data-theme="dark"] .patientMixButtonGroup button,
-.appShell[data-theme="dark"] .coachRulesVisibilityToggle,
-.appShell[data-theme="dark"] .coachRulesCollapsedNotice,
-.appShell[data-theme="dark"] .coachStrategyBehaviorPanel,
-.appShell[data-theme="dark"] .coachStrategyRuleRow,
-.appShell[data-theme="dark"] .coachActions button,
-.appShell[data-theme="dark"] .actionList button,
-.appShell[data-theme="dark"] .activityToolbar button,
-.appShell[data-theme="dark"] .replayControlPanel,
-.appShell[data-theme="dark"] .replayActions button,
-.appShell[data-theme="dark"] .savedRunFileTools,
-.appShell[data-theme="dark"] .savedRunFileTools button,
-.appShell[data-theme="dark"] .savedRunFileTools label,
-.appShell[data-theme="dark"] .calibrationActions button,
-.appShell[data-theme="dark"] .savedRunCard,
-.appShell[data-theme="dark"] .savedRunActions button,
-.appShell[data-theme="dark"] .roomTile,
-.appShell[data-theme="dark"] .patientCard {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .clockPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerStatus,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .clockStatus,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .speedControl,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .themeToggle,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metricVisibilityControl,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .toggleControl,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .setupTabs,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .mainViewShell,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .mainViewTabs,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerRosterCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .filesPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metric,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomMapPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientStatusPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .sidePanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .controlStrip button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .presetButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerModelButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .supportButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .shiftButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixControls,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixButtonGroup button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachRulesVisibilityToggle,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachRulesCollapsedNotice,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyBehaviorPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyRuleRow,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachActions button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionList button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityToolbar button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .exportFormatControl button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .replayControlPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .replayActions button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .replayActivityJumps button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunFileTools,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunFileTools button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunFileTools label,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationActions button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileSave button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileActions button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunActions button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomTile,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientCard {
   background: #161d27;
   border-color: #2c3948;
   box-shadow: none;
   color: #e6edf4;
 }
 
-.appShell[data-theme="dark"] .setupTabList,
-.appShell[data-theme="dark"] .tabList,
-.appShell[data-theme="dark"] .rightRailTabs {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixControls {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metric.cardiacMetric {
+  background: #321918;
+  border-color: #9b4f49;
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metric.sepsisMetric {
+  background: #2a2119;
+  border-color: #8b5f37;
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioToggle {
+  background: transparent;
+  border-color: transparent;
+  color: #e6edf4;
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .setupTabList,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabList,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .rightRailTabs {
   background: #111821;
   border-color: #2c3948;
 }
 
-.appShell[data-theme="dark"] .mainViewPanel,
-.appShell[data-theme="dark"] .tabPanel,
-.appShell[data-theme="dark"] .filesPanelSection,
-.appShell[data-theme="dark"] .calibrationSummary div,
-.appShell[data-theme="dark"] .calibrationNotice,
-.appShell[data-theme="dark"] .calibrationTable,
-.appShell[data-theme="dark"] .calibrationTableHeader,
-.appShell[data-theme="dark"] .tabMeasures div,
-.appShell[data-theme="dark"] .actionStatus,
-.appShell[data-theme="dark"] .benchmarkMetricComparison,
-.appShell[data-theme="dark"] .benchmarkPanel > .debriefBlock,
-.appShell[data-theme="dark"] .whatIfComparison,
-.appShell[data-theme="dark"] .whatIfCard,
-.appShell[data-theme="dark"] .chartCard,
-.appShell[data-theme="dark"] .chartLegend div,
-.appShell[data-theme="dark"] .lineChart,
-.appShell[data-theme="dark"] .coachComparisonControls label,
-.appShell[data-theme="dark"] .benchmarkTargetControl select,
-.appShell[data-theme="dark"] .debriefLegend div,
-.appShell[data-theme="dark"] .guardrailLegend div,
-.appShell[data-theme="dark"] .guardrailExplanation div,
-.appShell[data-theme="dark"] .whatIfCard dl div,
-.appShell[data-theme="dark"] .benchmarkGrid div,
-.appShell[data-theme="dark"] .activitySummary div,
-.appShell[data-theme="dark"] .coachSummary div,
-.appShell[data-theme="dark"] .savedRunCard dl div,
-.appShell[data-theme="dark"] .scenarioToggle::after,
-.appShell[data-theme="dark"] .scenarioControls input[type="number"],
-.appShell[data-theme="dark"] .scenarioControls select {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .mainViewPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .filesPanelSection,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .exportFormatControl,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationSummary,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationSection,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .paletteCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationSummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfilesPanel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileFacts div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationNotice,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationTable,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationTableHeader,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabMeasures div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionStatus,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkMetricComparison,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkPanel > .debriefBlock,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfComparison,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartLegend div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .lineChart,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachComparisonControls label,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkTargetControl select,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefLegend div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailLegend div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailExplanation div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard dl div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkGrid div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activitySummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachSummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCard dl div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioToggleBody,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioControls input[type="number"],
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileSave input,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioProfileEditBanner input,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioProfileEditBanner button,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioControls select {
   background: #111821;
   border-color: #334253;
   color: #e6edf4;
 }
 
-.appShell[data-theme="dark"] .filesPanelSection h2 {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .filesPanelSection h2 {
   color: #e6edf4;
 }
 
-.appShell[data-theme="dark"] .calibrationHeader small,
-.appShell[data-theme="dark"] .calibrationSummary span,
-.appShell[data-theme="dark"] .calibrationSummary small,
-.appShell[data-theme="dark"] .calibrationNotice p,
-.appShell[data-theme="dark"] .calibrationTableHeader,
-.appShell[data-theme="dark"] .calibrationTableRow small {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationSummary span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationSectionHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .paletteCardBody small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfilesHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileCardHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileSave span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileFacts dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationSummary span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationSummary small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationNotice p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationTableHeader,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationTableRow small {
   color: #9aa8b6;
 }
 
-.appShell[data-theme="dark"] .calibrationSummary strong {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationSummary strong {
   color: #e6edf4;
 }
 
-.appShell[data-theme="dark"] .calibrationTableRow {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .configurationSummary strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .paletteCardBody strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfilesHeader h3,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileCardHeader strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .assumptionProfileFacts dd {
+  color: #e6edf4;
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .calibrationTableRow {
   border-color: #334253;
 }
 
-.appShell[data-theme="dark"] .boardColumn {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .boardColumn {
   background: #1b2430;
   border-color: #334253;
 }
 
-.appShell[data-theme="dark"] .patientCard.selected {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientCard.selected {
   border-color: #5eb3d1;
   box-shadow: inset 0 0 0 1px #5eb3d1;
 }
 
-.appShell[data-theme="dark"] .patientCard.coachRecommendedPatient,
-.appShell[data-theme="dark"] .actionList button.coachRecommendedAction {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientCard.coachRecommendedPatient,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionList button.coachRecommendedAction {
   border-color: #d3aa3d;
   box-shadow:
     inset 0 0 0 1px #d3aa3d,
     0 0 0 3px rgb(211 170 61 / 0.18);
 }
 
-.appShell[data-theme="dark"] .controlStrip button:hover:not(:disabled),
-.appShell[data-theme="dark"] .actionList button:hover:not(:disabled),
-.appShell[data-theme="dark"] .coachActions button:hover,
-.appShell[data-theme="dark"] .patientCard:hover,
-.appShell[data-theme="dark"] .presetButtonGroup button.active,
-.appShell[data-theme="dark"] .presetButtonGroup button:hover,
-.appShell[data-theme="dark"] .providerButtonGroup button.active,
-.appShell[data-theme="dark"] .providerButtonGroup button:hover,
-.appShell[data-theme="dark"] .providerModelButtonGroup button.active,
-.appShell[data-theme="dark"] .providerModelButtonGroup button:hover,
-.appShell[data-theme="dark"] .supportButtonGroup button.active,
-.appShell[data-theme="dark"] .supportButtonGroup button:hover,
-.appShell[data-theme="dark"] .shiftButtonGroup button.active,
-.appShell[data-theme="dark"] .shiftButtonGroup button:hover,
-.appShell[data-theme="dark"] .triageModeButtonGroup button.active,
-.appShell[data-theme="dark"] .triageModeButtonGroup button:hover,
-.appShell[data-theme="dark"] .patientMixButtonGroup button.active,
-.appShell[data-theme="dark"] .patientMixButtonGroup button:hover,
-.appShell[data-theme="dark"] .setupTabList button.active,
-.appShell[data-theme="dark"] .setupTabList button:hover,
-.appShell[data-theme="dark"] .tabList button.active,
-.appShell[data-theme="dark"] .tabList button:hover,
-.appShell[data-theme="dark"] .rightRailTabs button.active,
-.appShell[data-theme="dark"] .rightRailTabs button:hover {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .controlStrip button:hover:not(:disabled),
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionList button:hover:not(:disabled),
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachActions button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientCard:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .presetButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .presetButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerModelButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerModelButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .supportButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .supportButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .shiftButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .shiftButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixButtonGroup button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixButtonGroup button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .setupTabList button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .setupTabList button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabList button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabList button:hover,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .rightRailTabs button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .rightRailTabs button:hover {
   background: #1f2d3a;
   border-color: #5eb3d1;
   color: #9bd3e6;
 }
 
-.appShell[data-theme="dark"] .mainViewTabs button.active,
-.appShell[data-theme="dark"] .mainViewTabs button:hover {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .mainViewTabs button.active,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .mainViewTabs button:hover {
   background: #1f2d3a;
   border-color: #5eb3d1;
   color: #9bd3e6;
 }
 
-.appShell[data-theme="dark"] .primaryButton {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .primaryButton {
   background: #2d7f9e;
   border-color: #2d7f9e;
   color: #ffffff;
 }
 
-.appShell[data-theme="dark"] .controlStrip .coachDemoButton.active {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .controlStrip .coachDemoButton.active {
   background: #9b7320;
   border-color: #d3aa3d;
   color: #fff7dc;
 }
 
-.appShell[data-theme="dark"] .eyebrow,
-.appShell[data-theme="dark"] .clockPanel small,
-.appShell[data-theme="dark"] .speedControl > span,
-.appShell[data-theme="dark"] .themeToggle > span,
-.appShell[data-theme="dark"] .metricVisibilityControl > span,
-.appShell[data-theme="dark"] .scenarioPanelHeader small,
-.appShell[data-theme="dark"] .providerRosterCard small,
-.appShell[data-theme="dark"] .providerRosterDetails small > span,
-.appShell[data-theme="dark"] .scenarioControls label > span,
-.appShell[data-theme="dark"] .presetControl > span,
-.appShell[data-theme="dark"] .providerCountControl > span,
-.appShell[data-theme="dark"] .shiftLengthControl > span,
-.appShell[data-theme="dark"] .triageModeControl > span,
-.appShell[data-theme="dark"] .roomCapacityControl > span,
-.appShell[data-theme="dark"] .supportCountControl > span,
-.appShell[data-theme="dark"] .patientMixHeader label > span,
-.appShell[data-theme="dark"] .patientMixGroup > span,
-.appShell[data-theme="dark"] .patientMixHeader small,
-.appShell[data-theme="dark"] .triageModeControl small,
-.appShell[data-theme="dark"] .scenarioToggle span,
-.appShell[data-theme="dark"] .metricLabel,
-.appShell[data-theme="dark"] .tabPanel span,
-.appShell[data-theme="dark"] .tabPanel small,
-.appShell[data-theme="dark"] .tabMeasures dt,
-.appShell[data-theme="dark"] .roomMapHeader small,
-.appShell[data-theme="dark"] .roomTile span,
-.appShell[data-theme="dark"] .roomTile small,
-.appShell[data-theme="dark"] .cardMeta,
-.appShell[data-theme="dark"] .protocolLine small,
-.appShell[data-theme="dark"] .patientStatusHeader span,
-.appShell[data-theme="dark"] .emptyState,
-.appShell[data-theme="dark"] .panelExplanation,
-.appShell[data-theme="dark"] .detailGrid dt,
-.appShell[data-theme="dark"] .benchmarkGrid dt,
-.appShell[data-theme="dark"] .benchmarkGrid span,
-.appShell[data-theme="dark"] .benchmarkComparisonHeader,
-.appShell[data-theme="dark"] .benchmarkTargetControl label,
-.appShell[data-theme="dark"] .graphsHeader p,
-.appShell[data-theme="dark"] .chartHeader p,
-.appShell[data-theme="dark"] .providerModelControl small,
-.appShell[data-theme="dark"] .chartHeader > span,
-.appShell[data-theme="dark"] .chartLegend dt,
-.appShell[data-theme="dark"] .whatIfComparison h3,
-.appShell[data-theme="dark"] .whatIfComparison p,
-.appShell[data-theme="dark"] .whatIfCard > small,
-.appShell[data-theme="dark"] .whatIfBehaviorSummary,
-.appShell[data-theme="dark"] .whatIfCard dt,
-.appShell[data-theme="dark"] .coachStrategyBehaviorPanel ul,
-.appShell[data-theme="dark"] .coachStrategyBehaviorPanel > span,
-.appShell[data-theme="dark"] .coachStrategyWeightGrid span,
-.appShell[data-theme="dark"] .activitySummary dt,
-.appShell[data-theme="dark"] .activityToolbar span,
-.appShell[data-theme="dark"] .activityExportStatus,
-.appShell[data-theme="dark"] .activityList time,
-.appShell[data-theme="dark"] .activityList span,
-.appShell[data-theme="dark"] .activityList small,
-.appShell[data-theme="dark"] .replayControlPanel span,
-.appShell[data-theme="dark"] .savedRunCardHeader small,
-.appShell[data-theme="dark"] .savedRunCard dt,
-.appShell[data-theme="dark"] .coachPanel p,
-.appShell[data-theme="dark"] .coachSummary dt,
-.appShell[data-theme="dark"] .orderList small,
-.appShell[data-theme="dark"] .namedOrderList small,
-.appShell[data-theme="dark"] .debriefIntro,
-.appShell[data-theme="dark"] .debriefBlock p,
-.appShell[data-theme="dark"] .debriefSummary dt,
-.appShell[data-theme="dark"] .debriefLegend dt,
-.appShell[data-theme="dark"] .debriefLegend dd,
-.appShell[data-theme="dark"] .guardrailIntro,
-.appShell[data-theme="dark"] .guardrailLegend dt,
-.appShell[data-theme="dark"] .guardrailLegend dd,
-.appShell[data-theme="dark"] .guardrailExplanation dt,
-.appShell[data-theme="dark"] .guardrailExplanation dd,
-.appShell[data-theme="dark"] .hospitalistMilestones dt,
-.appShell[data-theme="dark"] .feedbackList small,
-.appShell[data-theme="dark"] .actionStatus small,
-.appShell[data-theme="dark"] .eventList time {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .eyebrow,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .clockPanel small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .speedControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .themeToggle > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metricVisibilityControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioPanelHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerRosterCard small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerRosterDetails small > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioControls label > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .presetControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerCountControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .shiftLengthControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomCapacityControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .supportCountControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixHeader label > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixGroup > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientMixHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeControl small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioToggle span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metricLabel,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabPanel span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabPanel small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabMeasures dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomMapHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomTile span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomTile small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .cardMeta,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .protocolLine small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .patientStatusHeader span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .emptyState,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .panelExplanation,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .detailGrid dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkGrid dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkGrid span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkComparisonHeader,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkTargetControl label,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .graphsHeader p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartHeader p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerModelControl small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartHeader > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartLegend dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfComparison h3,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfComparison p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard > small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfBehaviorSummary,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyBehaviorPanel ul,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyBehaviorPanel > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyWeightGrid span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activitySummary dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityToolbar span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .exportFormatControl > span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityExportStatus,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityList time,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityList span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityList small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .replayControlPanel span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCardHeader small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCard dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachPanel p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachSummary dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .orderList small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .namedOrderList small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefIntro,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefBlock p,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefSummary dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefLegend dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefLegend dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailIntro,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailLegend dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailLegend dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailExplanation dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .guardrailExplanation dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .hospitalistMilestones dt,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .feedbackList small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionStatus small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .eventList time {
   color: #9aa8b7;
 }
 
-.appShell[data-theme="dark"] .speedControl strong,
-.appShell[data-theme="dark"] .themeToggle strong,
-.appShell[data-theme="dark"] .metricVisibilityControl label span,
-.appShell[data-theme="dark"] .tabPanel strong,
-.appShell[data-theme="dark"] .tabMeasures dd,
-.appShell[data-theme="dark"] .roomTile strong,
-.appShell[data-theme="dark"] .cardTopline,
-.appShell[data-theme="dark"] .scenarioToggle small,
-.appShell[data-theme="dark"] .providerRosterDetails small > strong,
-.appShell[data-theme="dark"] .actionStatus strong,
-.appShell[data-theme="dark"] .benchmarkPanel > strong,
-.appShell[data-theme="dark"] .benchmarkGrid strong,
-.appShell[data-theme="dark"] .benchmarkTargetControl select,
-.appShell[data-theme="dark"] .chartHeader h3,
-.appShell[data-theme="dark"] .chartLegend dd,
-.appShell[data-theme="dark"] .whatIfCard > strong,
-.appShell[data-theme="dark"] .coachStrategyRuleTitle strong,
-.appShell[data-theme="dark"] .coachComparisonControls label,
-.appShell[data-theme="dark"] .whatIfCard dd,
-.appShell[data-theme="dark"] .activitySummary dd,
-.appShell[data-theme="dark"] .activityList strong,
-.appShell[data-theme="dark"] .replayControlPanel strong,
-.appShell[data-theme="dark"] .savedRunCardHeader strong,
-.appShell[data-theme="dark"] .savedRunCard dd,
-.appShell[data-theme="dark"] .coachPanel > strong,
-.appShell[data-theme="dark"] .coachSummary dd,
-.appShell[data-theme="dark"] .debriefPanel > strong,
-.appShell[data-theme="dark"] .feedbackList span,
-.appShell[data-theme="dark"] .hospitalistMilestones dd {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .presetControl small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerModelControl small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .triageModeControl small {
+  color: #9aa8b7;
+  font-weight: 700;
+}
+
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .speedControl strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .themeToggle strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .metricVisibilityControl label span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabPanel strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabMeasures dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .roomTile strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .cardTopline,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .scenarioToggle small,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .providerRosterDetails small > strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .actionStatus strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkPanel > strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkGrid strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkTargetControl select,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartHeader h3,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartLegend dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard > strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachStrategyRuleTitle strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachComparisonControls label,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activitySummary dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activityList strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .replayControlPanel strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCardHeader strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .savedRunCard dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachPanel > strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachSummary dd,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefPanel > strong,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .feedbackList span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .hospitalistMilestones dd {
   color: #f2f6fa;
 }
 
-.appShell[data-theme="dark"] .whatIfRuleProfile span {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfRuleProfile span {
   background: #1d2c37;
   border-color: #334253;
   color: #8ccce0;
 }
 
-.appShell[data-theme="dark"] .columnHeader span,
-.appShell[data-theme="dark"] .protocolBadge.none,
-.appShell[data-theme="dark"] .riskBadge.closed {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .columnHeader span,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .protocolBadge.none,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .riskBadge.closed {
   background: #253140;
   color: #b7c4d1;
 }
 
-.appShell[data-theme="dark"] .protocolLine,
-.appShell[data-theme="dark"] .benchmarkMetricComparison,
-.appShell[data-theme="dark"] .benchmarkPanel > .debriefBlock,
-.appShell[data-theme="dark"] .whatIfComparison,
-.appShell[data-theme="dark"] .chartCard,
-.appShell[data-theme="dark"] .chartLegend div,
-.appShell[data-theme="dark"] .lineChart,
-.appShell[data-theme="dark"] .benchmarkGrid div,
-.appShell[data-theme="dark"] .whatIfCard,
-.appShell[data-theme="dark"] .whatIfCard dl div,
-.appShell[data-theme="dark"] .activitySummary div,
-.appShell[data-theme="dark"] .coachSummary div,
-.appShell[data-theme="dark"] .orderList li,
-.appShell[data-theme="dark"] .namedOrderList li,
-.appShell[data-theme="dark"] .debriefSummary div,
-.appShell[data-theme="dark"] .hospitalistMilestones div {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .protocolLine,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkMetricComparison,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkPanel > .debriefBlock,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfComparison,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartLegend div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .lineChart,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .benchmarkGrid div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .whatIfCard dl div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .activitySummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .coachSummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .orderList li,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .namedOrderList li,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .debriefSummary div,
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .hospitalistMilestones div {
   border-color: #2c3948;
 }
 
-.appShell[data-theme="dark"] .chartAxis {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartAxis {
   stroke: #667586;
 }
 
-.appShell[data-theme="dark"] .chartGridLine {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartGridLine {
   stroke: #2c3948;
 }
 
-.appShell[data-theme="dark"] .chartTick {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartTick {
   fill: #9aa8b7;
 }
 
-.appShell[data-theme="dark"] .chartPoint {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .chartPoint {
   stroke: #111821;
 }
 
-.appShell[data-theme="dark"] .statusTooltip::after {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .statusTooltip::after {
   background: #e6edf5;
   color: #111821;
 }
 
-.appShell[data-theme="dark"] .statusTooltip::before {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .statusTooltip::before {
   border-top-color: #e6edf5;
 }
 
-.appShell[data-theme="dark"] .tabTooltip::before {
+.appShell:is([data-theme="dark"], [data-theme="midnight"], [data-theme="graphite"], [data-theme="harbor"]) .tabTooltip::before {
   border-bottom-color: #e6edf5;
   border-top-color: transparent;
 }
@@ -3569,12 +5061,21 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .assumptionProfilesHeader,
+  .assumptionProfileGrid {
+    grid-template-columns: 1fr;
+  }
+
   .metricSectionRow {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
 
   .filesPanel {
     grid-template-columns: 1fr;
+  }
+
+  .paletteGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .calibrationSummary {
@@ -3590,12 +5091,31 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .replayControlHeader,
+  .replayChangePanel > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .replayControlHeader label {
+    justify-content: space-between;
+  }
+
   .replayActions {
     justify-content: stretch;
   }
 
   .replayActions button {
     justify-content: center;
+  }
+
+  .replayOverviewGrid,
+  .replayActivityJumps {
+    grid-template-columns: 1fr;
+  }
+
+  .replayTimeline {
+    grid-template-columns: 1fr;
   }
 
   .tabMeasures {
@@ -3671,9 +5191,23 @@ h2 {
   }
 
   .scenarioPanelHeader,
-  .calibrationHeader {
+  .calibrationHeader,
+  .configurationHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .configurationSummary {
+    text-align: left;
+  }
+
+  .scenarioProfileEditBanner {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .assumptionProfileSave {
+    grid-template-columns: 1fr;
   }
 
   .scenarioTopControls,
@@ -3681,8 +5215,18 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .scenarioValidationHeader,
+  .scenarioValidationGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarioValidationSummary {
+    justify-content: flex-start;
+  }
+
   .patientMixHeader,
-  .patientMixGrid {
+  .patientMixGrid,
+  .paletteGrid {
     grid-template-columns: 1fr;
   }
 
@@ -3716,6 +5260,29 @@ h2 {
   }
 
   .savedRunActions {
+    grid-template-columns: 1fr;
+  }
+
+  .savedRunHelpGrid,
+  .exportHelpGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .exportDatasetSummary,
+  .exportDictionaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .exportFormatControl > div {
+    grid-template-columns: 1fr;
+  }
+
+  .activityToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activityToolbarActions {
     grid-template-columns: 1fr;
   }
 

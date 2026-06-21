@@ -823,7 +823,7 @@ function recommendationReason(run: SimulationRun, patient: RuntimePatient, actio
 }
 
 export function getBenchmarkCoachRecommendation(run: SimulationRun): BenchmarkCoachRecommendation | undefined {
-  if (run.status !== "running") {
+  if (run.status !== "running" && run.status !== "paused") {
     return undefined;
   }
 

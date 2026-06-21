@@ -11,6 +11,7 @@ import {
   CircleGauge,
   ClipboardCheck,
   Clock,
+  Download,
   DoorOpen,
   Droplets,
   Gauge,
@@ -21,9 +22,13 @@ import {
   RotateCcw,
   Siren,
   Sparkles,
+  SkipBack,
+  SkipForward,
+  StepBack,
   Stethoscope,
   StepForward,
   Syringe,
+  Table,
   TestTube,
   TestTubes,
   TimerReset,
@@ -65,7 +70,7 @@ import {
   setFrontEndTriageProviderMode,
   startSimulation,
 } from "../simulation/simulationEngine";
-import { createSupportResourcePools } from "../simulation/supportResources";
+import { createSupportResourcePools, supportResourceRequirementFor } from "../simulation/supportResources";
 import type {
   PatientState,
   FlowGuardrailSummary,
@@ -143,10 +148,148 @@ const baseBoardColumns: BoardColumn[] = [
 const defaultTuningConfig = getDefaultScenarioTuningConfig();
 const defaultScenarioConfig = createScenarioFromTuning(defaultTuningConfig);
 const DEFAULT_AUTO_ADVANCE_SECONDS = 2;
-type SetupPanelTab = "live-operations" | "files" | "scenario" | "calibration" | "additional-stats";
-type ColorMode = "light" | "dark";
+type SetupPanelTab = "live-operations" | "files" | "scenario" | "calibration" | "configuration" | "additional-stats";
+type ColorMode =
+  | "light"
+  | "coastal"
+  | "forest"
+  | "ember"
+  | "orchid"
+  | "rose"
+  | "sky"
+  | "sage"
+  | "dark"
+  | "midnight"
+  | "graphite"
+  | "harbor";
+type DarkColorMode = Extract<ColorMode, "dark" | "midnight" | "graphite" | "harbor">;
 type MainViewTab = "workflow" | "facility" | "benchmark" | "coach-comparison" | "graphs";
 type RightRailTab = "actions" | "coach" | "guardrails" | "debrief" | "activity";
+
+interface ThemePaletteOption {
+  accent: string;
+  description: string;
+  id: ColorMode;
+  name: string;
+  swatches: string[];
+}
+
+const themePaletteOptions: ThemePaletteOption[] = [
+  {
+    accent: "#176b86",
+    description: "Bright clinical neutrals with calm blue accents for daily use.",
+    id: "light",
+    name: "Daylight Clinical",
+    swatches: ["#edf2f6", "#ffffff", "#176b86", "#2f7650"],
+  },
+  {
+    accent: "#247a91",
+    description: "Soft teal and slate tones for a composed review space.",
+    id: "coastal",
+    name: "Coastal Calm",
+    swatches: ["#eaf4f5", "#ffffff", "#247a91", "#6b8f71"],
+  },
+  {
+    accent: "#2f7354",
+    description: "Grounded greens with quiet contrast for longer review sessions.",
+    id: "forest",
+    name: "Evergreen",
+    swatches: ["#eef4ef", "#fbfdfb", "#2f7354", "#7d6a32"],
+  },
+  {
+    accent: "#a35f22",
+    description: "Warm neutral surfaces with amber accents for softer viewing.",
+    id: "ember",
+    name: "Warm Rounds",
+    swatches: ["#f5f0e8", "#fffdf8", "#a35f22", "#8f4d45"],
+  },
+  {
+    accent: "#5f6ead",
+    description: "Cool indigo accents with balanced teal support colors.",
+    id: "orchid",
+    name: "Indigo Focus",
+    swatches: ["#f0f2f8", "#ffffff", "#5f6ead", "#2f7f7a"],
+  },
+  {
+    accent: "#9a5272",
+    description: "Soft rose and plum accents with clean neutral surfaces.",
+    id: "rose",
+    name: "Rose Review",
+    swatches: ["#f7eef2", "#fffafd", "#9a5272", "#5d7461"],
+  },
+  {
+    accent: "#3f7fa8",
+    description: "Airy blue-white surfaces with focused ocean accents.",
+    id: "sky",
+    name: "Skyline",
+    swatches: ["#eef5fb", "#ffffff", "#3f7fa8", "#527b68"],
+  },
+  {
+    accent: "#687a46",
+    description: "Gentle sage neutrals with softened green-gold contrast.",
+    id: "sage",
+    name: "Sage",
+    swatches: ["#f1f3ea", "#fffefa", "#687a46", "#8b6b35"],
+  },
+  {
+    accent: "#5eb3d1",
+    description: "Low-glare dark surfaces with crisp cyan highlights.",
+    id: "dark",
+    name: "Night Shift",
+    swatches: ["#0f141b", "#161d27", "#5eb3d1", "#d3aa3d"],
+  },
+  {
+    accent: "#7ea0d6",
+    description: "Deep navy surfaces with quiet blue and gold accents.",
+    id: "midnight",
+    name: "Midnight",
+    swatches: ["#101827", "#182235", "#7ea0d6", "#d2a95b"],
+  },
+  {
+    accent: "#8bb8c7",
+    description: "High-contrast charcoal surfaces with softer blue highlights.",
+    id: "graphite",
+    name: "Graphite",
+    swatches: ["#121417", "#1d2228", "#8bb8c7", "#d6a85c"],
+  },
+  {
+    accent: "#4fd1bd",
+    description: "Saturated teal night surfaces with bright aqua and brass accents.",
+    id: "harbor",
+    name: "Harbor Night",
+    swatches: ["#062021", "#0f3331", "#4fd1bd", "#e0b15a"],
+  },
+];
+
+function normalizeColorMode(value: unknown): ColorMode {
+  if (
+    value === "dark" ||
+    value === "coastal" ||
+    value === "forest" ||
+    value === "ember" ||
+    value === "orchid" ||
+    value === "rose" ||
+    value === "sky" ||
+    value === "sage" ||
+    value === "midnight" ||
+    value === "graphite" ||
+    value === "harbor" ||
+    value === "light"
+  ) {
+    return value;
+  }
+
+  return "light";
+}
+
+function isDarkColorMode(value: ColorMode): value is DarkColorMode {
+  return value === "dark" || value === "midnight" || value === "graphite" || value === "harbor";
+}
+
+function normalizeDarkColorMode(value: unknown): DarkColorMode {
+  const normalized = normalizeColorMode(value);
+  return isDarkColorMode(normalized) ? normalized : "dark";
+}
 
 type CalibrationStatus = "local" | "draft" | "default" | "needs-data" | "fixed";
 
@@ -198,6 +341,71 @@ const localBaselineTuningConfig: ScenarioTuningConfig = {
   coachRiskWeight: 150,
   coachWaitWeight: 1,
 };
+
+type AssumptionProfileKind = "built-in" | "custom";
+
+interface AssumptionProfile {
+  baseProfileId?: string;
+  createdAt: string;
+  description: string;
+  id: string;
+  kind: AssumptionProfileKind;
+  name: string;
+  tuning: ScenarioTuningConfig;
+  updatedAt: string;
+  version: 1;
+}
+
+const ASSUMPTION_PROFILES_KEY = "ed-provider-flow-assumption-profiles-v1";
+
+function cloneScenarioTuning(tuning: ScenarioTuningConfig): ScenarioTuningConfig {
+  return {
+    ...tuning,
+    coachStrategyPriorityProfiles: {
+      ...tuning.coachStrategyPriorityProfiles,
+      balanced_operations: { ...tuning.coachStrategyPriorityProfiles.balanced_operations },
+      disposition_focus: { ...tuning.coachStrategyPriorityProfiles.disposition_focus },
+      fast_track: { ...tuning.coachStrategyPriorityProfiles.fast_track },
+      front_end_focus: { ...tuning.coachStrategyPriorityProfiles.front_end_focus },
+      middle_flow_focus: { ...tuning.coachStrategyPriorityProfiles.middle_flow_focus },
+      resource_aware: { ...tuning.coachStrategyPriorityProfiles.resource_aware },
+      safety_first: { ...tuning.coachStrategyPriorityProfiles.safety_first },
+    },
+  };
+}
+
+const builtInAssumptionProfiles: AssumptionProfile[] = [
+  {
+    createdAt: "2026-06-20T00:00:00.000Z",
+    description: "Synthetic default assumptions used by the baseline training scenario.",
+    id: "builtin-default",
+    kind: "built-in",
+    name: "Default",
+    tuning: cloneScenarioTuning(defaultTuningConfig),
+    updatedAt: "2026-06-20T00:00:00.000Z",
+    version: 1,
+  },
+  {
+    createdAt: "2026-06-20T00:00:00.000Z",
+    description: "Working local baseline assumptions for a larger automated front-end triage flow.",
+    id: "builtin-local-baseline",
+    kind: "built-in",
+    name: "Local Baseline",
+    tuning: cloneScenarioTuning(localBaselineTuningConfig),
+    updatedAt: "2026-06-20T00:00:00.000Z",
+    version: 1,
+  },
+  {
+    createdAt: "2026-06-20T00:00:00.000Z",
+    description: "Longer boarding delay training profile for admission and room-capacity pressure.",
+    id: "builtin-boarding-surge",
+    kind: "built-in",
+    name: "Boarding Surge Training",
+    tuning: cloneScenarioTuning(getScenarioTuningPreset("boarding_surge")),
+    updatedAt: "2026-06-20T00:00:00.000Z",
+    version: 1,
+  },
+];
 
 const GUARDRAIL_EXPLANATIONS: Record<string, { action: string; why: string }> = {
   "Hospitalist response delaying admission": {
@@ -272,6 +480,13 @@ const defaultVisibleCoachComparisonIds: WhatIfCoachStrategyId[] = [
 const defaultBenchmarkComparisonId: WhatIfCoachStrategyId = "optimal_flow";
 const SAVED_APP_STATE_KEY = "ed-simulation-app-state-v1";
 const SAVED_RUNS_KEY = "ed-simulation-saved-runs-v1";
+const DEFAULT_REPLAY_PLAYBACK_SECONDS = 1;
+const replayPlaybackSpeedOptions = [
+  { label: "0.25s", value: 0.25 },
+  { label: "0.5s", value: 0.5 },
+  { label: "1s", value: 1 },
+  { label: "2s", value: 2 },
+] as const;
 
 interface SavedRunSnapshot {
   capturedAt: string;
@@ -305,6 +520,7 @@ interface ReplaySession {
   draftTuning: ScenarioTuningConfig;
   isPlaying: boolean;
   minute: number;
+  playbackSpeedSeconds: number;
   previousActiveDeck: ScenarioPatient[];
   previousActiveTuning: ScenarioTuningConfig;
   previousDraftTuning: ScenarioTuningConfig;
@@ -315,13 +531,21 @@ interface ReplaySession {
   sourceRun: SimulationRun;
 }
 
+interface AssumptionProfileEditSession {
+  baseProfileId?: string;
+  profileId: string;
+  profileName: string;
+}
+
 interface SavedAppState {
   activeDeck: ScenarioPatient[];
   activeTuning: ScenarioTuningConfig;
   autoAdvanceSeconds: number;
   colorMode: ColorMode;
+  defaultDarkColorMode?: DarkColorMode;
   draftTuning: ScenarioTuningConfig;
   run: SimulationRun;
+  loadedSavedRunRecordId?: string;
   selectedCoreMetricId: string;
   selectedMainViewTab: MainViewTab;
   selectedPatientId?: string;
@@ -367,6 +591,74 @@ function saveAppState(state: SavedAppState): void {
   }
 }
 
+function isAssumptionProfile(value: unknown): value is AssumptionProfile {
+  const candidate = value as Partial<AssumptionProfile> | undefined;
+  return (
+    candidate !== undefined &&
+    candidate.version === 1 &&
+    candidate.kind === "custom" &&
+    (candidate.baseProfileId === undefined || typeof candidate.baseProfileId === "string") &&
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.description === "string" &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.updatedAt === "string" &&
+    candidate.tuning !== undefined
+  );
+}
+
+function normalizeAssumptionProfile(profile: AssumptionProfile): AssumptionProfile {
+  return {
+    ...profile,
+    baseProfileId: profile.baseProfileId,
+    description: profile.description.trim(),
+    kind: "custom",
+    name: profile.name.trim(),
+    tuning: cloneScenarioTuning({
+      ...defaultTuningConfig,
+      ...profile.tuning,
+      coachStrategyPriorityProfiles: {
+        ...defaultTuningConfig.coachStrategyPriorityProfiles,
+        ...profile.tuning.coachStrategyPriorityProfiles,
+      },
+    }),
+  };
+}
+
+function loadAssumptionProfiles(): AssumptionProfile[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(ASSUMPTION_PROFILES_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isAssumptionProfile).map(normalizeAssumptionProfile);
+  } catch {
+    return [];
+  }
+}
+
+function saveAssumptionProfiles(profiles: AssumptionProfile[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(ASSUMPTION_PROFILES_KEY, JSON.stringify(profiles));
+  } catch {
+    // Browser storage can be unavailable; profiles remain in memory for the session.
+  }
+}
+
 function loadSavedRunRecords(): SavedRunRecord[] {
   if (typeof window === "undefined") {
     return [];
@@ -393,8 +685,19 @@ function saveRunRecords(records: SavedRunRecord[]): void {
   window.localStorage.setItem(SAVED_RUNS_KEY, JSON.stringify(records));
 }
 
-function savedRunsExportFileName(): string {
-  return `ed-simulation-saved-runs-${new Date().toISOString().slice(0, 10)}.json`;
+function safeFileNameSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+}
+
+function savedRunsExportFileName(record?: SavedRunRecord): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const nameSegment = record ? safeFileNameSegment(record.name) : "saved-runs";
+
+  return `ed-provider-flow-${nameSegment}-${timestamp}.json`;
 }
 
 function savedRunsExportJson(records: SavedRunRecord[]): string {
@@ -410,25 +713,52 @@ function savedRunsExportJson(records: SavedRunRecord[]): string {
   );
 }
 
-function parseSavedRunsImport(text: string): SavedRunRecord[] {
+interface SavedRunImportResult {
+  invalidCount: number;
+  records: SavedRunRecord[];
+  totalCount: number;
+}
+
+function parseSavedRunsImport(text: string): SavedRunImportResult {
   const parsed = JSON.parse(text) as { records?: SavedRunRecord[] } | SavedRunRecord[];
   const records = Array.isArray(parsed) ? parsed : parsed.records;
 
   if (!Array.isArray(records)) {
-    return [];
+    return {
+      invalidCount: 1,
+      records: [],
+      totalCount: 0,
+    };
   }
 
-  return records.filter((record): record is SavedRunRecord => {
-    return (
-      record !== undefined &&
-      record.version === 1 &&
-      typeof record.id === "string" &&
-      typeof record.name === "string" &&
-      record.run !== undefined &&
-      Array.isArray(record.activeDeck) &&
-      Array.isArray(record.snapshots)
-    );
-  });
+  const validRecords = records.filter((record): record is SavedRunRecord => isSavedRunRecord(record));
+
+  return {
+    invalidCount: records.length - validRecords.length,
+    records: validRecords,
+    totalCount: records.length,
+  };
+}
+
+function isSavedRunRecord(record: unknown): record is SavedRunRecord {
+  const candidate = record as Partial<SavedRunRecord> | undefined;
+
+  return (
+    candidate !== undefined &&
+    candidate.version === 1 &&
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    candidate.run !== undefined &&
+    typeof candidate.run.id === "string" &&
+    Array.isArray(candidate.run.patients) &&
+    Array.isArray(candidate.run.events) &&
+    Array.isArray(candidate.run.decisions) &&
+    Array.isArray(candidate.activeDeck) &&
+    candidate.activeTuning !== undefined &&
+    candidate.draftTuning !== undefined &&
+    typeof candidate.selectedPresetId === "string" &&
+    Array.isArray(candidate.snapshots)
+  );
 }
 
 function createRunSnapshot(run: SimulationRun): SavedRunSnapshot {
@@ -530,6 +860,24 @@ function replayPatientState(patient: RuntimePatient, replayMinute: number): Pati
 }
 
 function createReplayPatient(patient: RuntimePatient, replayMinute: number): RuntimePatient {
+  const arrivedAt = pruneFutureMinute(patient.arrivedAt, replayMinute);
+  const triagedAt = pruneFutureMinute(patient.triagedAt, replayMinute);
+  const roomedAt = pruneFutureMinute(patient.roomedAt, replayMinute);
+  const providerSeenAt = pruneFutureMinute(patient.providerSeenAt, replayMinute);
+  const fastTrackedAt = pruneFutureMinute(patient.fastTrackedAt, replayMinute);
+  const deterioratedAt = pruneFutureMinute(patient.deterioratedAt, replayMinute);
+  const ordersPlacedAt = pruneFutureMinute(patient.ordersPlacedAt, replayMinute);
+  const resultsReadyAt = pruneFutureMinute(patient.resultsReadyAt, replayMinute);
+  const resultsReviewedAt = pruneFutureMinute(patient.resultsReviewedAt, replayMinute);
+  const readyForDispositionAt = pruneFutureMinute(patient.readyForDispositionAt, replayMinute);
+  const dispositionDecisionAt = pruneFutureMinute(patient.dispositionDecisionAt, replayMinute);
+  const admissionAcceptedAt = pruneFutureMinute(patient.admissionAcceptedAt, replayMinute);
+  const departedAt = pruneFutureMinute(patient.departedAt, replayMinute);
+  const lwbsAt = pruneFutureMinute(patient.lwbsAt, replayMinute);
+  const ecgCompletedAt = pruneFutureMinute(patient.ecgCompletedAt, replayMinute);
+  const ecgReviewedAt = pruneFutureMinute(patient.ecgReviewedAt, replayMinute);
+  const stemiAlertActivatedAt = pruneFutureMinute(patient.stemiAlertActivatedAt, replayMinute);
+  const sepsisRecognizedAt = pruneFutureMinute(patient.sepsisRecognizedAt, replayMinute);
   const pendingItems = patient.pendingItems
     .filter((item) => item.orderedAt <= replayMinute)
     .map((item) => {
@@ -551,29 +899,31 @@ function createReplayPatient(patient: RuntimePatient, replayMinute: number): Run
   return {
     ...patient,
     state: replayPatientState(patient, replayMinute),
-    arrivedAt: pruneFutureMinute(patient.arrivedAt, replayMinute),
-    triagedAt: pruneFutureMinute(patient.triagedAt, replayMinute),
-    roomedAt: pruneFutureMinute(patient.roomedAt, replayMinute),
-    providerSeenAt: pruneFutureMinute(patient.providerSeenAt, replayMinute),
-    fastTrackedAt: pruneFutureMinute(patient.fastTrackedAt, replayMinute),
+    arrivedAt,
+    triagedAt,
+    roomedAt,
+    roomId: roomedAt === undefined || lwbsAt !== undefined ? undefined : patient.roomId,
+    providerSeenAt,
+    fastTrackedAt,
     lastReassessedAt: pruneFutureMinute(patient.lastReassessedAt, replayMinute),
     nextReassessmentDueAt:
-      patient.nextReassessmentDueAt !== undefined && (patient.arrivedAt ?? Number.POSITIVE_INFINITY) <= replayMinute
+      patient.nextReassessmentDueAt !== undefined && arrivedAt !== undefined && !["departed", "lwbs"].includes(replayPatientState(patient, replayMinute))
         ? patient.nextReassessmentDueAt
         : undefined,
-    deterioratedAt: pruneFutureMinute(patient.deterioratedAt, replayMinute),
-    ordersPlacedAt: pruneFutureMinute(patient.ordersPlacedAt, replayMinute),
-    resultsReadyAt: pruneFutureMinute(patient.resultsReadyAt, replayMinute),
-    resultsReviewedAt: pruneFutureMinute(patient.resultsReviewedAt, replayMinute),
-    readyForDispositionAt: pruneFutureMinute(patient.readyForDispositionAt, replayMinute),
-    dispositionDecisionAt: pruneFutureMinute(patient.dispositionDecisionAt, replayMinute),
-    admissionAcceptedAt: pruneFutureMinute(patient.admissionAcceptedAt, replayMinute),
-    departedAt: pruneFutureMinute(patient.departedAt, replayMinute),
-    lwbsAt: pruneFutureMinute(patient.lwbsAt, replayMinute),
-    ecgCompletedAt: pruneFutureMinute(patient.ecgCompletedAt, replayMinute),
-    ecgReviewedAt: pruneFutureMinute(patient.ecgReviewedAt, replayMinute),
-    stemiAlertActivatedAt: pruneFutureMinute(patient.stemiAlertActivatedAt, replayMinute),
-    sepsisRecognizedAt: pruneFutureMinute(patient.sepsisRecognizedAt, replayMinute),
+    deterioratedAt,
+    ordersPlacedAt,
+    resultsReadyAt,
+    resultsReviewedAt,
+    readyForDispositionAt,
+    dispositionDecisionAt,
+    admissionAcceptedAt,
+    departedAt,
+    lwbsAt,
+    ecgCompletedAt,
+    ecgReviewedAt,
+    stemiAlertActivatedAt,
+    sepsisRecognizedAt,
+    dispositionType: dispositionDecisionAt === undefined ? undefined : patient.dispositionType,
     pendingItems,
   };
 }
@@ -677,7 +1027,61 @@ function createReplayProviders(sourceRun: SimulationRun, replayMinute: number): 
             type: activeDecision.actionType,
           }
         : undefined,
+      busyUntilMinute: activeDecision ? activeDecision.simulationMinute + activeDecision.timeCostMinutes : undefined,
       status: activeDecision ? "busy" : "idle",
+    };
+  });
+}
+
+function createReplayTriageProvider(sourceRun: SimulationRun, replayMinute: number): ProviderState {
+  const activeDecision = sourceRun.decisions.find(
+    (decision) =>
+      decision.providerId === sourceRun.triageProvider.id &&
+      decision.simulationMinute <= replayMinute &&
+      decision.simulationMinute + decision.timeCostMinutes > replayMinute,
+  );
+
+  return {
+    ...sourceRun.triageProvider,
+    currentAction: activeDecision
+      ? {
+          completedAt: activeDecision.simulationMinute + activeDecision.timeCostMinutes,
+          decisionId: activeDecision.id,
+          patientId: activeDecision.patientId,
+          providerId: activeDecision.providerId,
+          startedAt: activeDecision.simulationMinute,
+          type: activeDecision.actionType,
+        }
+      : undefined,
+    busyUntilMinute: activeDecision ? activeDecision.simulationMinute + activeDecision.timeCostMinutes : undefined,
+    status: activeDecision ? "busy" : "idle",
+  };
+}
+
+function createReplaySupportResources(sourceRun: SimulationRun, replayMinute: number): SimulationRun["supportResources"] {
+  return sourceRun.supportResources.map((pool) => {
+    const busy = sourceRun.decisions.flatMap((decision) => {
+      const completedAt = decision.simulationMinute + decision.timeCostMinutes;
+      const requiredCount = supportResourceRequirementFor(decision.actionType)[pool.role] ?? 0;
+
+      if (requiredCount === 0 || decision.timeCostMinutes <= 0 || decision.simulationMinute > replayMinute || completedAt <= replayMinute) {
+        return [];
+      }
+
+      return Array.from({ length: requiredCount }, (_, index) => ({
+        actionType: decision.actionType,
+        completedAt,
+        decisionId: decision.id,
+        id: `${decision.id}-${pool.role}-${index + 1}`,
+        patientId: decision.patientId,
+        role: pool.role,
+        startedAt: decision.simulationMinute,
+      }));
+    });
+
+    return {
+      ...pool,
+      busy,
     };
   });
 }
@@ -690,6 +1094,7 @@ function createReplayRun(sourceRun: SimulationRun, replayMinute: number): Simula
   }));
   const rooms = createReplayRooms(sourceRun, patients, boundedMinute);
   const providers = createReplayProviders(sourceRun, boundedMinute);
+  const triageProvider = createReplayTriageProvider(sourceRun, boundedMinute);
   const primaryProvider = providers[0] ?? sourceRun.provider;
   const projectedRun: SimulationRun = {
     ...sourceRun,
@@ -704,16 +1109,110 @@ function createReplayRun(sourceRun: SimulationRun, replayMinute: number): Simula
     rooms,
     runType: "replay",
     status: boundedMinute >= sourceRun.currentMinute ? "completed" : "paused",
-    supportResources: sourceRun.supportResources.map((pool) => ({
-      ...pool,
-      busy: pool.busy.filter((assignment) => assignment.startedAt <= boundedMinute && assignment.completedAt > boundedMinute),
-    })),
+    supportResources: createReplaySupportResources(sourceRun, boundedMinute),
+    triageProvider,
   };
 
   return {
     ...projectedRun,
     metrics: calculateMetrics(projectedRun),
   };
+}
+
+interface ReplayMinuteChange {
+  detail: string;
+  kind: "event" | "decision";
+  label: string;
+  patientId?: string;
+  providerId?: string;
+}
+
+function createReplayMinuteChanges(sourceRun: SimulationRun, replayMinute: number): ReplayMinuteChange[] {
+  const events = sourceRun.events
+    .filter((event) => event.simulationMinute === replayMinute && event.type !== "metric_updated")
+    .map((event) => ({
+      detail: event.message,
+      kind: "event" as const,
+      label: stateLabel(event.type),
+      patientId: event.patientId,
+    }));
+  const decisions = sourceRun.decisions
+    .filter((decision) => decision.simulationMinute === replayMinute)
+    .map((decision) => ({
+      detail: decision.patientId
+        ? `${decision.actionLabel} for ${decision.patientId} · ${decision.timeCostMinutes} min`
+        : `${decision.actionLabel} · ${decision.timeCostMinutes} min`,
+      kind: "decision" as const,
+      label: "Provider action",
+      patientId: decision.patientId,
+      providerId: decision.providerId,
+    }));
+
+  return [...decisions, ...events].slice(0, 8);
+}
+
+function createReplayActivityMinutes(sourceRun: SimulationRun): number[] {
+  return Array.from(
+    new Set([
+      ...sourceRun.events
+        .filter((event) => event.type !== "metric_updated")
+        .map((event) => event.simulationMinute),
+      ...sourceRun.decisions.map((decision) => decision.simulationMinute),
+    ]),
+  ).sort((left, right) => left - right);
+}
+
+function createReplayCoachRecommendation(sourceRun: SimulationRun, replayRun: SimulationRun): BenchmarkCoachRecommendation | undefined {
+  const recordedDecision =
+    sourceRun.decisions
+      .filter((decision) => decision.patientId && decision.simulationMinute === replayRun.currentMinute)
+      .sort((left, right) => right.timeCostMinutes - left.timeCostMinutes)[0] ??
+    sourceRun.decisions
+      .filter((decision) => decision.patientId && decision.simulationMinute <= replayRun.currentMinute)
+      .sort((left, right) => right.simulationMinute - left.simulationMinute)[0];
+
+  if (!recordedDecision?.patientId) {
+    return undefined;
+  }
+
+  const patient =
+    replayRun.patients.find((item) => item.id === recordedDecision.patientId) ??
+    sourceRun.patients.find((item) => item.id === recordedDecision.patientId);
+
+  if (!patient) {
+    return undefined;
+  }
+
+  const recordedAtCurrentMinute = recordedDecision.simulationMinute === replayRun.currentMinute;
+  const recordedAt = formatMinute(recordedDecision.simulationMinute);
+  const providerLabel = providerAssignmentLabel(recordedDecision.providerId);
+
+  return {
+    actionLabel: recordedDecision.actionLabel,
+    actionType: recordedDecision.actionType,
+    patientId: patient.id,
+    prioritySummary: `ESI ${patient.esi} · ${patient.riskLevel} risk · ${patientWaitMinutes(patient, recordedDecision.simulationMinute)} min wait`,
+    reason: recordedAtCurrentMinute
+      ? `Replay coaching: this saved run recorded ${providerLabel} choosing this action at ${recordedAt}.`
+      : `Replay coaching: no provider action was recorded at ${formatMinute(
+          replayRun.currentMinute
+        )}, so this shows the most recent saved coachable action from ${recordedAt}.`,
+  };
+}
+
+function previousReplayActivityMinute(activityMinutes: number[], replayMinute: number): number | undefined {
+  for (let index = activityMinutes.length - 1; index >= 0; index -= 1) {
+    const activityMinute = activityMinutes[index];
+    if (activityMinute !== undefined && activityMinute < replayMinute) {
+      return activityMinute;
+    }
+  }
+
+  return undefined;
+}
+
+function nextReplayActivityMinute(activityMinutes: number[], replayMinute: number): number | undefined {
+  return activityMinutes.find((activityMinute) => activityMinute > replayMinute);
 }
 
 function createRunBundle(scenario: ReturnType<typeof createScenarioFromTuning>): {
@@ -1324,6 +1823,274 @@ function stateLabel(state: string): string {
     .split("_")
     .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
     .join(" ");
+}
+
+interface CoachExplanationItem {
+  label: string;
+  value: string;
+  detail: string;
+}
+
+interface CoachExplanation {
+  actionReason: string;
+  alternatives: CoachAlternative[];
+  priorityMath: CoachExplanationItem[];
+  signals: CoachExplanationItem[];
+}
+
+interface CoachAlternative {
+  actionLabel: string;
+  gap: number;
+  patientId: string;
+  prioritySummary: string;
+  score: number;
+  whyNot: string;
+}
+
+function coachRiskRank(patient: RuntimePatient): number {
+  const rank: Record<RuntimePatient["riskLevel"], number> = {
+    critical: 4,
+    high: 3,
+    low: 1,
+    moderate: 2,
+  };
+
+  return rank[patient.riskLevel];
+}
+
+function patientWaitMinutes(patient: RuntimePatient, currentMinute: number): number {
+  return patient.arrivedAt === undefined ? 0 : Math.max(0, currentMinute - patient.arrivedAt);
+}
+
+function diagnosticItemsReady(patient: RuntimePatient): boolean {
+  const diagnosticTypes = new Set(["labs", "imaging", "ecg", "troponin", "repeat_troponin", "chest_xray", "lactate", "blood_cultures"]);
+  const diagnosticItems = patient.pendingItems.filter((item) => diagnosticTypes.has(item.type));
+
+  return diagnosticItems.length > 0 && diagnosticItems.every((item) => item.status === "ready" || item.status === "completed");
+}
+
+function coachPriorityScore(run: SimulationRun, patient: RuntimePatient): number {
+  const profile = run.coachPriorityProfile;
+  const wait = patientWaitMinutes(patient, run.currentMinute);
+
+  return (6 - patient.esi) * profile.acuityWeight + coachRiskRank(patient) * profile.riskWeight + wait * profile.waitWeight;
+}
+
+function coachPrioritySummary(run: SimulationRun, patient: RuntimePatient): string {
+  return `ESI ${patient.esi} · ${patient.riskLevel} risk · ${patientWaitMinutes(patient, run.currentMinute)} min wait`;
+}
+
+function coachAlternativeWhyNot(
+  run: SimulationRun,
+  recommendedPatient: RuntimePatient,
+  recommendedActionType: ProviderActionType,
+  alternativePatient: RuntimePatient,
+  alternativeActionType: ProviderActionType,
+  scoreGap: number,
+): string {
+  if (alternativePatient.id === recommendedPatient.id && alternativeActionType !== recommendedActionType) {
+    return `Same patient, but ${ACTION_LABELS[recommendedActionType].toLowerCase()} is the more immediate step for the current state.`;
+  }
+
+  if (alternativePatient.state === "waiting" && ["roomed", "provider_seen", "results_pending", "results_ready", "ready_for_disposition"].includes(recommendedPatient.state)) {
+    return "Waiting-room work was deferred because a roomed patient already has a provider-dependent step that can move the room toward disposition.";
+  }
+
+  if (alternativePatient.state === "waiting" && recommendedPatient.state === "waiting" && scoreGap > 0) {
+    return `Lower combined ESI/risk/wait priority than ${recommendedPatient.id} by ${scoreGap} points.`;
+  }
+
+  if (alternativeActionType === "fast_track_patient" && recommendedActionType !== "fast_track_patient") {
+    return "Fast Track remains available, but the selected action has higher operational value for room flow or safety at this minute.";
+  }
+
+  if (alternativeActionType === "reassess_waiting_patient" && recommendedActionType !== "reassess_waiting_patient") {
+    return "Reassessment is available, but the selected action does more to unblock provider flow right now.";
+  }
+
+  if (alternativeActionType === "room_patient" && recommendedActionType !== "room_patient") {
+    return "Rooming another patient was held because the selected patient is already farther along in the ED workflow.";
+  }
+
+  if (alternativeActionType === "see_patient" && recommendedActionType !== "see_patient") {
+    return "Provider evaluation is available, but the selected action is more time-sensitive or closer to disposition.";
+  }
+
+  if (alternativeActionType === "place_orders" && recommendedActionType !== "place_orders") {
+    return "Orders can wait briefly because the selected action has a stronger immediate effect on throughput or safety.";
+  }
+
+  if (alternativeActionType === "review_results" && recommendedActionType !== "review_results") {
+    return "Results review is useful, but another patient/action scored higher for current operational priority.";
+  }
+
+  if (alternativeActionType === "discharge_home" && recommendedActionType !== "discharge_home") {
+    return "Discharge can clear a room, but the selected action scored higher based on acuity, risk, wait, or readiness.";
+  }
+
+  if (alternativeActionType === "admit_inpatient" && recommendedActionType !== "admit_inpatient") {
+    return "Admission workflow can start later; the selected action is the higher-priority move at this replay/live minute.";
+  }
+
+  return scoreGap > 0
+    ? `Scored ${scoreGap} points below the selected recommendation.`
+    : "Available option, but the coach tie-breaker favored the selected patient/action first.";
+}
+
+function createCoachAlternatives(
+  run: SimulationRun,
+  recommendation: BenchmarkCoachRecommendation,
+  recommendedPatient: RuntimePatient,
+): CoachAlternative[] {
+  const recommendedScore = coachPriorityScore(run, recommendedPatient);
+
+  return run.patients
+    .flatMap((patient) =>
+      getAvailableProviderActions(run, patient.id)
+        .filter(
+          (action) =>
+            action.enabled &&
+            action.type !== "continue_waiting" &&
+            action.type !== "complete_triage" &&
+            action.type !== "start_protocol_orders" &&
+            !(patient.id === recommendation.patientId && action.type === recommendation.actionType),
+        )
+        .map((action) => {
+          const score = coachPriorityScore(run, patient);
+          const gap = Math.max(0, recommendedScore - score);
+
+          return {
+            actionLabel: ACTION_LABELS[action.type],
+            gap,
+            patientId: patient.id,
+            prioritySummary: coachPrioritySummary(run, patient),
+            score,
+            whyNot: coachAlternativeWhyNot(run, recommendedPatient, recommendation.actionType, patient, action.type, gap),
+          };
+        }),
+    )
+    .sort((left, right) => {
+      const scoreDifference = right.score - left.score;
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      const leftWait = run.patients.find((patient) => patient.id === left.patientId);
+      const rightWait = run.patients.find((patient) => patient.id === right.patientId);
+      return patientWaitMinutes(rightWait ?? recommendedPatient, run.currentMinute) - patientWaitMinutes(leftWait ?? recommendedPatient, run.currentMinute);
+    })
+    .slice(0, 3);
+}
+
+function createCoachExplanation(run: SimulationRun, recommendation: BenchmarkCoachRecommendation | undefined): CoachExplanation | undefined {
+  if (!recommendation) {
+    return undefined;
+  }
+
+  const patient = run.patients.find((item) => item.id === recommendation.patientId);
+  if (!patient) {
+    return undefined;
+  }
+
+  const profile = run.coachPriorityProfile;
+  const wait = patientWaitMinutes(patient, run.currentMinute);
+  const acuityScore = (6 - patient.esi) * profile.acuityWeight;
+  const riskScore = coachRiskRank(patient) * profile.riskWeight;
+  const waitScore = wait * profile.waitWeight;
+  const totalScore = acuityScore + riskScore + waitScore;
+  const roomsAvailable = run.rooms.filter((room) => room.status === "available").length;
+  const roomsCleaning = run.rooms.filter((room) => room.status === "cleaning").length;
+  const roomsBlocked = run.rooms.filter((room) => room.status === "blocked").length;
+  const nursePool = run.supportResources.find((pool) => pool.role === "nurse");
+  const techPool = run.supportResources.find((pool) => pool.role === "tech");
+  const admissionItem = patient.pendingItems.find((item) => item.type === "admission_decision");
+  const boardingItem = patient.pendingItems.find((item) => item.type === "boarding_bed");
+  const actionReasonByType: Partial<Record<ProviderActionType, string>> = {
+    admit_inpatient: "Moves a disposition-ready patient into hospitalist/admission workflow and begins boarding pressure tracking.",
+    complete_triage: "Completes front-end triage so the patient can enter the waiting-room or rooming queue.",
+    discharge_home: "Closes the visit and frees the room for the next patient after cleaning.",
+    fast_track_patient: "Uses vertical care for a lower-acuity patient without consuming an ED room.",
+    place_orders: "Starts diagnostic work so the visit can progress toward results and disposition.",
+    reassess_waiting_patient: "Resets waiting-room safety timing for an overdue or higher-risk waiting patient.",
+    review_results: "Turns ready diagnostics into a disposition decision opportunity.",
+    room_patient: "Uses available room capacity for the highest-priority waiting patient.",
+    see_patient: diagnosticItemsReady(patient)
+      ? "Uses ready diagnostic information to move a roomed patient toward results review and disposition."
+      : "Addresses the next provider-dependent step for a roomed or workup-pending patient.",
+    start_protocol_orders: "Starts protocol-driven workup early so time-sensitive diagnostics can run while flow continues.",
+  };
+
+  const readinessDetail =
+    patient.state === "ready_for_disposition"
+      ? "Disposition-ready; next step can clear or board the room."
+      : diagnosticItemsReady(patient)
+        ? "Diagnostic items are ready or complete."
+        : patient.pendingItems.length > 0
+          ? `${patient.pendingItems.filter((item) => item.status === "pending").length} pending item(s), ${patient.pendingItems.filter((item) => item.status === "ready").length} ready.`
+          : "No active workup items are currently pending.";
+
+  const hospitalistDetail =
+    patient.state === "admission_pending" && admissionItem
+      ? `Hospitalist response/admission acceptance expected in ${Math.max(0, admissionItem.readyAt - run.currentMinute)} min.`
+      : patient.state === "boarding" && boardingItem
+        ? `Inpatient bed assignment expected in ${Math.max(0, boardingItem.readyAt - run.currentMinute)} min.`
+        : recommendation.actionType === "admit_inpatient"
+          ? `Synthetic admit probability ${Math.round(patient.admitProbability * 100)}% vs discharge ${Math.round(patient.dischargeProbability * 100)}%.`
+          : "No active hospitalist milestone is controlling this recommendation.";
+
+  return {
+    actionReason: actionReasonByType[recommendation.actionType] ?? recommendation.reason,
+    alternatives: createCoachAlternatives(run, recommendation, patient),
+    priorityMath: [
+      {
+        detail: `(6 - ESI ${patient.esi}) x ${profile.acuityWeight}`,
+        label: "ESI acuity",
+        value: `${acuityScore}`,
+      },
+      {
+        detail: `${stateLabel(patient.riskLevel)} risk x ${profile.riskWeight}`,
+        label: "Risk",
+        value: `${riskScore}`,
+      },
+      {
+        detail: `${wait} min x ${profile.waitWeight}`,
+        label: "Wait",
+        value: `${waitScore}`,
+      },
+      {
+        detail: `Coach mode: ${coachPriorityModeLabel(profile.mode)}`,
+        label: "Total",
+        value: `${totalScore}`,
+      },
+    ],
+    signals: [
+      {
+        detail: `${patient.id} is ESI ${patient.esi}, ${patient.riskLevel} risk, currently ${stateLabel(patient.state)}.`,
+        label: "Patient priority",
+        value: recommendation.prioritySummary,
+      },
+      {
+        detail: readinessDetail,
+        label: "Readiness",
+        value: ACTION_LABELS[recommendation.actionType],
+      },
+      {
+        detail: `${roomsAvailable} available, ${roomsCleaning} cleaning, ${roomsBlocked} blocked.`,
+        label: "Room pressure",
+        value: roomsAvailable > 0 ? "Room capacity available" : "No open rooms",
+      },
+      {
+        detail: `Nurses ${nursePool?.busy.length ?? 0}/${nursePool?.total ?? 0} busy; techs ${techPool?.busy.length ?? 0}/${techPool?.total ?? 0} busy.`,
+        label: "Resources",
+        value: "Support check",
+      },
+      {
+        detail: hospitalistDetail,
+        label: "Hospitalist / admit",
+        value: patient.dispositionType === "admit_inpatient" || recommendation.actionType === "admit_inpatient" ? "Admission relevant" : "Not controlling",
+      },
+    ],
+  };
 }
 
 function arrivalPathLabel(patient: RuntimePatient): string {
@@ -2158,6 +2925,168 @@ function tabMeasureGridStyle(measureCount: number): CSSProperties {
   return { "--tab-measure-columns": String(columnCount) } as CSSProperties;
 }
 
+type ScenarioValidationSeverity = "caution" | "risk";
+
+interface ScenarioValidationItem {
+  detail: string;
+  impact: string;
+  severity: ScenarioValidationSeverity;
+  suggestedFix: string;
+  title: string;
+}
+
+function createScenarioValidationItems(tuning: ScenarioTuningConfig): ScenarioValidationItem[] {
+  const items: ScenarioValidationItem[] = [];
+  const arrivalsPerProvider = tuning.expectedArrivalsPerHour / Math.max(1, tuning.providerCount);
+  const arrivalsPerRoom = tuning.expectedArrivalsPerHour / Math.max(1, tuning.roomCapacity);
+  const roomsPerProvider = tuning.roomCapacity / Math.max(1, tuning.providerCount);
+  const roomTurnoverPressure = tuning.roomCleaningTypicalMinutes / Math.max(1, tuning.providerEvaluationTypicalMinutes);
+  const boardingShareOfShift = tuning.boardingDurationTypicalMinutes / Math.max(1, tuning.shiftDurationMinutes);
+
+  if (arrivalsPerProvider >= 8) {
+    items.push({
+      detail: `${arrivalsPerProvider.toFixed(1)} arrivals per provider per hour may overwhelm provider evaluation capacity.`,
+      impact: "Provider queues can grow, door-to-provider can drift upward, and the Coach may repeatedly favor first-contact work.",
+      severity: arrivalsPerProvider >= 12 ? "risk" : "caution",
+      suggestedFix: "Add ED providers, reduce arrivals per hour, shorten provider evaluation time, or use a shorter surge-training window.",
+      title: "Provider load is high",
+    });
+  }
+
+  if (arrivalsPerRoom >= 1.5) {
+    items.push({
+      detail: `${arrivalsPerRoom.toFixed(1)} arrivals per room per hour can create rapid room saturation unless length of stay is very short.`,
+      impact: "Waiting-room census, rooming delays, and LWBS exposure can rise because room capacity becomes the limiting step.",
+      severity: arrivalsPerRoom >= 2 ? "risk" : "caution",
+      suggestedFix: "Increase ED room capacity, reduce arrival volume, open Fast Track, or tune disposition and boarding assumptions.",
+      title: "Room pressure is high",
+    });
+  }
+
+  if (roomsPerProvider >= 10) {
+    items.push({
+      detail: `${roomsPerProvider.toFixed(1)} ED rooms per provider may make reassessment, disposition, and results review hard to keep current.`,
+      impact: "Roomed patients may sit unseen or results-ready longer because one provider is covering a broad room footprint.",
+      severity: roomsPerProvider >= 14 ? "risk" : "caution",
+      suggestedFix: "Add providers, lower room capacity for the scenario, or use Assigned/Handoff mode to train provider ownership explicitly.",
+      title: "Provider coverage is stretched",
+    });
+  }
+
+  if (tuning.nurseCount < Math.max(1, Math.ceil(tuning.roomCapacity / 8))) {
+    items.push({
+      detail: `${tuning.nurseCount} nurse${tuning.nurseCount === 1 ? "" : "s"} for ${tuning.roomCapacity} rooms may understate rooming, reassessment, and task capacity limits.`,
+      impact: "Rooming, reassessment, discharge, admit, and order-start actions may be constrained by nursing support.",
+      severity: "caution",
+      suggestedFix: "Increase nurse count or reduce room capacity if the scenario is not intended to train nurse-capacity pressure.",
+      title: "Nurse capacity may be low",
+    });
+  }
+
+  if (tuning.techCount === 0 && (tuning.patientWorkupMix === "higher_workup" || tuning.labTurnaroundTypicalMinutes <= 45)) {
+    items.push({
+      detail: "Higher workup demand without tech capacity can make lab, ECG, and transport assumptions look too optimistic.",
+      impact: "Diagnostic throughput may appear faster or less constrained than the scenario narrative suggests.",
+      severity: "caution",
+      suggestedFix: "Add at least 1 tech, lower workup intensity, or lengthen lab/imaging timing if tech capacity should be scarce.",
+      title: "Ancillary capacity may be low",
+    });
+  }
+
+  if (boardingShareOfShift >= 0.35 || tuning.boardingDurationTypicalMinutes >= 180) {
+    items.push({
+      detail: `${tuning.boardingDurationTypicalMinutes} min boarding can dominate room availability for a ${tuning.shiftDurationMinutes} min run.`,
+      impact: "Admitted patients can hold ED rooms for much of the run, making boarding the primary driver of crowding.",
+      severity: boardingShareOfShift >= 0.5 ? "risk" : "caution",
+      suggestedFix: "Reduce boarding typical minutes, lengthen the run, increase room capacity, or keep this intentionally for boarding-surge training.",
+      title: "Boarding may dominate the scenario",
+    });
+  }
+
+  if (tuning.roomCleaningTypicalMinutes >= 30 || roomTurnoverPressure >= 2) {
+    items.push({
+      detail: `${tuning.roomCleaningTypicalMinutes} min room cleaning may become a throughput bottleneck after discharges.`,
+      impact: "Rooms can remain unavailable after departure, delaying placement even when providers are ready.",
+      severity: tuning.roomCleaningTypicalMinutes >= 45 ? "risk" : "caution",
+      suggestedFix: "Lower room clean typical minutes, increase room capacity, or keep this if the goal is bed-turnover training.",
+      title: "Room turnover may be slow",
+    });
+  }
+
+  if (tuning.lwbsEnabled && tuning.minimumWaitBeforeLWBS < 45) {
+    items.push({
+      detail: `${tuning.minimumWaitBeforeLWBS} min minimum wait before LWBS may create early departures in moderate-volume scenarios.`,
+      impact: "LWBS can become a dominant outcome before the board has enough time to recover flow.",
+      severity: tuning.minimumWaitBeforeLWBS < 30 ? "risk" : "caution",
+      suggestedFix: "Raise the minimum wait before LWBS, disable LWBS for flow-only training, or use this intentionally for LWBS prevention drills.",
+      title: "LWBS threshold is aggressive",
+    });
+  }
+
+  if (!tuning.lwbsEnabled && tuning.expectedArrivalsPerHour >= 14) {
+    items.push({
+      detail: "LWBS is disabled during a high-arrival scenario, so waiting-room pressure may accumulate without patient departure relief.",
+      impact: "Waiting-room census and longest-wait metrics can climb continuously because patients do not leave from waiting.",
+      severity: "caution",
+      suggestedFix: "Enable LWBS for crowding realism, lower arrivals per hour, or keep disabled if the goal is maximum-throughput stress testing.",
+      title: "LWBS is disabled under high arrivals",
+    });
+  }
+
+  if (tuning.patientAcuityMix === "higher_acuity" && tuning.patientAdmissionMix === "higher_admit") {
+    items.push({
+      detail: "Higher acuity combined with higher admission pressure is useful for surge training, but it can make boarding and hospitalist timing drive most outcomes.",
+      impact: "The scenario may become more about inpatient admission flow than ED front-end throughput.",
+      severity: "caution",
+      suggestedFix: "Use standard admission pressure, reduce acuity mix, or keep both high if the intended objective is boarding surge management.",
+      title: "Patient mix is high complexity",
+    });
+  }
+
+  if (tuning.stemiDoorToEcgTargetMinutes > tuning.acsDoorToEcgTargetMinutes) {
+    items.push({
+      detail: "STEMI ECG target is longer than the ACS ECG target; confirm this is intentional.",
+      impact: "Cardiac metric interpretation may feel backwards because the highest-risk pathway has a looser ECG target.",
+      severity: "risk",
+      suggestedFix: "Set STEMI ECG target less than or equal to the ACS ECG target.",
+      title: "Cardiac timing target conflict",
+    });
+  }
+
+  if (tuning.sepsisAntibioticsMinutes < tuning.sepsisBloodCultureMinutes) {
+    items.push({
+      detail: "Antibiotics are targeted before blood cultures; this may be intentional for flow, but it conflicts with the usual simulated sequence.",
+      impact: "Sepsis bundle timeline review may look out of order during debrief and export review.",
+      severity: "caution",
+      suggestedFix: "Set blood culture timing before antibiotics, or keep this if the scenario intentionally compresses antibiotics first.",
+      title: "Sepsis sequence is unusual",
+    });
+  }
+
+  if (
+    tuning.expectedArrivalsPerHour <= 0 ||
+    tuning.roomCapacity <= 0 ||
+    tuning.providerCount <= 0 ||
+    tuning.providerEvaluationTypicalMinutes <= 0 ||
+    tuning.triageTypicalMinutes <= 0 ||
+    tuning.labTurnaroundTypicalMinutes <= 0 ||
+    tuning.imagingTurnaroundTypicalMinutes <= 0 ||
+    tuning.admissionDecisionTypicalMinutes <= 0 ||
+    tuning.roomCleaningTypicalMinutes < 0 ||
+    tuning.shiftDurationMinutes <= 0
+  ) {
+    items.push({
+      detail: "One or more capacity or timing values are zero or negative. Use positive values for a meaningful simulation run.",
+      impact: "The simulation may create unrealistic capacity, timing, or throughput behavior.",
+      severity: "risk",
+      suggestedFix: "Return the highlighted capacity and timing fields to positive operational values, or use Defaults to reset.",
+      title: "Invalid capacity or timing value",
+    });
+  }
+
+  return items;
+}
+
 export function App() {
   const [initialAppState] = useState<SavedAppState | undefined>(() => loadSavedAppState());
   const [draftTuning, setDraftTuning] = useState<ScenarioTuningConfig>({
@@ -2213,7 +3142,10 @@ export function App() {
   const [selectedRightRailTab, setSelectedRightRailTab] = useState<RightRailTab>(initialRightRailTab);
   const [autoAdvanceSeconds, setAutoAdvanceSeconds] = useState(initialAppState?.autoAdvanceSeconds ?? DEFAULT_AUTO_ADVANCE_SECONDS);
   const [coachDemoEnabled, setCoachDemoEnabled] = useState(false);
-  const [colorMode, setColorMode] = useState<ColorMode>(initialAppState?.colorMode ?? "light");
+  const [colorMode, setColorMode] = useState<ColorMode>(normalizeColorMode(initialAppState?.colorMode));
+  const [defaultDarkColorMode, setDefaultDarkColorMode] = useState<DarkColorMode>(
+    normalizeDarkColorMode(initialAppState?.defaultDarkColorMode),
+  );
   const [visibleCoachComparisonIds, setVisibleCoachComparisonIds] = useState<WhatIfCoachStrategyId[]>(
     defaultVisibleCoachComparisonIds,
   );
@@ -2223,8 +3155,15 @@ export function App() {
   const [showSepsisMetrics, setShowSepsisMetrics] = useState(initialAppState?.showSepsisMetrics ?? true);
   const [showTooltips, setShowTooltips] = useState(initialAppState?.showTooltips ?? true);
   const [showAllCoachRules, setShowAllCoachRules] = useState(false);
+  const [customAssumptionProfiles, setCustomAssumptionProfiles] = useState<AssumptionProfile[]>(() => loadAssumptionProfiles());
+  const [assumptionProfileEditSession, setAssumptionProfileEditSession] = useState<AssumptionProfileEditSession | undefined>();
+  const [assumptionProfileName, setAssumptionProfileName] = useState("");
+  const [assumptionProfileStatus, setAssumptionProfileStatus] = useState<string | undefined>();
   const [savedRunRecords, setSavedRunRecords] = useState<SavedRunRecord[]>(() => loadSavedRunRecords());
   const [savedRunStatus, setSavedRunStatus] = useState<string | undefined>();
+  const [loadedSavedRunRecordId, setLoadedSavedRunRecordId] = useState<string | undefined>(
+    initialAppState?.loadedSavedRunRecordId,
+  );
   const [replaySession, setReplaySession] = useState<ReplaySession | undefined>();
   const benchmarkCacheRef = useRef<{ key: string; benchmark: OptimalFlowBenchmark } | undefined>(undefined);
   const isReplayMode = replaySession !== undefined;
@@ -2234,6 +3173,21 @@ export function App() {
     [run.patients, selectedPatientId],
   );
   const availableActions = getAvailableProviderActions(run, selectedPatient?.id);
+  const loadedSavedRunRecord = useMemo(
+    () => savedRunRecords.find((record) => record.id === loadedSavedRunRecordId),
+    [loadedSavedRunRecordId, savedRunRecords],
+  );
+  const replayShortcutRecord = loadedSavedRunRecord ?? savedRunRecords[0];
+  const assumptionProfiles = useMemo(
+    () => {
+      const overrides = new Map(customAssumptionProfiles.filter((profile) => profile.baseProfileId).map((profile) => [profile.baseProfileId, profile]));
+      const effectiveBuiltIns = builtInAssumptionProfiles.map((profile) => overrides.get(profile.id) ?? profile);
+      const standaloneCustomProfiles = customAssumptionProfiles.filter((profile) => !profile.baseProfileId);
+
+      return [...effectiveBuiltIns, ...standaloneCustomProfiles];
+    },
+    [customAssumptionProfiles],
+  );
   const boardColumns = useMemo(() => {
     const flowColumns = activeTuning.fastTrackEnabled
       ? baseBoardColumns
@@ -2300,7 +3254,12 @@ export function App() {
     ],
     [benchmark, run],
   );
-  const coachRecommendation = useMemo(() => getBenchmarkCoachRecommendation(run), [run]);
+  const liveCoachRecommendation = useMemo(() => getBenchmarkCoachRecommendation(run), [run]);
+  const replayCoachRecommendation = useMemo(
+    () => (replaySession ? createReplayCoachRecommendation(replaySession.sourceRun, run) : undefined),
+    [replaySession, run],
+  );
+  const coachRecommendation = isReplayMode ? replayCoachRecommendation : liveCoachRecommendation;
   const selectedCoreMetric =
     coreMetrics.find((metric) => metric.id === selectedCoreMetricId) ??
     coreMetrics.find((metric) => metric.id === "waiting-room-census");
@@ -2308,6 +3267,9 @@ export function App() {
     () => createCalibrationItems(draftTuning, activeTuning),
     [activeTuning, draftTuning],
   );
+  const scenarioValidationItems = useMemo(() => createScenarioValidationItems(draftTuning), [draftTuning]);
+  const scenarioValidationRiskCount = scenarioValidationItems.filter((item) => item.severity === "risk").length;
+  const scenarioValidationCautionCount = scenarioValidationItems.filter((item) => item.severity === "caution").length;
   const localCalibrationCount = calibrationItems.filter((item) => item.status === "local").length;
   const draftCalibrationCount = calibrationItems.filter((item) => item.status === "draft").length;
   const needsCalibrationDataCount = calibrationItems.filter((item) => item.status === "needs-data").length;
@@ -2347,10 +3309,10 @@ export function App() {
           minute: nextMinute,
         };
       });
-    }, autoAdvanceSeconds * 1000);
+    }, replaySession.playbackSpeedSeconds * 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [autoAdvanceSeconds, replaySession?.isPlaying]);
+  }, [replaySession?.isPlaying, replaySession?.playbackSpeedSeconds]);
 
   useEffect(() => {
     if (isReplayMode) {
@@ -2366,8 +3328,10 @@ export function App() {
       activeTuning,
       autoAdvanceSeconds,
       colorMode,
+      defaultDarkColorMode,
       draftTuning,
       run,
+      loadedSavedRunRecordId,
       selectedCoreMetricId,
       selectedMainViewTab,
       selectedPatientId,
@@ -2383,8 +3347,10 @@ export function App() {
     activeTuning,
     autoAdvanceSeconds,
     colorMode,
+    defaultDarkColorMode,
     draftTuning,
     run,
+    loadedSavedRunRecordId,
     selectedCoreMetricId,
     selectedMainViewTab,
     selectedPatientId,
@@ -2412,11 +3378,13 @@ export function App() {
 
     if (run.status === "running") {
       setCoachDemoEnabled(false);
+      setLoadedSavedRunRecordId(undefined);
       updateRun(pauseSimulation(run));
       return;
     }
 
     if (run.status === "not_started" || run.status === "paused") {
+      setLoadedSavedRunRecordId(undefined);
       updateRun(startSimulation(run));
     }
   }
@@ -2430,6 +3398,7 @@ export function App() {
     for (let index = 0; index < minutes; index += 1) {
       nextRun = advanceOneMinute(nextRun, scenario);
     }
+    setLoadedSavedRunRecordId(undefined);
     updateRun(nextRun);
   }
 
@@ -2439,6 +3408,7 @@ export function App() {
     }
 
     setCoachDemoEnabled(false);
+    setLoadedSavedRunRecordId(undefined);
     updateRun(applyProviderAction(run, actionType, selectedPatient?.id));
   }
 
@@ -2458,6 +3428,7 @@ export function App() {
 
     setCoachDemoEnabled(false);
     setSelectedPatientId(coachRecommendation.patientId);
+    setLoadedSavedRunRecordId(undefined);
     updateRun(applyProviderAction(run, coachRecommendation.actionType, coachRecommendation.patientId));
   }
 
@@ -2480,6 +3451,7 @@ export function App() {
 
     setSelectedPatientId(undefined);
     setCoachDemoEnabled(false);
+    setLoadedSavedRunRecordId(undefined);
     setRun(createSimulationRun(scenario, activeDeck));
   }
 
@@ -2490,6 +3462,7 @@ export function App() {
 
     setSelectedSetupPanelTab("live-operations");
     setSelectedRightRailTab("coach");
+    setLoadedSavedRunRecordId(undefined);
 
     if (coachDemoEnabled) {
       setCoachDemoEnabled(false);
@@ -2582,6 +3555,7 @@ export function App() {
     setCoachDemoEnabled(false);
     setDraftTuning(defaultTuningConfig);
     setActiveTuning(defaultTuningConfig);
+    setAssumptionProfileEditSession(undefined);
     setSelectedPresetId("default");
     setActiveDeck(nextBundle.deck);
     setRun(nextBundle.run);
@@ -2594,6 +3568,195 @@ export function App() {
 
     setSelectedPresetId("default");
     setDraftTuning(localBaselineTuningConfig);
+    setAssumptionProfileEditSession(undefined);
+    setAssumptionProfileStatus("Loaded Local Baseline into draft assumptions. Use Apply scenario when ready.");
+  }
+
+  function handleApplyAssumptionProfile(profile: AssumptionProfile) {
+    if (isReplayMode) {
+      return;
+    }
+
+    setSelectedPresetId("default");
+    setDraftTuning(cloneScenarioTuning(profile.tuning));
+    setAssumptionProfileEditSession(undefined);
+    setAssumptionProfileStatus(`Loaded ${profile.name} into draft assumptions. Use Apply scenario when ready.`);
+  }
+
+  function handleEditAssumptionProfile(profile: AssumptionProfile) {
+    if (isReplayMode) {
+      return;
+    }
+
+    setSelectedPresetId("default");
+    setDraftTuning(cloneScenarioTuning(profile.tuning));
+    setAssumptionProfileEditSession({
+      baseProfileId: profile.baseProfileId ?? (profile.kind === "built-in" ? profile.id : undefined),
+      profileId: profile.id,
+      profileName: profile.name,
+    });
+    setAssumptionProfileName(profile.name);
+    setAssumptionProfileStatus(`Editing ${profile.name}. Adjust Scenario Tuning, then save the profile changes.`);
+    setSelectedSetupPanelTab("scenario");
+  }
+
+  function upsertCustomAssumptionProfile(profile: AssumptionProfile) {
+    const nextProfiles = customAssumptionProfiles.some((item) => item.id === profile.id)
+      ? customAssumptionProfiles.map((item) => (item.id === profile.id ? profile : item))
+      : [profile, ...customAssumptionProfiles];
+
+    saveAssumptionProfiles(nextProfiles);
+    setCustomAssumptionProfiles(nextProfiles);
+  }
+
+  function handleSaveProfileEdits() {
+    if (isReplayMode || !assumptionProfileEditSession) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existingCustomProfile = customAssumptionProfiles.find((profile) => profile.id === assumptionProfileEditSession.profileId);
+    const profileId = existingCustomProfile?.id ?? `profile-${now}-${Math.random().toString(36).slice(2, 8)}`;
+    const nextProfile: AssumptionProfile = {
+      baseProfileId: assumptionProfileEditSession.baseProfileId,
+      createdAt: existingCustomProfile?.createdAt ?? now,
+      description: assumptionProfileEditSession.baseProfileId
+        ? `Customized local version of ${assumptionProfileEditSession.profileName}.`
+        : existingCustomProfile?.description ?? "Saved from profile editor.",
+      id: profileId,
+      kind: "custom",
+      name: assumptionProfileEditSession.profileName,
+      tuning: cloneScenarioTuning(draftTuning),
+      updatedAt: now,
+      version: 1,
+    };
+
+    upsertCustomAssumptionProfile(nextProfile);
+    setAssumptionProfileEditSession({
+      ...assumptionProfileEditSession,
+      profileId,
+    });
+    setAssumptionProfileStatus(`Saved changes to ${assumptionProfileEditSession.profileName}.`);
+  }
+
+  function handleSaveProfileAsNew() {
+    if (isReplayMode) {
+      return;
+    }
+
+    const trimmedName = assumptionProfileName.trim();
+    if (!trimmedName) {
+      setAssumptionProfileStatus("Enter a profile name before saving a new profile.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextProfile: AssumptionProfile = {
+      createdAt: now,
+      description: "Saved from current profile edits.",
+      id: `profile-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: "custom",
+      name: trimmedName,
+      tuning: cloneScenarioTuning(draftTuning),
+      updatedAt: now,
+      version: 1,
+    };
+
+    upsertCustomAssumptionProfile(nextProfile);
+    setAssumptionProfileEditSession({
+      profileId: nextProfile.id,
+      profileName: nextProfile.name,
+    });
+    setAssumptionProfileStatus(`Saved ${trimmedName} as a new assumption profile.`);
+  }
+
+  function handleDuplicateAssumptionProfile(profile: AssumptionProfile) {
+    const now = new Date().toISOString();
+    const copyName = `${profile.name} Copy`;
+    const nextProfile: AssumptionProfile = {
+      createdAt: now,
+      description: `Copy of ${profile.name}.`,
+      id: `profile-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: "custom",
+      name: copyName,
+      tuning: cloneScenarioTuning(profile.tuning),
+      updatedAt: now,
+      version: 1,
+    };
+
+    upsertCustomAssumptionProfile(nextProfile);
+    setAssumptionProfileName(copyName);
+    setAssumptionProfileStatus(`Duplicated ${profile.name} as ${copyName}.`);
+  }
+
+  function handleCancelProfileEdit() {
+    setAssumptionProfileEditSession(undefined);
+    setAssumptionProfileStatus("Profile editing canceled. Draft assumptions were left unchanged.");
+  }
+
+  function handleResetAssumptionProfile(profile: AssumptionProfile) {
+    if (!profile.baseProfileId) {
+      return;
+    }
+
+    const baseProfile = builtInAssumptionProfiles.find((item) => item.id === profile.baseProfileId);
+    const nextProfiles = customAssumptionProfiles.filter((item) => item.id !== profile.id);
+    saveAssumptionProfiles(nextProfiles);
+    setCustomAssumptionProfiles(nextProfiles);
+    setAssumptionProfileEditSession(undefined);
+    setAssumptionProfileStatus(`Reset ${baseProfile?.name ?? profile.name} to the built-in profile.`);
+  }
+
+  function handleSaveAssumptionProfile() {
+    if (isReplayMode) {
+      return;
+    }
+
+    const trimmedName = assumptionProfileName.trim();
+    if (!trimmedName) {
+      setAssumptionProfileStatus("Enter a profile name before saving.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existingProfile = customAssumptionProfiles.find(
+      (profile) => profile.name.toLowerCase() === trimmedName.toLowerCase(),
+    );
+    const nextProfile: AssumptionProfile = {
+      createdAt: existingProfile?.createdAt ?? now,
+      description: "Saved from current draft assumptions.",
+      id: existingProfile?.id ?? `profile-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: "custom",
+      name: trimmedName,
+      tuning: cloneScenarioTuning(draftTuning),
+      updatedAt: now,
+      version: 1,
+    };
+    const nextProfiles = existingProfile
+      ? customAssumptionProfiles.map((profile) => (profile.id === existingProfile.id ? nextProfile : profile))
+      : [nextProfile, ...customAssumptionProfiles];
+
+    saveAssumptionProfiles(nextProfiles);
+    setCustomAssumptionProfiles(nextProfiles);
+    setAssumptionProfileName("");
+    setAssumptionProfileEditSession({
+      profileId: nextProfile.id,
+      profileName: nextProfile.name,
+    });
+    setAssumptionProfileStatus(
+      existingProfile ? `Updated assumption profile ${trimmedName}.` : `Saved assumption profile ${trimmedName}.`,
+    );
+  }
+
+  function handleDeleteAssumptionProfile(profileId: string) {
+    const profile = customAssumptionProfiles.find((item) => item.id === profileId);
+    const nextProfiles = customAssumptionProfiles.filter((item) => item.id !== profileId);
+    saveAssumptionProfiles(nextProfiles);
+    setCustomAssumptionProfiles(nextProfiles);
+    if (assumptionProfileEditSession?.profileId === profileId) {
+      setAssumptionProfileEditSession(undefined);
+    }
+    setAssumptionProfileStatus(profile ? `Deleted assumption profile ${profile.name}.` : "Deleted assumption profile.");
   }
 
   function createCurrentSavedRunRecord(): SavedRunRecord {
@@ -2622,7 +3785,7 @@ export function App() {
 
     try {
       if ("showSaveFilePicker" in window) {
-        const fileHandle = await (window as unknown as {
+      const fileHandle = await (window as unknown as {
           showSaveFilePicker: (options: {
             suggestedName: string;
             types: Array<{ accept: Record<string, string[]>; description: string }>;
@@ -2639,7 +3802,7 @@ export function App() {
         const writable = await fileHandle.createWritable();
         await writable.write(json);
         await writable.close();
-        setSavedRunStatus(successMessage);
+        setSavedRunStatus(`${successMessage} File saved to the location you selected.`);
         return;
       }
 
@@ -2650,7 +3813,7 @@ export function App() {
       anchor.download = fileName;
       anchor.click();
       URL.revokeObjectURL(url);
-      setSavedRunStatus(`${successMessage} Browser downloaded ${fileName}.`);
+      setSavedRunStatus(`${successMessage} Downloaded ${fileName}.`);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setSavedRunStatus("File export canceled.");
@@ -2668,7 +3831,7 @@ export function App() {
     }
 
     const record = createCurrentSavedRunRecord();
-    await writeSavedRunsFile([record], savedRunsExportFileName(), `Exported current run: ${record.name}.`);
+    await writeSavedRunsFile([record], savedRunsExportFileName(record), `Exported current run file for ${record.name}.`);
   }
 
   function handleRestoreSavedRun(record: SavedRunRecord) {
@@ -2685,31 +3848,48 @@ export function App() {
     setSelectedPresetId(record.selectedPresetId);
     setActiveDeck(record.activeDeck);
     setRun(restoredRun);
-    setSavedRunStatus(`Loaded ${record.name}.`);
+    setLoadedSavedRunRecordId(record.id);
+    setSelectedSetupPanelTab("live-operations");
+    setSavedRunStatus(`Loaded ${record.name}. The board is paused at ${formatMinute(restoredRun.currentMinute)} so you can continue from that saved state.`);
   }
 
   function handleDeleteSavedRun(recordId: string) {
     const nextRecords = savedRunRecords.filter((record) => record.id !== recordId);
     saveRunRecords(nextRecords);
     setSavedRunRecords(nextRecords);
-    setSavedRunStatus("Saved run deleted.");
+    if (loadedSavedRunRecordId === recordId) {
+      setLoadedSavedRunRecordId(undefined);
+    }
+    setSavedRunStatus("Saved run removed from this Files list.");
   }
 
   function handleImportSavedRunsFile(text: string) {
     try {
-      const importedRecords = parseSavedRunsImport(text);
+      const importResult = parseSavedRunsImport(text);
+      const importedRecords = importResult.records;
       if (importedRecords.length === 0) {
-        setSavedRunStatus("Import did not find any saved runs.");
+        setSavedRunStatus(
+          importResult.invalidCount > 0
+            ? "Import found a JSON file, but it did not contain a valid ED Provider Flow saved run."
+            : "Import did not find any saved runs.",
+        );
         return;
       }
 
+      const existingIds = new Set(savedRunRecords.map((record) => record.id));
+      const duplicateCount = importedRecords.filter((record) => existingIds.has(record.id)).length;
       const mergedRecords = [...importedRecords, ...savedRunRecords].filter(
         (record, index, allRecords) => allRecords.findIndex((candidate) => candidate.id === record.id) === index,
       );
+      const addedCount = importedRecords.length - duplicateCount;
 
       saveRunRecords(mergedRecords);
       setSavedRunRecords(mergedRecords);
-      setSavedRunStatus(`Imported ${importedRecords.length} saved run${importedRecords.length === 1 ? "" : "s"}.`);
+      setSavedRunStatus(
+        `Imported ${addedCount} saved run${addedCount === 1 ? "" : "s"}${
+          duplicateCount > 0 ? `; skipped ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}` : ""
+        }${importResult.invalidCount > 0 ? `; ignored ${importResult.invalidCount} invalid record${importResult.invalidCount === 1 ? "" : "s"}` : ""}.`,
+      );
     } catch {
       setSavedRunStatus("Import failed. Choose a valid saved-runs JSON file.");
     }
@@ -2725,12 +3905,14 @@ export function App() {
     setSelectedPresetId(record.selectedPresetId);
     setActiveDeck(record.activeDeck);
     setRun(createReplayRun(record.run, replayMinute));
+    setLoadedSavedRunRecordId(record.id);
     setReplaySession({
       activeDeck: record.activeDeck,
       activeTuning: record.activeTuning,
       draftTuning: record.draftTuning,
       isPlaying: false,
       minute: replayMinute,
+      playbackSpeedSeconds: DEFAULT_REPLAY_PLAYBACK_SECONDS,
       previousActiveDeck: activeDeck,
       previousActiveTuning: activeTuning,
       previousDraftTuning: draftTuning,
@@ -2742,7 +3924,11 @@ export function App() {
     });
     setSelectedSetupPanelTab("live-operations");
     setSelectedRightRailTab("actions");
-    setSavedRunStatus(`Replay loaded from start for ${record.name}. Press Play Replay to begin.`);
+    setSavedRunStatus(`Replay loaded from the start for ${record.name}. Use Play, step, or the scrubber to review the saved timeline.`);
+  }
+
+  function handleToggleDarkMode(enabled: boolean) {
+    setColorMode(enabled ? defaultDarkColorMode : "light");
   }
 
   function handleReplayPlayPause() {
@@ -2761,13 +3947,41 @@ export function App() {
       return;
     }
 
-    const nextMinute = Math.min(replaySession.sourceRun.currentMinute, Math.max(replaySession.sourceRun.shiftStartMinute, replaySession.minute + minutes));
+    const nextMinute = Math.min(
+      replaySession.sourceRun.currentMinute,
+      Math.max(replaySession.sourceRun.shiftStartMinute, replaySession.minute + minutes),
+    );
     setRun(createReplayRun(replaySession.sourceRun, nextMinute));
     setReplaySession({
       ...replaySession,
       isPlaying: false,
       minute: nextMinute,
     });
+  }
+
+  function handleReplayJump(minute: number) {
+    if (!replaySession) {
+      return;
+    }
+
+    const nextMinute = Math.min(replaySession.sourceRun.currentMinute, Math.max(replaySession.sourceRun.shiftStartMinute, minute));
+    setRun(createReplayRun(replaySession.sourceRun, nextMinute));
+    setReplaySession({
+      ...replaySession,
+      isPlaying: false,
+      minute: nextMinute,
+    });
+  }
+
+  function handleReplaySpeedChange(speedSeconds: number) {
+    setReplaySession((currentSession) =>
+      currentSession
+        ? {
+            ...currentSession,
+            playbackSpeedSeconds: speedSeconds,
+          }
+        : undefined,
+    );
   }
 
   function handleExitReplay() {
@@ -2824,7 +4038,25 @@ export function App() {
     draftTuning.coachRiskWeight !== activeTuning.coachRiskWeight ||
     draftTuning.coachWaitWeight !== activeTuning.coachWaitWeight ||
     JSON.stringify(draftTuning.coachStrategyPriorityProfiles) !== JSON.stringify(activeTuning.coachStrategyPriorityProfiles);
-  const isConfigurationReviewFocused = selectedSetupPanelTab === "scenario" || selectedSetupPanelTab === "calibration";
+  const replayStartMinute = replaySession?.sourceRun.shiftStartMinute ?? 0;
+  const replayEndMinute = replaySession?.sourceRun.currentMinute ?? 0;
+  const replayMinuteChanges = replaySession ? createReplayMinuteChanges(replaySession.sourceRun, replaySession.minute) : [];
+  const replayActivityMinutes = replaySession ? createReplayActivityMinutes(replaySession.sourceRun) : [];
+  const replayPreviousActivityMinute = replaySession
+    ? previousReplayActivityMinute(replayActivityMinutes, replaySession.minute)
+    : undefined;
+  const replayNextActivityMinute = replaySession
+    ? nextReplayActivityMinute(replayActivityMinutes, replaySession.minute)
+    : undefined;
+  const replayTotalMinutes = Math.max(0, replayEndMinute - replayStartMinute);
+  const replayElapsedMinutes = replaySession ? Math.max(0, replaySession.minute - replayStartMinute) : 0;
+  const replayProgressPercent = replayTotalMinutes > 0 ? Math.round((replayElapsedMinutes / replayTotalMinutes) * 100) : 100;
+  const replayRemainingMinutes = replaySession ? Math.max(0, replayEndMinute - replaySession.minute) : 0;
+  const isConfigurationReviewFocused =
+    selectedSetupPanelTab === "scenario" ||
+    selectedSetupPanelTab === "calibration" ||
+    selectedSetupPanelTab === "configuration" ||
+    selectedSetupPanelTab === "files";
 
   return (
     <main className="appShell" data-theme={colorMode} data-tooltips={showTooltips ? "on" : "off"}>
@@ -2858,19 +4090,6 @@ export function App() {
             Live Operations
           </button>
           <button
-            aria-label="Files: export the current run, import saved run files, replay saved runs, and export activity CSV files."
-            aria-controls="files-panel"
-            aria-selected={selectedSetupPanelTab === "files"}
-            className={selectedSetupPanelTab === "files" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
-            data-tooltip="Manage files for this simulation: export the current run, import saved run JSON files, replay or load imported runs, and export activity CSV data."
-            id="files-tab"
-            onClick={() => setSelectedSetupPanelTab("files")}
-            role="tab"
-            type="button"
-          >
-            Files
-          </button>
-          <button
             aria-label="Additional Stats: review detailed live metrics, workflow measures, and performance indicators."
             aria-controls="additional-stats-panel"
             aria-selected={selectedSetupPanelTab === "additional-stats"}
@@ -2884,6 +4103,19 @@ export function App() {
             type="button"
           >
             Additional Stats
+          </button>
+          <button
+            aria-label="Files: export the current run, import saved run files, replay saved runs, and export activity CSV files."
+            aria-controls="files-panel"
+            aria-selected={selectedSetupPanelTab === "files"}
+            className={selectedSetupPanelTab === "files" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Manage files for this simulation: export the current run, import saved run JSON files, replay or load imported runs, and export activity CSV data."
+            id="files-tab"
+            onClick={() => setSelectedSetupPanelTab("files")}
+            role="tab"
+            type="button"
+          >
+            Files
           </button>
           <button
             aria-label="Scenario Tuning: adjust simulation assumptions, staffing, room capacity, arrival patterns, and operational timing."
@@ -2910,6 +4142,19 @@ export function App() {
             type="button"
           >
             Model Assumptions
+          </button>
+          <button
+            aria-label="Configuration: choose display preferences, color palettes, and visual settings."
+            aria-controls="configuration-panel"
+            aria-selected={selectedSetupPanelTab === "configuration"}
+            className={selectedSetupPanelTab === "configuration" ? "active statusTooltip tabTooltip" : "statusTooltip tabTooltip"}
+            data-tooltip="Choose the visual palette and display preferences for the simulation board."
+            id="configuration-tab"
+            onClick={() => setSelectedSetupPanelTab("configuration")}
+            role="tab"
+            type="button"
+          >
+            Configuration
           </button>
         </div>
 
@@ -2990,6 +4235,26 @@ export function App() {
                   <RotateCcw size={18} />
                   Reset
                 </button>
+                {replayShortcutRecord ? (
+                  <button
+                    aria-label={`Replay saved run ${replayShortcutRecord.name}.`}
+                    className="replayLoadedButton statusTooltip"
+                    data-tooltip={`${loadedSavedRunRecord ? "Replay loaded file" : "Replay saved file"}: ${
+                      replayShortcutRecord.name
+                    }. Saved at ${formatMinute(replayShortcutRecord.run.currentMinute)} with ${
+                      replayShortcutRecord.run.patients.length
+                    } patients and ${replayShortcutRecord.run.decisions.length} decisions.`}
+                    disabled={isReplayMode}
+                    onClick={() => handleStartReplay(replayShortcutRecord)}
+                    type="button"
+                  >
+                    <SkipBack size={18} />
+                    <span>
+                      Replay
+                      <small>{replayShortcutRecord.name}</small>
+                    </span>
+                  </button>
+                ) : null}
                 <button
                   aria-label={
                     coachDemoEnabled
@@ -3044,21 +4309,54 @@ export function App() {
                   </label>
                   <label>
                     <input
-                      checked={colorMode === "dark"}
-                      onChange={(event) => setColorMode(event.currentTarget.checked ? "dark" : "light")}
+                      checked={isDarkColorMode(colorMode)}
+                      onChange={(event) => handleToggleDarkMode(event.currentTarget.checked)}
                       type="checkbox"
                     />
-                    <span>{colorMode === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                    <span>{isDarkColorMode(colorMode) ? "Dark Mode" : "Light Mode"}</span>
                   </label>
                 </div>
               </div>
               {replaySession ? (
                 <div className="replayControlPanel" aria-label="Replay controls">
-                  <div>
-                    <strong>Replay: {replaySession.record.name}</strong>
-                    <span>
-                      {formatMinute(replaySession.minute)} of {formatMinute(replaySession.sourceRun.currentMinute)}
-                    </span>
+                  <div className="replayControlHeader">
+                    <div>
+                      <strong>Replay: {replaySession.record.name}</strong>
+                      <span>
+                        Read-only saved run review · {formatMinute(replaySession.minute)} of {formatMinute(replayEndMinute)}
+                      </span>
+                    </div>
+                    <label>
+                      <span>Replay speed</span>
+                      <select
+                        aria-label="Replay speed"
+                        onChange={(event) => handleReplaySpeedChange(Number(event.currentTarget.value))}
+                        value={replaySession.playbackSpeedSeconds}
+                      >
+                        {replayPlaybackSpeedOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label} / min
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="replayOverviewGrid" aria-label="Replay review summary">
+                    <div>
+                      <span>Current time</span>
+                      <strong>{formatMinute(replaySession.minute)}</strong>
+                      <small>{replayElapsedMinutes} min from start</small>
+                    </div>
+                    <div>
+                      <span>Progress</span>
+                      <strong>{replayProgressPercent}%</strong>
+                      <small>{replayRemainingMinutes} min remaining</small>
+                    </div>
+                    <div>
+                      <span>Recorded activity</span>
+                      <strong>{replayActivityMinutes.length}</strong>
+                      <small>minutes with events or actions</small>
+                    </div>
                   </div>
                   <div className="replayActions">
                     <button
@@ -3073,6 +4371,28 @@ export function App() {
                       {replaySession.isPlaying ? "Pause Replay" : "Play Replay"}
                     </button>
                     <button
+                      aria-label="Jump replay to the beginning."
+                      className="statusTooltip"
+                      data-tooltip="Return replay to the first saved simulated minute."
+                      disabled={replaySession.minute <= replayStartMinute}
+                      onClick={() => handleReplayJump(replayStartMinute)}
+                      type="button"
+                    >
+                      <SkipBack size={18} />
+                      Start
+                    </button>
+                    <button
+                      aria-label="Step replay back by one simulated minute."
+                      className="statusTooltip"
+                      data-tooltip="Move the replay back by 1 saved simulated minute."
+                      disabled={replaySession.minute <= replayStartMinute}
+                      onClick={() => handleReplayStep(-1)}
+                      type="button"
+                    >
+                      <StepBack size={18} />
+                      -1 min
+                    </button>
+                    <button
                       aria-label="Step replay forward by one simulated minute."
                       className="statusTooltip"
                       data-tooltip="Move the replay ahead by 1 saved simulated minute."
@@ -3084,15 +4404,15 @@ export function App() {
                       1 min
                     </button>
                     <button
-                      aria-label="Step replay forward by five simulated minutes."
+                      aria-label="Jump replay to the end."
                       className="statusTooltip"
-                      data-tooltip="Move the replay ahead by 5 saved simulated minutes."
+                      data-tooltip="Jump to the final saved simulated minute."
                       disabled={replaySession.minute >= replaySession.sourceRun.currentMinute}
-                      onClick={() => handleReplayStep(5)}
+                      onClick={() => handleReplayJump(replayEndMinute)}
                       type="button"
                     >
-                      <StepForward size={18} />
-                      5 min
+                      <SkipForward size={18} />
+                      End
                     </button>
                     <button
                       aria-label="Exit replay and return to the live working run."
@@ -3104,6 +4424,79 @@ export function App() {
                       <RotateCcw size={18} />
                       Exit Replay
                     </button>
+                  </div>
+                  <div className="replayTimeline">
+                    <span>{formatMinute(replayStartMinute)}</span>
+                    <input
+                      aria-label="Replay timeline"
+                      max={replayEndMinute}
+                      min={replayStartMinute}
+                      onChange={(event) => handleReplayJump(Number(event.currentTarget.value))}
+                      step={1}
+                      type="range"
+                      value={replaySession.minute}
+                    />
+                    <span>{formatMinute(replayEndMinute)}</span>
+                  </div>
+                  <div className="replayActivityJumps" aria-label="Replay activity jumps">
+                    <button
+                      className="statusTooltip"
+                      data-tooltip="Jump backward to the previous saved minute that has an event or provider action."
+                      disabled={replayPreviousActivityMinute === undefined}
+                      onClick={() => {
+                        if (replayPreviousActivityMinute !== undefined) {
+                          handleReplayJump(replayPreviousActivityMinute);
+                        }
+                      }}
+                      type="button"
+                    >
+                      <StepBack size={16} />
+                      Previous activity
+                      <span>{replayPreviousActivityMinute === undefined ? "None" : formatMinute(replayPreviousActivityMinute)}</span>
+                    </button>
+                    <button
+                      className="statusTooltip"
+                      data-tooltip="Jump forward to the next saved minute that has an event or provider action."
+                      disabled={replayNextActivityMinute === undefined}
+                      onClick={() => {
+                        if (replayNextActivityMinute !== undefined) {
+                          handleReplayJump(replayNextActivityMinute);
+                        }
+                      }}
+                      type="button"
+                    >
+                      <StepForward size={16} />
+                      Next activity
+                      <span>{replayNextActivityMinute === undefined ? "None" : formatMinute(replayNextActivityMinute)}</span>
+                    </button>
+                  </div>
+                  <div className="replayChangePanel" aria-label="Replay changes at current minute">
+                    <div>
+                      <strong>What changed at {formatMinute(replaySession.minute)}</strong>
+                      <span>
+                        {replayMinuteChanges.length > 0
+                          ? `${replayMinuteChanges.length} timeline item${replayMinuteChanges.length === 1 ? "" : "s"}`
+                          : "No event or provider action recorded"}
+                      </span>
+                    </div>
+                    {replayMinuteChanges.length > 0 ? (
+                      <ul>
+                        {replayMinuteChanges.map((change, index) => (
+                          <li key={`${change.kind}-${change.label}-${index}`}>
+                            <span>{change.kind === "decision" ? "Action" : "Event"}</span>
+                            <div>
+                              <strong>{change.label}</strong>
+                              <small>
+                                {change.detail}
+                                {change.providerId ? ` · ${providerAssignmentLabel(change.providerId)}` : ""}
+                              </small>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Use the scrubber or step controls to move to the next minute with recorded activity.</p>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -3285,8 +4678,8 @@ export function App() {
                 status={savedRunStatus}
               />
             </section>
-            <section className="filesPanelSection" aria-label="CSV exports">
-              <h2>CSV Export</h2>
+            <section className="filesPanelSection" aria-label="Data exports">
+              <h2>Export</h2>
               <ExportPanel exportRuns={activityExportRuns} timeline={activityTimeline} />
             </section>
           </section>
@@ -3317,6 +4710,16 @@ export function App() {
                 </small>
               </div>
               <div className="scenarioActions">
+                {assumptionProfileEditSession ? (
+                  <>
+                    <button type="button" onClick={handleSaveProfileEdits} disabled={isReplayMode}>
+                      Save Profile Changes
+                    </button>
+                    <button type="button" onClick={handleSaveProfileAsNew} disabled={isReplayMode}>
+                      Save as New
+                    </button>
+                  </>
+                ) : null}
                 <button type="button" onClick={handleApplyScenario} disabled={!hasPendingScenarioChanges}>
                   Apply scenario
                 </button>
@@ -3325,183 +4728,266 @@ export function App() {
                 </button>
               </div>
             </div>
-            <div className="scenarioControls">
-              <div className="scenarioTopControls">
-                <div className="presetControl">
-                  <span>Scenario preset</span>
-                  <div className="presetButtonGroup" role="group" aria-label="Scenario preset">
-                    {scenarioPresets.map((preset) => (
-                      <button
-                        aria-pressed={selectedPresetId === preset.id}
-                        className={selectedPresetId === preset.id ? "active" : ""}
-                        key={preset.id}
-                        onClick={() => handlePresetChange(preset.id)}
-                        type="button"
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                  <small>{scenarioPresets.find((preset) => preset.id === selectedPresetId)?.description}</small>
+            {assumptionProfileEditSession ? (
+              <div className="scenarioProfileEditBanner">
+                <div>
+                  <strong>Editing {assumptionProfileEditSession.profileName}</strong>
+                  <span>
+                    Changes update the profile when you choose Save Profile Changes. Apply scenario still controls when the
+                    active simulation is rebuilt.
+                  </span>
                 </div>
-                <div className="triageModeControl">
-                  <span>Front-End Triage Provider</span>
-                  <div className="triageModeButtonGroup" role="group" aria-label="Front-End Triage Provider mode">
-                    {[
-                      { label: "Unavailable", value: "unavailable" as const },
-                      { label: "Manual", value: "manual" as const },
-                      { label: "Automated", value: "automated" as const },
-                    ].map((option) => (
-                      <button
-                        aria-pressed={draftTuning.triageProviderMode === option.value}
-                        className={draftTuning.triageProviderMode === option.value ? "active" : ""}
-                        key={option.value}
-                        onClick={() => handleTriageProviderModeChange(option.value)}
-                        type="button"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <small>
-                    {draftTuning.triageProviderMode === "automated"
-                      ? "Automated Provider"
-                      : draftTuning.triageProviderMode === "manual"
-                        ? "Manual Provider"
-                        : "Provider Unavailable"}
-                  </small>
-                </div>
-                <label className="roomCapacityControl">
-                  <span>ED room capacity</span>
+                <label>
+                  <span>Save as name</span>
                   <input
-                    min={1}
-                    max={40}
-                    onChange={(event) => updateDraftTuning("roomCapacity", Number(event.currentTarget.value))}
-                    type="number"
-                    value={draftTuning.roomCapacity}
+                    onChange={(event) => setAssumptionProfileName(event.currentTarget.value)}
+                    placeholder={assumptionProfileEditSession.profileName}
+                    type="text"
+                    value={assumptionProfileName}
                   />
                 </label>
-                <div className="providerCountControl">
-                  <span>Providers</span>
-                  <div className="providerButtonGroup" role="group" aria-label="Providers">
-                    {[1, 2, 3, 4].map((count) => (
-                      <button
-                        aria-pressed={draftTuning.providerCount === count}
-                        className={draftTuning.providerCount === count ? "active" : ""}
-                        key={count}
-                        onClick={() => updateDraftTuning("providerCount", count)}
-                        type="button"
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="providerModelControl">
-                  <span>Provider Model</span>
-                  <div className="providerModelButtonGroup" role="group" aria-label="Provider assignment model">
-                    {[
-                      { label: "Team", value: "team" as const },
-                      { label: "Assigned", value: "assigned" as const },
-                      { label: "Handoff", value: "assigned_with_handoff" as const },
-                    ].map((option) => (
-                      <button
-                        aria-pressed={draftTuning.providerAssignmentMode === option.value}
-                        className={`${draftTuning.providerAssignmentMode === option.value ? "active" : ""} ${
-                          option.value === "assigned_with_handoff" ? "wide" : ""
-                        }`.trim()}
-                        key={option.value}
-                        onClick={() => updateDraftTuning("providerAssignmentMode", option.value)}
-                        type="button"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <small>
-                    {draftTuning.providerAssignmentMode === "team"
-                      ? "Any provider may act"
-                      : draftTuning.providerAssignmentMode === "assigned"
-                        ? "Owner only"
-                        : "Owner preferred"}
-                  </small>
-                </div>
-                <div className="supportCountControl nurseCountControl">
-                  <span>Nurses</span>
-                  <div className="supportButtonGroup" role="group" aria-label="Nurse count">
-                    {[1, 2, 3, 4].map((count) => (
-                      <button
-                        aria-pressed={draftTuning.nurseCount === count}
-                        className={draftTuning.nurseCount === count ? "active" : ""}
-                        key={count}
-                        onClick={() => updateDraftTuning("nurseCount", count)}
-                        type="button"
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="supportCountControl techCountControl">
-                  <span>Techs</span>
-                  <div className="supportButtonGroup" role="group" aria-label="Tech count">
-                    {[0, 1, 2].map((count) => (
-                      <button
-                        aria-pressed={draftTuning.techCount === count}
-                        className={draftTuning.techCount === count ? "active" : ""}
-                        key={count}
-                        onClick={() => updateDraftTuning("techCount", count)}
-                        type="button"
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="shiftLengthControl">
-                  <span>Simulation length</span>
-                  <div className="shiftButtonGroup" role="group" aria-label="Simulation length">
-                    {[
-                      { label: "2 hr", value: 120 },
-                      { label: "4 hr", value: 240 },
-                      { label: "8 hr", value: 480 },
-                      { label: "12 hr", value: 720 },
-                      { label: "24 hr", value: 1440 },
-                      { label: "48 hr", value: 2880 },
-                    ].map((option) => (
-                      <button
-                        aria-label={`${option.label.replace(" hr", "")} hour simulation length`}
-                        aria-pressed={draftTuning.shiftDurationMinutes === option.value}
-                        className={draftTuning.shiftDurationMinutes === option.value ? "active" : ""}
-                        key={option.value}
-                        onClick={() => updateDraftTuning("shiftDurationMinutes", option.value)}
-                        type="button"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <label className="toggleControl scenarioToggle fastTrackToggleControl">
-                  <span>Fast Track</span>
-                  <input
-                    checked={draftTuning.fastTrackEnabled}
-                    onChange={(event) => updateDraftTuning("fastTrackEnabled", event.currentTarget.checked)}
-                    type="checkbox"
-                  />
-                  <small>{draftTuning.fastTrackEnabled ? "Open" : "Closed"}</small>
-                </label>
-                <label className="toggleControl scenarioToggle lwbsToggleControl">
-                  <span>LWBS</span>
-                  <input
-                    checked={draftTuning.lwbsEnabled}
-                    onChange={(event) => updateDraftTuning("lwbsEnabled", event.currentTarget.checked)}
-                    type="checkbox"
-                  />
-                  <small>{draftTuning.lwbsEnabled ? "Enabled" : "Disabled"}</small>
-                </label>
+                <button type="button" onClick={handleCancelProfileEdit}>
+                  Cancel Edit
+                </button>
               </div>
-              <div className="scenarioBottomControls">
+            ) : null}
+            <div className="scenarioControls">
+              <section className="scenarioControlBlock scenarioValidationBlock" aria-label="Scenario Validation">
+                <div className="scenarioSectionHeader scenarioValidationHeader">
+                  <div>
+                    <h3>Scenario Validation</h3>
+                    <small>Review advisory checks for capacity, timing, staffing, and patient-mix assumptions before applying the scenario.</small>
+                  </div>
+                  <div className="scenarioValidationSummary" aria-label="Scenario validation summary">
+                    {scenarioValidationRiskCount > 0 ? (
+                      <span className="risk">{scenarioValidationRiskCount} risk</span>
+                    ) : null}
+                    {scenarioValidationCautionCount > 0 ? (
+                      <span className="caution">{scenarioValidationCautionCount} caution</span>
+                    ) : null}
+                    {scenarioValidationItems.length === 0 ? <span className="ready">Ready</span> : null}
+                  </div>
+                </div>
+                {scenarioValidationItems.length > 0 ? (
+                  <div className="scenarioValidationGrid">
+                    {scenarioValidationItems.map((item) => (
+                      <article className={`scenarioValidationItem ${item.severity}`} key={`${item.severity}-${item.title}`}>
+                        <span>{item.severity === "risk" ? <CircleAlert size={16} /> : <CircleGauge size={16} />}</span>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <small>{item.detail}</small>
+                          <dl className="scenarioValidationGuidance">
+                            <div>
+                              <dt>Impact</dt>
+                              <dd>{item.impact}</dd>
+                            </div>
+                            <div>
+                              <dt>Suggested fix</dt>
+                              <dd>{item.suggestedFix}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="scenarioValidationReady">
+                    <ClipboardCheck size={18} />
+                    <span>No scenario validation issues detected for the current draft settings.</span>
+                  </div>
+                )}
+              </section>
+              <section className="scenarioControlBlock" aria-label="Scenario Setup">
+                <div className="scenarioSectionHeader">
+                  <h3>Scenario Setup</h3>
+                  <small>Choose the operating model, staffing, capacity, run length, and flow options for this scenario.</small>
+                </div>
+                <div className="scenarioTopControls">
+                  <div className="presetControl">
+                    <span>Scenario preset</span>
+                    <div className="presetButtonGroup" role="group" aria-label="Scenario preset">
+                      {scenarioPresets.map((preset) => (
+                        <button
+                          aria-pressed={selectedPresetId === preset.id}
+                          className={selectedPresetId === preset.id ? "active" : ""}
+                          key={preset.id}
+                          onClick={() => handlePresetChange(preset.id)}
+                          type="button"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small>{scenarioPresets.find((preset) => preset.id === selectedPresetId)?.description}</small>
+                  </div>
+                  <div className="triageModeControl">
+                    <span>Front-End Triage Provider</span>
+                    <div className="triageModeButtonGroup" role="group" aria-label="Front-End Triage Provider mode">
+                      {[
+                        { label: "Unavailable", value: "unavailable" as const },
+                        { label: "Manual", value: "manual" as const },
+                        { label: "Automated", value: "automated" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.triageProviderMode === option.value}
+                          className={draftTuning.triageProviderMode === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => handleTriageProviderModeChange(option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small>
+                      {draftTuning.triageProviderMode === "automated"
+                        ? "Automated Provider"
+                        : draftTuning.triageProviderMode === "manual"
+                          ? "Manual Provider"
+                          : "Provider Unavailable"}
+                    </small>
+                  </div>
+                  <label className="roomCapacityControl">
+                    <span>ED room capacity</span>
+                    <input
+                      min={1}
+                      max={40}
+                      onChange={(event) => updateDraftTuning("roomCapacity", Number(event.currentTarget.value))}
+                      type="number"
+                      value={draftTuning.roomCapacity}
+                    />
+                  </label>
+                  <div className="providerCountControl">
+                    <span>Providers</span>
+                    <div className="providerButtonGroup" role="group" aria-label="Providers">
+                      {[1, 2, 3, 4].map((count) => (
+                        <button
+                          aria-pressed={draftTuning.providerCount === count}
+                          className={draftTuning.providerCount === count ? "active" : ""}
+                          key={count}
+                          onClick={() => updateDraftTuning("providerCount", count)}
+                          type="button"
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="providerModelControl">
+                    <span>Provider Model</span>
+                    <div className="providerModelButtonGroup" role="group" aria-label="Provider assignment model">
+                      {[
+                        { label: "Team", value: "team" as const },
+                        { label: "Assigned", value: "assigned" as const },
+                        { label: "Handoff", value: "assigned_with_handoff" as const },
+                      ].map((option) => (
+                        <button
+                          aria-pressed={draftTuning.providerAssignmentMode === option.value}
+                          className={`${draftTuning.providerAssignmentMode === option.value ? "active" : ""} ${
+                            option.value === "assigned_with_handoff" ? "wide" : ""
+                          }`.trim()}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("providerAssignmentMode", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <small>
+                      {draftTuning.providerAssignmentMode === "team"
+                        ? "Any provider may act"
+                        : draftTuning.providerAssignmentMode === "assigned"
+                          ? "Owner only"
+                          : "Owner preferred"}
+                    </small>
+                  </div>
+                  <div className="supportCountControl nurseCountControl">
+                    <span>Nurses</span>
+                    <div className="supportButtonGroup" role="group" aria-label="Nurse count">
+                      {[1, 2, 3, 4].map((count) => (
+                        <button
+                          aria-pressed={draftTuning.nurseCount === count}
+                          className={draftTuning.nurseCount === count ? "active" : ""}
+                          key={count}
+                          onClick={() => updateDraftTuning("nurseCount", count)}
+                          type="button"
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="supportCountControl techCountControl">
+                    <span>Techs</span>
+                    <div className="supportButtonGroup" role="group" aria-label="Tech count">
+                      {[0, 1, 2].map((count) => (
+                        <button
+                          aria-pressed={draftTuning.techCount === count}
+                          className={draftTuning.techCount === count ? "active" : ""}
+                          key={count}
+                          onClick={() => updateDraftTuning("techCount", count)}
+                          type="button"
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="shiftLengthControl">
+                    <span>Simulation length</span>
+                    <div className="shiftButtonGroup" role="group" aria-label="Simulation length">
+                      {[
+                        { label: "2 hr", value: 120 },
+                        { label: "4 hr", value: 240 },
+                        { label: "8 hr", value: 480 },
+                        { label: "12 hr", value: 720 },
+                        { label: "24 hr", value: 1440 },
+                        { label: "48 hr", value: 2880 },
+                      ].map((option) => (
+                        <button
+                          aria-label={`${option.label.replace(" hr", "")} hour simulation length`}
+                          aria-pressed={draftTuning.shiftDurationMinutes === option.value}
+                          className={draftTuning.shiftDurationMinutes === option.value ? "active" : ""}
+                          key={option.value}
+                          onClick={() => updateDraftTuning("shiftDurationMinutes", option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="toggleControl scenarioToggle fastTrackToggleControl">
+                    <span>Fast Track</span>
+                    <div className="scenarioToggleBody">
+                      <input
+                        checked={draftTuning.fastTrackEnabled}
+                        onChange={(event) => updateDraftTuning("fastTrackEnabled", event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                      <small>{draftTuning.fastTrackEnabled ? "Open" : "Closed"}</small>
+                    </div>
+                  </label>
+                  <label className="toggleControl scenarioToggle lwbsToggleControl">
+                    <span>LWBS</span>
+                    <div className="scenarioToggleBody">
+                      <input
+                        checked={draftTuning.lwbsEnabled}
+                        onChange={(event) => updateDraftTuning("lwbsEnabled", event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                      <small>{draftTuning.lwbsEnabled ? "Enabled" : "Disabled"}</small>
+                    </div>
+                  </label>
+                </div>
+              </section>
+              <section className="scenarioControlBlock compactSectionSpacing" aria-label="Timing Assumptions">
+                <div className="scenarioSectionHeader">
+                  <h3>Timing Assumptions</h3>
+                  <small>Set arrival volume and typical operational timing values used by the simulation.</small>
+                </div>
+                <div className="scenarioBottomControls">
                 <label>
                   <span>Arrivals / hour</span>
                   <input
@@ -3625,26 +5111,14 @@ export function App() {
                     {scenarioAssumptionStatusLabel("minimumWaitBeforeLWBS", draftTuning, activeTuning)}
                   </small>
                 </label>
-              </div>
+                </div>
+              </section>
               <section className="patientMixControls" aria-label="Patient Mix v1">
-                <div className="patientMixHeader coachRulesHeader">
+                <div className="patientMixHeader">
                   <div>
                     <h3>Patient Mix</h3>
                     <small>Adjust the synthetic deck while keeping each seed deterministic for replay and comparison.</small>
                   </div>
-                  <label>
-                    <span>Deck seed</span>
-                    <input
-                      min={1}
-                      max={9999}
-                      onChange={(event) => updateDraftTuning("patientMixSeed", Number(event.currentTarget.value))}
-                      type="number"
-                      value={draftTuning.patientMixSeed}
-                    />
-                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientMixSeed", draftTuning, activeTuning)}`}>
-                      {scenarioAssumptionStatusLabel("patientMixSeed", draftTuning, activeTuning)}
-                    </small>
-                  </label>
                 </div>
                 <div className="patientMixGrid">
                   <div className="patientMixGroup">
@@ -3740,9 +5214,22 @@ export function App() {
                       {scenarioAssumptionStatusLabel("patientAdmissionMix", draftTuning, activeTuning)}
                     </small>
                   </div>
+                  <label className="patientMixGroup patientMixSeedGroup">
+                    <span>Deck seed</span>
+                    <input
+                      min={1}
+                      max={9999}
+                      onChange={(event) => updateDraftTuning("patientMixSeed", Number(event.currentTarget.value))}
+                      type="number"
+                      value={draftTuning.patientMixSeed}
+                    />
+                    <small className={`scenarioAssumptionStatus ${calibrationStatusFor("patientMixSeed", draftTuning, activeTuning)}`}>
+                      {scenarioAssumptionStatusLabel("patientMixSeed", draftTuning, activeTuning)}
+                    </small>
+                  </label>
                 </div>
               </section>
-              <section className="patientMixControls" aria-label="Workflow Rules">
+              <section className="patientMixControls compactSectionSpacing" aria-label="Workflow Rules">
                 <div className="patientMixHeader">
                   <div>
                     <h3>Workflow Rules</h3>
@@ -3786,14 +5273,6 @@ export function App() {
                       Tune the live Coach and Optimal Flow Coach. Use Comparison Coach Rules below for the other strategy coaches.
                     </small>
                   </div>
-                  <label className="coachRulesVisibilityToggle">
-                    <input
-                      checked={showAllCoachRules}
-                      onChange={(event) => setShowAllCoachRules(event.currentTarget.checked)}
-                      type="checkbox"
-                    />
-                    <span>{showAllCoachRules ? "Hide All Coach Rules" : "Show All Coach Rules"}</span>
-                  </label>
                 </div>
                 <div className="coachStrategyRuleGrid single">
                   <div className="coachStrategyRuleRow">
@@ -3852,17 +5331,33 @@ export function App() {
                 </div>
                 {!showAllCoachRules ? (
                   <div className="coachRulesCollapsedNotice">
-                    Comparison Coach Rules are hidden. Check Show All Coach Rules to edit the other coach profiles.
+                    <span>Comparison Coach Rules are hidden. Check Show All Coach Rules to edit the other coach profiles.</span>
+                    <label className="coachRulesVisibilityToggle">
+                      <input
+                        checked={showAllCoachRules}
+                        onChange={(event) => setShowAllCoachRules(event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                      <span>{showAllCoachRules ? "Hide All Coach Rules" : "Show All Coach Rules"}</span>
+                    </label>
                   </div>
                 ) : null}
               </section>
               {showAllCoachRules ? (
               <section className="patientMixControls" aria-label="Comparison Coach Rules">
-                <div className="patientMixHeader">
+                <div className="patientMixHeader coachRulesHeader">
                   <div>
                     <h3>Comparison Coach Rules</h3>
                     <small>Tune each Coach Comparison strategy profile independently before running the scenario.</small>
                   </div>
+                  <label className="coachRulesVisibilityToggle">
+                    <input
+                      checked={showAllCoachRules}
+                      onChange={(event) => setShowAllCoachRules(event.currentTarget.checked)}
+                      type="checkbox"
+                    />
+                    <span>{showAllCoachRules ? "Hide All Coach Rules" : "Show All Coach Rules"}</span>
+                  </label>
                 </div>
                 <div className="coachStrategyRuleGrid">
                   {coachComparisonStrategyIds.map((strategyId) => {
@@ -3950,6 +5445,96 @@ export function App() {
                 </button>
               </div>
             </div>
+            <section className="assumptionProfilesPanel" aria-label="Named assumption profiles">
+              <div className="assumptionProfilesHeader">
+                <div>
+                  <h3>Assumption Profiles</h3>
+                  <small>
+                    Save named sets of Scenario Tuning values, then load them into draft assumptions for review before applying.
+                  </small>
+                </div>
+                <div className="assumptionProfileSave">
+                  <label>
+                    <span>Profile name</span>
+                    <input
+                      onChange={(event) => setAssumptionProfileName(event.currentTarget.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleSaveAssumptionProfile();
+                        }
+                      }}
+                      placeholder="Boarding Surge Training"
+                      type="text"
+                      value={assumptionProfileName}
+                    />
+                  </label>
+                  <button type="button" onClick={handleSaveAssumptionProfile} disabled={isReplayMode}>
+                    Save Current Draft
+                  </button>
+                </div>
+              </div>
+              {assumptionProfileStatus ? <p className="assumptionProfileStatus">{assumptionProfileStatus}</p> : null}
+              <div className="assumptionProfileGrid">
+                {assumptionProfiles.map((profile) => (
+                  <article className="assumptionProfileCard" key={profile.id}>
+                    <div className="assumptionProfileCardHeader">
+                      <div>
+                        <strong>{profile.name}</strong>
+                        <small>{profile.description}</small>
+                      </div>
+                      <mark className={`calibrationBadge ${profile.baseProfileId ? "draft" : profile.kind === "built-in" ? "default" : "local"}`}>
+                        {profile.baseProfileId ? "Customized" : profile.kind === "built-in" ? "Built-in" : "Saved"}
+                      </mark>
+                    </div>
+                    <dl className="assumptionProfileFacts">
+                      <div>
+                        <dt>Setup</dt>
+                        <dd>
+                          {profile.tuning.roomCapacity} rooms · {profile.tuning.providerCount} provider
+                          {profile.tuning.providerCount === 1 ? "" : "s"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Timing</dt>
+                        <dd>
+                          {profile.tuning.expectedArrivalsPerHour}/hr · {profile.tuning.boardingDurationTypicalMinutes}m boarding
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Patient mix</dt>
+                        <dd>
+                          {profile.tuning.patientAcuityMix.replace(/_/g, " ")} · {profile.tuning.patientComplaintMix.replace(/_/g, " ")}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="assumptionProfileActions">
+                      <button type="button" onClick={() => handleApplyAssumptionProfile(profile)} disabled={isReplayMode}>
+                        Load
+                      </button>
+                      {profile.id !== "builtin-default" ? (
+                        <button type="button" onClick={() => handleEditAssumptionProfile(profile)} disabled={isReplayMode}>
+                          Edit
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => handleDuplicateAssumptionProfile(profile)} disabled={isReplayMode}>
+                        Duplicate
+                      </button>
+                      {profile.baseProfileId ? (
+                        <button type="button" onClick={() => handleResetAssumptionProfile(profile)}>
+                          Reset
+                        </button>
+                      ) : null}
+                      {profile.kind === "custom" ? (
+                        <button type="button" onClick={() => handleDeleteAssumptionProfile(profile.id)}>
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
             <div className="calibrationSummary" aria-label="Model assumptions summary">
               <div>
                 <span>Local Values</span>
@@ -4003,6 +5588,114 @@ export function App() {
                 </div>
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {selectedSetupPanelTab === "configuration" ? (
+          <section
+            aria-labelledby="configuration-tab"
+            className="configurationPanel"
+            id="configuration-panel"
+            role="tabpanel"
+          >
+            <div className="configurationHeader">
+              <div>
+                <h2>Configuration</h2>
+                <small>Choose the visual style that feels best for reviewing and running the ED flow board.</small>
+              </div>
+              <div className="configurationSummary">
+                <span>Active palette</span>
+                <strong>{themePaletteOptions.find((palette) => palette.id === colorMode)?.name ?? "Clinical Light"}</strong>
+              </div>
+              <div className="configurationSummary">
+                <span>Dark mode default</span>
+                <strong>{themePaletteOptions.find((palette) => palette.id === defaultDarkColorMode)?.name ?? "Night Shift"}</strong>
+              </div>
+            </div>
+            <section className="configurationSection" aria-label="Color palettes">
+              <div className="configurationSectionHeader">
+                <h3>Color Palette</h3>
+                <small>Select a visual palette. The setting is saved locally and applies across the app.</small>
+              </div>
+              <div className="paletteGrid" role="radiogroup" aria-label="Light color palette">
+                {themePaletteOptions.filter((palette) => !isDarkColorMode(palette.id)).map((palette) => (
+                  <article
+                    className={colorMode === palette.id ? "paletteCard active" : "paletteCard"}
+                    key={palette.id}
+                    style={{ "--palette-accent": palette.accent } as CSSProperties}
+                  >
+                    <button
+                      aria-checked={colorMode === palette.id}
+                      className="paletteCardSelect"
+                      onClick={() => setColorMode(palette.id)}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="palettePreview" aria-hidden="true">
+                        {palette.swatches.map((swatch) => (
+                          <span key={swatch} style={{ background: swatch }} />
+                        ))}
+                      </span>
+                      <span className="paletteCardBody">
+                        <strong>{palette.name}</strong>
+                        <small>{palette.description}</small>
+                      </span>
+                      <span className="paletteSelectedBadge">{colorMode === palette.id ? "Selected" : "Select"}</span>
+                    </button>
+                  </article>
+                ))}
+              </div>
+              <div className="darkPaletteSection">
+                <div className="configurationSectionHeader">
+                  <h3>Dark Mode Palettes</h3>
+                  <small>
+                    Use these for lower-light viewing. The Live Operations Dark Mode checkbox switches from the active light
+                    palette to the dark palette marked Default, then back to Daylight Clinical when turned off.
+                  </small>
+                </div>
+                <div className="paletteGrid darkPaletteGrid" role="radiogroup" aria-label="Dark color palette">
+                  {themePaletteOptions.filter((palette) => isDarkColorMode(palette.id)).map((palette) => (
+                    <article
+                      className={colorMode === palette.id ? "paletteCard active" : "paletteCard"}
+                      key={palette.id}
+                      style={{ "--palette-accent": palette.accent } as CSSProperties}
+                    >
+                      <button
+                        aria-checked={colorMode === palette.id}
+                        className="paletteCardSelect"
+                        onClick={() => setColorMode(palette.id)}
+                        role="radio"
+                        type="button"
+                      >
+                        <span className="palettePreview" aria-hidden="true">
+                          {palette.swatches.map((swatch) => (
+                            <span key={swatch} style={{ background: swatch }} />
+                          ))}
+                        </span>
+                        <span className="paletteCardBody">
+                          <strong>{palette.name}</strong>
+                          <small>{palette.description}</small>
+                        </span>
+                        <span className="paletteSelectedBadge">{colorMode === palette.id ? "Selected" : "Select"}</span>
+                      </button>
+                      <label className="paletteDefaultCheck" onClick={(event) => event.stopPropagation()}>
+                        <input
+                          aria-label={`Use ${palette.name} as Dark Mode default`}
+                          checked={defaultDarkColorMode === palette.id}
+                          onChange={(event) => {
+                            if (event.currentTarget.checked) {
+                              setDefaultDarkColorMode(palette.id as DarkColorMode);
+                            }
+                          }}
+                          type="checkbox"
+                        />
+                        <span>Default</span>
+                      </label>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </section>
           </section>
         ) : null}
 
@@ -4099,6 +5792,12 @@ export function App() {
               <h2>Patient Status</h2>
               <span>{selectedPatient ? selectedPatient.id : "No patient selected"}</span>
             </div>
+            {isReplayMode ? (
+              <p className="patientReplayNotice">
+                Replay snapshot at {formatMinute(run.currentMinute)}. Selected patient state, room, wait, workup, disposition,
+                and hospitalist fields reflect this saved minute.
+              </p>
+            ) : null}
             {selectedPatient ? (
               <PatientDetails currentMinute={run.currentMinute} patient={selectedPatient} />
             ) : (
@@ -4332,13 +6031,18 @@ export function App() {
                   <>
                     <h2>Coach</h2>
                     <p className="panelExplanation">
-                      Coach recommends the next high-value action by looking at patient priority, waits, available rooms, results,
-                      and flow constraints.
+                      {isReplayMode
+                        ? `Replay view: Coach explains the saved provider action at ${formatMinute(
+                            run.currentMinute
+                          )}; if no action was recorded at that minute, it shows the most recent saved coachable action. Apply is disabled in replay.`
+                        : "Coach recommends the next high-value action by looking at patient priority, waits, available rooms, results, and flow constraints."}
                     </p>
                     <CoachPanel
+                      isReplayMode={isReplayMode}
                       onApply={handleApplyCoachRecommendation}
                       onSelectPatient={handleSelectCoachPatient}
                       recommendation={coachRecommendation}
+                      run={run}
                       runStatus={run.status}
                     />
                   </>
@@ -4347,6 +6051,11 @@ export function App() {
                 {selectedRightRailTab === "guardrails" ? (
                   <>
                     <h2>Guardrails</h2>
+                    {isReplayMode ? (
+                      <p className="panelExplanation replayRailNotice">
+                        Replay view: Guardrails are recalculated from the saved board at {formatMinute(run.currentMinute)}.
+                      </p>
+                    ) : null}
                     <FlowGuardrailsPanel summary={flowGuardrails} />
                   </>
                 ) : null}
@@ -4354,6 +6063,11 @@ export function App() {
                 {selectedRightRailTab === "debrief" ? (
                   <>
                     <h2>Debrief</h2>
+                    {isReplayMode ? (
+                      <p className="panelExplanation replayRailNotice">
+                        Replay view: Debrief summarizes events and decisions through {formatMinute(run.currentMinute)} in the saved run.
+                      </p>
+                    ) : null}
                     <ProviderDebriefPanel debrief={debrief} />
                   </>
                 ) : null}
@@ -4844,20 +6558,146 @@ function ActivityPanel({ timeline }: { timeline: ActivityTimeline }) {
   );
 }
 
+type ExportFormat = "csv" | "excel";
+
+function csvToRows(csv: string): string[][] {
+  const rows: string[][] = [];
+  let cell = "";
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    const nextChar = csv[index + 1];
+
+    if (char === "\"" && inQuotes && nextChar === "\"") {
+      cell += "\"";
+      index += 1;
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && nextChar === "\n") {
+        index += 1;
+      }
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;");
+}
+
+function rowsToExcelHtml(rows: string[][], sheetName: string): string {
+  const tableRows = rows
+    .map((row, rowIndex) => {
+      const tag = rowIndex === 0 ? "th" : "td";
+      return `<tr>${row.map((cell) => `<${tag}>${escapeHtml(cell)}</${tag}>`).join("")}</tr>`;
+    })
+    .join("");
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="ProgId" content="Excel.Sheet" />
+  <meta name="Generator" content="ED Provider Flow Board" />
+  <title>${escapeHtml(sheetName)}</title>
+  <style>
+    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+    th { background: #dceff5; font-weight: 700; }
+    th, td { border: 1px solid #9eb2c4; padding: 4px 6px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <table>${tableRows}</table>
+</body>
+</html>`;
+}
+
+const activityExportColumns = [
+  ["id", "Unique activity record identifier."],
+  ["runId", "Simulation run identifier."],
+  ["simulationMinute", "Minute in the simulated shift."],
+  ["kind", "Record type: event, decision, or benchmark."],
+  ["label / message", "Human-readable action or event description."],
+  ["patientId / providerId", "Patient and provider references when the record is patient-specific."],
+  ["previousState / resultingState", "Patient state before and after the event or decision."],
+  ["benchmarkMinute / benchmarkDeltaMinutes", "Benchmark timing comparison when a matching benchmark decision exists."],
+];
+
+const allRunsExportColumns = [
+  ["strategyId", "Machine-readable strategy key for the provider, benchmark, or coach run."],
+  ["strategyLabel", "Human-readable run name shown in coach comparison."],
+  ["activity columns", "Each run includes the same event and decision columns as the Activity export."],
+];
+
 function ExportPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; timeline: ActivityTimeline }) {
   const [exportStatus, setExportStatus] = useState<string | undefined>();
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const allRunsRecordCount = exportRuns.reduce(
+    (recordCount, activityRun) => recordCount + activityRun.run.events.length + activityRun.run.decisions.length,
+    0,
+  );
+  const exportFormatName = exportFormat === "excel" ? "Excel" : "CSV";
+  const exportFormatDescription =
+    exportFormat === "excel"
+      ? "Downloads open directly in spreadsheet tools for review and filtering."
+      : "Downloads use comma-delimited text for analysis tools, databases, and portable sharing.";
 
-  function downloadCsv(csv: string, filenamePrefix: string) {
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  function downloadText(contents: string, filenamePrefix: string, extension: string, mimeType: string) {
+    const blob = new Blob([contents], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `${filenamePrefix}-${new Date().toISOString().replaceAll(":", "-")}.csv`;
+    link.download = `${filenamePrefix}-${new Date().toISOString().replaceAll(":", "-")}.${extension}`;
     document.body.append(link);
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  function downloadCsv(csv: string, filenamePrefix: string) {
+    downloadText(csv, filenamePrefix, "csv", "text/csv;charset=utf-8");
+  }
+
+  function downloadExcel(csv: string, filenamePrefix: string, sheetName: string) {
+    downloadText(
+      rowsToExcelHtml(csvToRows(csv), sheetName),
+      filenamePrefix,
+      "xls",
+      "application/vnd.ms-excel;charset=utf-8",
+    );
   }
 
   async function copyCsv(csv: string) {
@@ -4877,58 +6717,157 @@ function ExportPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; t
     }
   }
 
-  function handleDownloadTimelineCsv() {
-    downloadCsv(activityTimelineToCsv(timeline), "ed-simulation-activity");
-    setExportStatus(`Activity CSV export started with ${timeline.records.length} records.`);
+  function handleDownloadTimeline() {
+    const csv = activityTimelineToCsv(timeline);
+    if (exportFormat === "excel") {
+      downloadExcel(csv, "ed-simulation-activity", "Activity");
+      setExportStatus(`Activity Excel export started with ${timeline.records.length} records.`);
+      return;
+    }
+
+    downloadCsv(csv, "ed-simulation-activity");
+    setExportStatus(`Activity comma-delimited CSV export started with ${timeline.records.length} records.`);
   }
 
-  function handleDownloadAllRunsCsv() {
+  function handleDownloadAllRuns() {
     const csv = activityRunsToCsv(exportRuns);
-    const recordCount = Math.max(0, csv.split("\n").length - 1);
+    if (exportFormat === "excel") {
+      downloadExcel(csv, "ed-simulation-all-runs", "All Runs");
+      setExportStatus(`All-runs Excel export started with ${allRunsRecordCount} records across ${exportRuns.length} runs.`);
+      return;
+    }
+
     downloadCsv(csv, "ed-simulation-all-runs");
-    setExportStatus(`All-runs CSV export started with ${recordCount} records across ${exportRuns.length} runs.`);
+    setExportStatus(`All-runs comma-delimited CSV export started with ${allRunsRecordCount} records across ${exportRuns.length} runs.`);
   }
 
   async function handleCopyTimelineCsv() {
     await copyCsv(activityTimelineToCsv(timeline));
-    setExportStatus(`Activity CSV copied with ${timeline.records.length} records.`);
+    setExportStatus(`Activity CSV copied to the clipboard with ${timeline.records.length} records for quick paste.`);
   }
 
   async function handleCopyAllRunsCsv() {
     const csv = activityRunsToCsv(exportRuns);
-    const recordCount = Math.max(0, csv.split("\n").length - 1);
     await copyCsv(csv);
-    setExportStatus(`All-runs CSV copied with ${recordCount} records across ${exportRuns.length} runs.`);
+    setExportStatus(`All-runs CSV copied to the clipboard with ${allRunsRecordCount} records across ${exportRuns.length} runs.`);
   }
 
   return (
     <div className="activityPanel">
       <p className="panelExplanation">
-        Export lets you take simulation data out of the app. Activity CSV includes the visible event timeline; All Runs CSV
-        includes the provider run plus benchmark and coach strategy comparison runs.
+        Export creates analysis files from simulation activity. Use Activity for the visible event and decision timeline. Use
+        All Runs when you want provider, benchmark, and coach comparison data in one dataset.
       </p>
-      <div className="activityToolbar">
+      <div className="exportHelpGrid" aria-label="Export actions explained">
+        <div>
+          <strong>Activity export</strong>
+          <span>Current run timeline with arrivals, operational events, provider decisions, and benchmark timing deltas.</span>
+        </div>
+        <div>
+          <strong>All Runs export</strong>
+          <span>Provider run plus benchmark and coach strategy comparison runs for side-by-side analysis.</span>
+        </div>
+        <div>
+          <strong>Copy Activity CSV</strong>
+          <span>Copies plain comma-delimited text for quick paste into Excel, email, notes, or chat without creating a file.</span>
+        </div>
+        <div>
+          <strong>Copy All Runs CSV</strong>
+          <span>Copies the full comparison dataset as text for fast handoff or ad hoc analysis.</span>
+        </div>
+      </div>
+      <div className="exportFormatControl" aria-label="Export format">
+        <span>Format</span>
+        <div role="group" aria-label="Export file format">
+          <button
+            aria-pressed={exportFormat === "csv"}
+            className={exportFormat === "csv" ? "active" : ""}
+            onClick={() => setExportFormat("csv")}
+            type="button"
+          >
+            <Table size={16} />
+            CSV comma-delimited
+          </button>
+          <button
+            aria-pressed={exportFormat === "excel"}
+            className={exportFormat === "excel" ? "active" : ""}
+            onClick={() => setExportFormat("excel")}
+            type="button"
+          >
+            <Download size={16} />
+            Excel format
+          </button>
+        </div>
+        <p className="exportFormatNote">
+          {exportFormatDescription} Copy actions stay CSV because clipboard copy is plain text.
+        </p>
+      </div>
+      <div className="exportDatasetSummary" aria-label="Export dataset summary">
+        <div>
+          <span>Activity records</span>
+          <strong>{timeline.records.length}</strong>
+          <small>Current timeline</small>
+        </div>
+        <div>
+          <span>All-runs records</span>
+          <strong>{allRunsRecordCount}</strong>
+          <small>{exportRuns.length} runs included</small>
+        </div>
+        <div>
+          <span>Download format</span>
+          <strong>{exportFormatName}</strong>
+          <small>Copy remains CSV</small>
+        </div>
+      </div>
+      <details className="exportDataDictionary">
+        <summary>Column guide</summary>
+        <div className="exportDictionaryGrid">
+          <div>
+            <strong>Activity export</strong>
+            <dl>
+              {activityExportColumns.map(([term, description]) => (
+                <div key={term}>
+                  <dt>{term}</dt>
+                  <dd>{description}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div>
+            <strong>All Runs export</strong>
+            <dl>
+              {allRunsExportColumns.map(([term, description]) => (
+                <div key={term}>
+                  <dt>{term}</dt>
+                  <dd>{description}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </details>
+      <div className="activityToolbar exportToolbar">
         <span>{timeline.records.length} timeline records</span>
         <div className="activityToolbarActions">
           <button
             className="statusTooltip"
-            data-tooltip="Download the current activity timeline as a CSV file for spreadsheet review."
+            data-tooltip="Download the current activity timeline in the selected file format for saved review or sharing."
             type="button"
-            onClick={handleDownloadTimelineCsv}
+            onClick={handleDownloadTimeline}
           >
-            Download Activity CSV
+            Download Activity {exportFormat === "excel" ? "Excel" : "CSV"}
           </button>
           <button
             className="statusTooltip"
-            data-tooltip="Download the provider run plus benchmark and coach strategy comparison runs as one CSV file."
+            data-tooltip="Download provider, benchmark, and coach comparison runs in the selected file format."
             type="button"
-            onClick={handleDownloadAllRunsCsv}
+            onClick={handleDownloadAllRuns}
           >
-            Download All Runs CSV
+            Download All Runs {exportFormat === "excel" ? "Excel" : "CSV"}
           </button>
           <button
             className="statusTooltip"
-            data-tooltip="Copy the current activity timeline CSV to the clipboard."
+            data-tooltip="Copy the current activity timeline as CSV text so it can be pasted into a spreadsheet, note, email, or chat."
             type="button"
             onClick={handleCopyTimelineCsv}
           >
@@ -4936,7 +6875,7 @@ function ExportPanel({ exportRuns, timeline }: { exportRuns: ActivityCsvRun[]; t
           </button>
           <button
             className="statusTooltip"
-            data-tooltip="Copy the provider, benchmark, and coach strategy comparison CSV to the clipboard."
+            data-tooltip="Copy all comparison run data as CSV text for quick paste without downloading a file."
             type="button"
             onClick={handleCopyAllRunsCsv}
           >
@@ -4982,28 +6921,45 @@ function SavedRunsPanel({
   return (
     <div className="savedRunsPanel">
       <p className="panelExplanation">
-        Export Current Run creates a JSON file the user can store in a chosen location. Import File brings a saved-run JSON
-        file back later for load and replay.
+        Run files are portable JSON exports. Export Current Run saves the current scenario, patients, events, decisions, and
+        final replay timeline. Import Run File adds valid exported runs to the list below for Load or Replay.
       </p>
+      <div className="savedRunHelpGrid" aria-label="Run file actions explained">
+        <div>
+          <strong>Export Current Run</strong>
+          <span>Creates one JSON file for the current board state and replay history.</span>
+        </div>
+        <div>
+          <strong>Load</strong>
+          <span>Restores the saved board at its saved minute so work can continue from that point.</span>
+        </div>
+        <div>
+          <strong>Replay</strong>
+          <span>Starts at the beginning of the saved run for review without changing the saved file.</span>
+        </div>
+      </div>
       <div className="savedRunFileTools" aria-label="Saved run file storage">
         <button className="primaryButton" type="button" onClick={onExportCurrentRun}>
           Export Current Run
         </button>
         <label>
-          <span>Import File</span>
+          <span>Import Run File</span>
           <input accept="application/json,.json" onChange={handleImportChange} type="file" />
         </label>
       </div>
       {status ? <p className="activityExportStatus">{status}</p> : null}
       <div className="savedRunList" aria-label="Saved runs">
         {records.length === 0 ? (
-          <p className="emptyState">No saved runs yet.</p>
+          <p className="emptyState">No imported run files yet. Export the current run, then import that JSON later to load or replay it.</p>
         ) : (
           records.map((record) => (
             <article className="savedRunCard" key={record.id}>
               <div className="savedRunCardHeader">
-                <strong>{record.name}</strong>
-                <small>{new Date(record.updatedAt).toLocaleString()}</small>
+                <div>
+                  <strong>{record.name}</strong>
+                  <small>Imported or exported {new Date(record.updatedAt).toLocaleString()}</small>
+                </div>
+                <span>{record.run.runType === "replay" ? "Replay file" : "Run file"}</span>
               </div>
               <dl>
                 <div>
@@ -5040,13 +6996,14 @@ function SavedRunsPanel({
                   className={activeReplayRecordId === record.id ? "active" : ""}
                   type="button"
                   onClick={() => onReplay(record)}
+                  title="Start this saved run from the beginning in read-only replay mode."
                 >
                   Replay
                 </button>
-                <button type="button" onClick={() => onRestore(record)}>
+                <button type="button" onClick={() => onRestore(record)} title="Load this saved run at its saved minute.">
                   Load
                 </button>
-                <button type="button" onClick={() => onDelete(record.id)}>
+                <button type="button" onClick={() => onDelete(record.id)} title="Remove this run from the imported Files list.">
                   Delete
                 </button>
               </div>
@@ -5059,21 +7016,29 @@ function SavedRunsPanel({
 }
 
 function CoachPanel({
+  isReplayMode,
   onApply,
   onSelectPatient,
   recommendation,
+  run,
   runStatus,
 }: {
+  isReplayMode: boolean;
   onApply: () => void;
   onSelectPatient: () => void;
   recommendation: BenchmarkCoachRecommendation | undefined;
+  run: SimulationRun;
   runStatus: SimulationRun["status"];
 }) {
-  if (runStatus !== "running") {
+  if (runStatus !== "running" && runStatus !== "paused") {
     return (
       <div className="coachPanel">
-        <strong>Start the simulation to enable Coach Mode.</strong>
-        <p className="emptyState">Coach recommendations appear while the clock is running and an operational action is available.</p>
+        <strong>{isReplayMode ? "Coach is not available at this replay minute." : "Start the simulation to enable Coach Mode."}</strong>
+        <p className="emptyState">
+          {isReplayMode
+            ? "This replay point is at the saved run end or has no active operational move. Use earlier replay minutes for coach review."
+            : "Coach recommendations appear while the clock is running or paused and an operational action is available."}
+        </p>
       </div>
     );
   }
@@ -5082,10 +7047,18 @@ function CoachPanel({
     return (
       <div className="coachPanel">
         <strong>No coach action is available right now.</strong>
-        <p className="emptyState">Advance the clock or wait for arrivals, rooms, providers, or results to become available.</p>
+        <p className="emptyState">
+          {isReplayMode
+            ? "No saved provider action has occurred yet in this replay. Use Next activity or step forward to the first recorded provider decision."
+            : runStatus === "paused"
+            ? "Resume or step the clock when you are ready; no operational action is available at this paused minute."
+            : "Advance the clock or wait for arrivals, rooms, providers, or results to become available."}
+        </p>
       </div>
     );
   }
+
+  const explanation = createCoachExplanation(run, recommendation);
 
   return (
     <div className="coachPanel">
@@ -5101,12 +7074,61 @@ function CoachPanel({
         </div>
       </dl>
       <p>{recommendation.reason}</p>
+      {explanation ? (
+        <div className="coachExplanation">
+          <section>
+            <h3>Why this action</h3>
+            <p>{explanation.actionReason}</p>
+          </section>
+          <section>
+            <h3>Priority score</h3>
+            <dl className="coachPriorityMath">
+              {explanation.priorityMath.map((item) => (
+                <div key={item.label}>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value}</dd>
+                  <span>{item.detail}</span>
+                </div>
+              ))}
+            </dl>
+          </section>
+          <section>
+            <h3>Operational signals</h3>
+            <div className="coachSignalGrid">
+              {explanation.signals.map((item) => (
+                <article key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.detail}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+          {explanation.alternatives.length > 0 ? (
+            <section>
+              <h3>Why not the next options</h3>
+              <div className="coachAlternativeList">
+                {explanation.alternatives.map((alternative, index) => (
+                  <article key={`${alternative.patientId}-${alternative.actionLabel}`}>
+                    <span>Option {index + 2}</span>
+                    <strong>
+                      {alternative.actionLabel} · {alternative.patientId}
+                    </strong>
+                    <small>{alternative.prioritySummary}</small>
+                    <p>{alternative.whyNot}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
       <div className="coachActions">
         <button type="button" onClick={onSelectPatient}>
           Show action
         </button>
-        <button className="primaryButton" type="button" onClick={onApply}>
-          Apply recommendation
+        <button className="primaryButton" disabled={isReplayMode} type="button" onClick={onApply}>
+          {isReplayMode ? "Replay read-only" : "Apply recommendation"}
         </button>
       </div>
     </div>

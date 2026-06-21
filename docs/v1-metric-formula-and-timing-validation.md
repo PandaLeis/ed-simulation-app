@@ -1,6 +1,6 @@
 # v1 Metric Formula and Timing Validation
 
-Last reviewed: June 19, 2026
+Last reviewed: June 20, 2026
 
 This document validates the current v1 simulation formulas and timing assumptions against the implementation. It confirms internal consistency only. It does not validate the model against real ED operational data, clinical standards, staffing studies, or local hospital performance benchmarks.
 
@@ -31,8 +31,15 @@ Model Assumptions makes assumptions visible in the app and distinguishes local v
 
 Implemented behavior:
 - A top-level Model Assumptions tab lists each model area, assumption, current value, source, and status.
+- Calibration / Assumptions v2 adds named assumption profiles in Model Assumptions.
+- Built-in profiles are Default, Local Baseline, and Boarding Surge Training.
+- Custom assumption profiles save the current draft Scenario Tuning values locally in the browser profile and can be loaded, edited, duplicated, or deleted later.
+- The profile edit workflow opens Scenario Tuning with an editing banner, allowing the user to save changes back to the profile, save the edited values as a new profile, apply the scenario, or cancel the edit session.
+- Default is protected as a built-in profile; Local Baseline and Boarding Surge Training can be customized locally through override profiles and reset back to their built-in values.
+- Applying a profile updates draft assumptions only; the scenario is not rebuilt until the user chooses Apply scenario.
 - Applied Scenario Tuning values that differ from defaults are shown as local values.
 - Scenario Tuning values edited but not yet applied are shown as draft changes.
+- Scenario Validation v2 provides advisory checks for capacity, staffing, timing, patient mix, and extreme draft values before a scenario is applied. Each issue includes the detected condition, expected operational impact, and a suggested adjustment.
 - Patient mix assumptions are configurable in Scenario Tuning for acuity pattern, complaint pattern, workup intensity, admission pressure, and deck seed.
 - Coach/Benchmark priority rules are configurable in Scenario Tuning for priority mode, ESI acuity weight, risk weight, and wait-minute weight.
 - Use Local Baseline populates draft tuning with the current working baseline: 17 rooms, 3 ED providers, automated front-end triage, 3 nurses, 2 techs, 12-hour simulation, arrivals at 12 per hour, provider evaluation 12 minutes, triage 5 minutes, lab TAT 45 minutes, imaging TAT 55 minutes, hospitalist response 45 minutes, boarding 63 minutes, room cleaning 20 minutes, LWBS disabled, and minimum wait before LWBS 90 minutes.
@@ -72,6 +79,10 @@ Model Assumptions boundaries:
 - It does not import historical ED data.
 - It does not prove the assumptions are locally accurate.
 - It does not yet edit LWBS probability curves, lab/imaging queues, EVS staffing, or detailed benchmark/coach sub-rule order.
+- Configuration palette selection and Dark Mode default selection are display-only and do not change simulation math, assumptions, benchmark logic, or saved-run content.
+- Configuration separates light palettes from the lower Dark Mode Palettes section.
+- Dark Mode Palettes use one Default checkbox per dark palette card, with exactly one dark default selected at a time.
+- The Live Operations Dark Mode checkbox switches to the selected dark default palette and returns to Daylight Clinical when turned off.
 
 ## Persistence and Replay Status
 
@@ -83,11 +94,26 @@ Implemented behavior:
 - Import File brings saved-run JSON records back into the app and merges them by saved-run id.
 - Imported and recently exported runs appear as Saved Runs cards with Replay, Load, and Delete actions.
 - Load resumes from the saved point. Replay starts at the beginning of the saved run and is read-only.
-- CSV Export is separate from saved-run JSON. Activity CSV and All Runs CSV are spreadsheet review exports and are not reloadable run files.
+- A saved/imported run exposes a Live Operations Replay shortcut in the main control row so the user can replay the file without returning to Files. If a saved run has been loaded, the shortcut uses that loaded run; otherwise it uses the most recent saved/imported run. The loaded-run pointer is cleared after new live actions alter the loaded board state, while the shortcut can still fall back to the most recent saved/imported run.
+- Export is separate from saved-run JSON. Activity and All Runs exports are spreadsheet review exports and are not reloadable run files.
+- Activity export contains the current visible run timeline with arrivals, operational events, provider decisions, and benchmark timing deltas.
+- All Runs export contains the provider run plus benchmark and coach strategy comparison runs for side-by-side analysis.
+- Download actions use the selected format: CSV comma-delimited or Excel format.
+- Copy Activity CSV and Copy All Runs CSV copy plain CSV text to the clipboard for quick paste without creating a file.
+- Copy actions remain CSV because clipboard copy is plain text.
+- Export shows the Activity record count, All Runs record count, number of included runs, and currently selected download format before the user downloads or copies data.
+- Export includes a column guide for the core Activity fields and the All Runs strategy fields.
+- The Files tab presents Run Files and Export as equal-width desktop sections.
 
 Important boundary:
 - The primary save path is user-selected file export/import. Browser local storage is only a convenience cache for the visible Saved Runs cards.
 - Replay reconstructs the saved timeline; it does not re-run the simulation engine, branch a new run, or create new provider decisions.
+- Replay controls include play/pause, speed selection, jump to start, 1-minute step back, 1-minute step forward, jump to end, Exit Replay, a minute slider, previous/next recorded-activity jumps, replay progress summary cards, and a "What changed" panel for the current replay minute.
+- Replay projects provider busy/available status, front-end triage provider status, nurse/tech busy counts, hospitalist pending status, and selected Patient Status from the saved timeline at the current replay minute.
+- Replay projects Guardrails and Debrief to the current replay minute. Guardrails are recalculated from the saved board state, while Debrief summarizes saved events and decisions through the replay minute.
+- Coach appears during replay from saved provider decisions. It explains the action recorded at the current replay minute, or the most recent saved coachable action when no provider action was recorded at that exact minute.
+- Applying a Coach recommendation is disabled in replay because playback is read-only.
+- Coach explanation v3 derives the next available alternatives from the same enabled action rules and displays why the selected recommendation ranked ahead of the next 2-3 options.
 - Saved runs use synthetic simulation data only and do not store PHI.
 
 ## Core Metric Formulas
@@ -421,11 +447,13 @@ The primary automated test suite covers:
 - Multi-provider assignment modes.
 - Triage and automated triage.
 - Protocol orders.
+- Nurse and tech support resource constraints.
 - LWBS behavior.
 - Waiting-room reassessment and deterioration.
 - Guardrails.
 - Room cleaning.
 - Hospitalist/admission/boarding flow.
+- Activity timeline and activity export behavior.
 - Benchmark and coach behavior.
 - Replay and persistence-related behavior.
 

@@ -27,6 +27,7 @@ import {
   advanceOneMinute,
   applyProviderAction,
   createSimulationRun,
+  pauseSimulation,
   setFrontEndTriageProviderEnabled,
   setFrontEndTriageProviderMode,
   startSimulation,
@@ -1320,6 +1321,25 @@ test("benchmark coach recommends the next deterministic operational action", () 
   assert.equal(recommendation.patientId, firstPatientId(run));
   assert.equal(recommendation.reason.includes("Rooming this patient now"), true);
   assert.equal(recommendation.prioritySummary.includes("ESI"), true);
+});
+
+test("benchmark coach remains visible while the simulation is paused", () => {
+  const scenario = scenarioWith({
+    triageProviderEnabled: false,
+    roomCapacity: 1,
+    providerCount: 1,
+    arrivalProfile: [{ hourOffset: 0, expectedArrivals: 1 }],
+    lwbsProfile: {
+      enabled: false,
+    },
+  });
+  let run = startedRun(scenario);
+  run = pauseSimulation(advanceTo(run, scenario, 60));
+
+  const recommendation = getBenchmarkCoachRecommendation(run);
+
+  assertDefined(recommendation, "Expected a paused run to keep its coach recommendation visible.");
+  assert.equal(recommendation.actionType, "room_patient");
 });
 
 test("coach priority weights change competing waiting-patient recommendations", () => {

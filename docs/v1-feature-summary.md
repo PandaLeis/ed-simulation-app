@@ -1,6 +1,6 @@
 # ED Provider Simulation App - v1 Feature Summary
 
-Last updated: June 19, 2026
+Last updated: June 20, 2026
 
 ## Purpose
 
@@ -43,9 +43,10 @@ The ED board provides a single-screen operational view of the simulation.
 
 Implemented areas:
 - Live Operations tab.
-- Files tab for run JSON files and CSV exports.
+- Files tab for run JSON files and analysis exports.
 - Scenario Tuning tab.
 - Model Assumptions tab.
+- Configuration tab.
 - Additional Stats tab.
 - Main view tabs for Workflow, Facility Setup, Benchmark, Coach Comparison, and Graphs.
 - Scenario Tuning and Model Assumptions open as focused configuration views, hiding live operational panels while selected.
@@ -59,6 +60,7 @@ Implemented areas:
 - Display Options control for Heart Metrics, Sepsis Metrics, Tooltips, and Dark Mode / Light Mode.
 - Auto-run clock with configurable speed.
 - Hover/focus tooltips for major tabs, status cards, controls, metrics, right-rail tabs, and export actions.
+- Configuration color palettes with local preference persistence.
 - Departed and LWBS patient cards show closed risk status and stopped elapsed time.
 - Patient cards show whether the ED provider has seen the patient.
 
@@ -83,6 +85,7 @@ Primary files:
 Scenario tuning lets the user adjust operational conditions without changing simulation rules in the UI.
 
 Implemented controls:
+- Scenario Validation v2 advisory checks for capacity, staffing, timing, patient mix, and extreme draft values, including impact and suggested-fix guidance for each item.
 - Front-End Triage Provider mode: unavailable, manual, or automated.
 - ED room capacity.
 - Provider count.
@@ -105,6 +108,7 @@ Implemented controls:
 - LWBS enabled/disabled.
 - Minimum wait before LWBS.
 - The second Scenario Tuning value row marks each editable assumption as Default, Local value, or Draft change.
+- Scenario Setup, Timing Assumptions, Patient Mix, Workflow Rules, and Default Coach Rules are grouped as separate review blocks with consistent title/description spacing.
 
 Patient Mix v1 options:
 - Acuity mix: Standard, Higher, or Lower.
@@ -183,6 +187,16 @@ Implemented behavior:
 - Shows Coach Benchmark Rules from Scenario Tuning, including priority mode and acuity/risk/wait scoring weights for the default coach and each comparison coach.
 - Scenario Tuning displays Default Coach Rules for the live Coach and Optimal Flow Coach first, with Show All Coach Rules available to reveal the independent comparison-coach profiles.
 - Provides a Use Local Baseline action that populates the draft scenario with the working baseline: 17 rooms, 3 ED providers, automated front-end triage, 3 nurses, 2 techs, 12-hour simulation, and current timing assumptions.
+- Adds Calibration / Assumptions v2 named assumption profiles in Model Assumptions.
+- Built-in assumption profiles include Default, Local Baseline, and Boarding Surge Training.
+- Users can save the current draft assumptions as a named custom profile, reload that profile into draft assumptions later, duplicate profiles, and delete custom profiles.
+- Profile cards include Load, Edit, Duplicate, and profile-specific cleanup actions.
+- Editing a profile opens Scenario Tuning with an editing banner and profile actions: Save Profile Changes, Save as New, Apply scenario, and Cancel Edit.
+- Default remains a protected built-in profile; it can be loaded or duplicated, but not edited in place.
+- Local Baseline and Boarding Surge Training can be customized locally through saved override profiles and reset back to the built-in version.
+- Assumption profiles are stored locally in the browser profile and contain scenario assumptions only; they do not store patients, events, decisions, or PHI.
+- Loading an assumption profile changes draft assumptions only. The user still chooses Apply scenario before the profile becomes the active simulation.
+- Saving profile changes and applying the scenario are intentionally separate so a user can curate profiles without unexpectedly rebuilding the active simulation.
 - Provides an Edit Scenario action that sends the user back to Scenario Tuning.
 - Scenario Tuning shows Default, Local value, or Draft change badges on its second value row so providers can see assumption status while editing.
 
@@ -190,6 +204,29 @@ Important boundary:
 - Model Assumptions does not import historical ED data.
 - Model Assumptions does not yet edit LWBS probability curves, lab queue, imaging queue, EVS staffing, or detailed coach sub-rule order.
 - Use Local Baseline changes draft tuning only; the user still applies the scenario from Scenario Tuning.
+
+Primary files:
+- `src/ui/App.tsx`
+- `src/ui/styles.css`
+
+## v1 Configuration
+
+Configuration captures user-facing display preferences that should not change the simulation math or patient flow.
+
+Implemented behavior:
+- Adds a top-level Configuration tab after Model Assumptions.
+- Provides visual color palette selection with palette preview swatches.
+- Includes eight light palettes: Daylight Clinical, Coastal Calm, Evergreen, Warm Rounds, Indigo Focus, Rose Review, Skyline, and Sage.
+- Includes four dark palettes: Night Shift, Midnight, Graphite, and Harbor Night.
+- Saves the active palette locally in the browser profile so the preference persists between sessions on the same machine.
+- Groups dark palettes in a separate lower section named Dark Mode Palettes with usage guidance for switching between light and dark modes.
+- Places a Default checkbox in the lower-right corner of each dark palette card.
+- Lets the user choose exactly one dark palette as the Dark Mode default; the Live Operations Dark Mode checkbox uses Night Shift by default until another dark palette is selected.
+- The Live Operations Dark Mode checkbox switches from the active light palette to the dark palette marked Default, then back to Daylight Clinical when turned off.
+- Applies palette variables across top navigation, scenario controls, cards, panels, tabs, buttons, badges, and export sections.
+
+Important boundary:
+- Configuration is display-only in v1; changing palettes does not affect scenario assumptions, benchmark logic, coach rules, metrics, saved-run data, or replay behavior.
 
 Primary files:
 - `src/ui/App.tsx`
@@ -709,9 +746,14 @@ Implemented behavior:
 - Shows benchmark minute and actual-vs-benchmark variance for matched decisions.
 - Preserves benchmark-only actions so the user can see what optimal flow would have done even if the provider did not make that selection.
 - Exposes an Activity right-rail tab for recent activity and summary counts.
-- Exposes CSV download and copy actions in the top-level Files tab.
-- Exports or copies the activity timeline as CSV from the browser.
-- Exports or copies an all-runs CSV with Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
+- Exposes download and copy actions in the top-level Files tab.
+- Exports the activity timeline as either CSV comma-delimited text or an Excel-readable workbook file.
+- Exports all-runs data as either CSV comma-delimited text or an Excel-readable workbook file.
+- Copies the activity timeline or all-runs data as CSV text to the clipboard for quick paste into a spreadsheet, note, email, chat, or issue without creating a file.
+- Copy actions remain CSV because clipboard copy is plain text.
+- Shows export dataset summaries for current Activity records, All Runs records, included run count, and selected download format.
+- Provides a column guide that explains the Activity export fields and the All Runs strategy columns.
+- All-runs export includes Provider Run, Optimal Flow Coach, Front-End Focus Coach, Middle Flow Focus Coach, Disposition Focus Coach, Resource-Aware Coach, Safety First Coach, Fast Track Coach, and Balanced Operations Coach records.
 
 Primary files:
 - `src/simulation/activityTimeline.ts`
@@ -724,6 +766,7 @@ Persistence v1 exports completed or in-progress simulation runs as user-controll
 
 Implemented behavior:
 - Adds a top-level Files tab.
+- The Files tab is split into two equal-width sections on desktop: Run Files and Export.
 - Adds a Run Files section with Export Current Run and Import File.
 - Export Current Run writes the current scenario configuration, active synthetic patient deck, run state, events, decisions, metrics, and a current snapshot to a saved-run JSON file.
 - Import File brings a saved-run JSON file back into the app for load and replay.
@@ -733,15 +776,26 @@ Implemented behavior:
 - Allows deleting saved run records.
 - Provides Export Current Run for saving the current run to a user-selected JSON file location when the browser supports file picking, with browser download fallback.
 - Imported and recently exported saved runs appear as cards in the Files tab and are cached in the browser profile only so the user can load, replay, or delete them during later app sessions.
-- Adds a separate CSV Export section for activity timeline CSV and all-runs CSV export/copy actions.
+- Adds a separate Export section for analysis files.
+- Export explains the difference between Activity export and All Runs export.
+- Activity export contains the current visible run timeline with arrivals, operational events, provider decisions, and benchmark timing deltas.
+- All Runs export contains the provider run plus benchmark and coach strategy comparison runs for side-by-side analysis.
+- Download actions use the selected format: CSV comma-delimited or Excel format.
+- Copy Activity CSV and Copy All Runs CSV copy plain comma-delimited text to the clipboard for quick paste without creating a file.
+- Export includes a visible summary of Activity record count, All Runs record count, number of included runs, and selected download format.
+- Export includes a column guide so users can interpret key fields such as simulation minute, activity kind, state transitions, benchmark timing, strategy id, and strategy label.
 
 Important boundary:
 - The primary save path is file export/import so the user chooses where saved-run JSON files live.
 - Browser local storage is a convenience cache for the visible saved-run cards, not the primary storage location.
 - The app does not automatically write to arbitrary folders without a user file-picker or browser download action.
 - Loaded saved runs resume from the saved point when the user chooses Load.
+- When a saved/imported run is available, Live Operations shows a Replay shortcut in the main control row with the run name and saved-run details in the tooltip.
+- If a saved run has been loaded, that loaded run is used for the shortcut; otherwise the most recent saved/imported run is used.
+- The Replay shortcut starts read-only replay without requiring the user to return to the Files tab.
+- The loaded-run pointer is cleared when the user starts, advances, resets, or changes the loaded board with new provider/coach actions; the shortcut can still fall back to the most recent saved/imported run.
 - Saved runs can also be opened in Replay v1 for read-only playback from the beginning.
-- Export Current Run is a JSON save for reload/replay; Activity CSV and All Runs CSV are spreadsheet exports for review and are not reloadable saved-run files.
+- Export Current Run is a JSON save for reload/replay; Activity and All Runs exports are spreadsheet/review exports and are not reloadable saved-run files.
 - Saved runs use synthetic simulation state only and do not store PHI.
 
 Primary files:
@@ -755,11 +809,19 @@ Replay v1 lets the user play back a saved run from the beginning after saving it
 Implemented behavior:
 - Adds a Replay button to each Saved Runs card.
 - Starts replay at the saved run's shift start minute.
-- Shows a Replay control bar in Live Operations with Play Replay, Pause Replay, 1 min, 5 min, and Exit Replay controls.
+- Shows a Replay control bar in Live Operations with play/pause, speed selection, jump to start, 1-minute step back, 1-minute step forward, jump to end, Exit Replay, and a minute slider.
+- Adds Replay polish v2 summary cards for current replay time, percent complete, remaining minutes, and number of saved activity minutes.
+- Adds Previous activity and Next activity controls that jump to the nearest saved minute with a provider decision or non-metric event.
+- Shows a "What changed" panel for the current replay minute with saved timeline events and provider decisions.
 - Advances the board minute by minute through the saved run timeline.
 - Filters visible events and provider decisions to the current replay minute.
 - Projects patient states, rooms, provider busy state, metrics, graphs, activity, guardrails, and debrief to the replay minute.
+- Projects status-row values, provider roster availability, front-end triage provider state, nurse/tech busy counts, hospitalist pending status, and Patient Status details to the replay minute.
+- Guardrails and Debrief show during replay with replay-view labels; Guardrails are recalculated from the saved board at the replay minute and Debrief summarizes saved events and decisions through that minute.
+- Coach shows during replay from the saved decision stream: it explains the provider action recorded at the current replay minute, or the most recent saved coachable action when no provider action was recorded at that exact minute.
+- If no provider action has occurred yet in the replay, Coach displays a replay-specific message telling the user to step forward or use Next activity.
 - Keeps replay read-only by disabling live provider actions, Start, manual advance, Reset, Coach Demo, scenario apply/default changes, and save-current-run while replay is active.
+- Coach Apply is disabled during replay; Show Action remains available for review/navigation when a replay recommendation exists.
 - Exit Replay restores the live working run that was open before replay started.
 
 Important boundary:
@@ -780,6 +842,9 @@ Implemented behavior:
 - Uses the same simulation-layer benchmark strategy as the Benchmark tab.
 - Recommends the next patient and provider action.
 - Explains why the recommendation was selected.
+- Keeps Coach recommendation information visible while the simulation is paused so the user can read the reasoning.
+- Shows recommendation explanation details, including selected action, patient priority factors, action rationale, and blocking/availability context where relevant.
+- Adds Coach explanation v3 alternatives: shows the next 2-3 available patient/action options and explains why the selected recommendation ranked ahead of them.
 - Highlights the recommended patient card on the ED board.
 - Highlights the recommended action button when the user views the matching patient.
 - Prioritizes disposition-ready roomed patients when disposition action is available.
@@ -842,13 +907,20 @@ The simulation core has automated tests for:
 - Multi-provider behavior.
 - Protocol orders.
 - LWBS behavior and metrics.
+- Waiting-room reassessment and deterioration.
+- Nurse and tech support resource constraints.
 - Room release.
+- Room cleaning.
+- Hospitalist/admission/boarding flow.
 - Boarding.
 - Metrics updates.
 - Event and decision identifiers.
+- Activity timeline export.
+- Replay and saved-run persistence behavior.
 - Reset behavior.
 - Provider debrief.
 - Optimal Flow Benchmark.
+- Coach comparison and coach recommendation behavior.
 - Smoke demo flow.
 
 Current verification command set:
